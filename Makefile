@@ -4,6 +4,7 @@
 ANSIBLE_PLAYBOOK = ansible-playbook
 ANSIBLE_DIR = ansible
 PLAYBOOK = $(ANSIBLE_DIR)/playbook.yml
+DEPLOY_PLAYBOOK = $(ANSIBLE_DIR)/deploy-playbook.yml
 INVENTORY = $(ANSIBLE_DIR)/inventory.yml
 APP_NAME = golem-century
 ENV_FILE = .env
@@ -44,21 +45,33 @@ generate-inventory: ## Generate inventory.yml from .env file
 	@echo "Generating inventory from .env file..."
 	@$(ANSIBLE_DIR)/generate-inventory.sh
 
-deploy: generate-inventory create-archive ## Deploy to remote server using Ansible (creates archive first)
+deploy: ## Deploy to remote server using new git-based method (recommended)
 	@echo "Deploying $(APP_NAME) to remote server..."
+	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(DEPLOY_PLAYBOOK)
+
+deploy-branch: ## Deploy specific branch (usage: make deploy-branch BRANCH=feature-xyz)
+	@if [ -z "$(BRANCH)" ]; then \
+		echo "Error: BRANCH variable is required. Usage: make deploy-branch BRANCH=feature-xyz"; \
+		exit 1; \
+	fi
+	@echo "Deploying branch: $(BRANCH)"
+	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(DEPLOY_PLAYBOOK) -e "git_branch=$(BRANCH)"
+
+deploy-check: ## Check deployment without making changes (dry-run)
+	@echo "Checking deployment (dry-run)..."
+	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(DEPLOY_PLAYBOOK) --check
+
+deploy-legacy: generate-inventory create-archive ## Deploy using legacy archive method
+	@echo "Deploying $(APP_NAME) to remote server (legacy method)..."
 	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK)
 
 deploy-only: generate-inventory ## Deploy to remote server using Ansible (requires archive to exist)
-	@echo "Deploying $(APP_NAME) to remote server..."
+	@echo "Deploying $(APP_NAME) to remote server (legacy method)..."
 	@if [ ! -f /tmp/$(APP_NAME)-deploy.zip ]; then \
 		echo "Error: Archive not found. Run 'make create-archive' first."; \
 		exit 1; \
 	fi
 	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK)
-
-deploy-check: generate-inventory ## Check deployment without making changes (dry-run)
-	@echo "Checking deployment (dry-run)..."
-	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK) --check
 
 update: generate-inventory ## Update the application on remote server
 	@echo "Updating $(APP_NAME) on remote server..."

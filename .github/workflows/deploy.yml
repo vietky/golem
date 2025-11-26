@@ -1,0 +1,86 @@
+name: Trigger Jenkins Deployment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  trigger-jenkins:
+    name: Trigger Jenkins Job
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Get commit info
+        id: commit
+        run: |
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "message=$(git log -1 --pretty=%B | head -1)" >> $GITHUB_OUTPUT
+      
+      - name: Trigger Jenkins job
+        env:
+          JENKINS_URL: ${{ secrets.JENKINS_URL }}
+          JENKINS_USER: ${{ secrets.JENKINS_USER }}
+          JENKINS_TOKEN: ${{ secrets.JENKINS_TOKEN }}
+          JENKINS_JOB: ${{ secrets.JENKINS_JOB_NAME || 'golem-century-deploy' }}
+        run: |
+          # Trigger Jenkins job with parameters
+          curl -X POST \
+            -u "${JENKINS_USER}:${JENKINS_TOKEN}" \
+            "${JENKINS_URL}/job/${JENKINS_JOB}/buildWithParameters" \
+            -F "GIT_BRANCH=${GITHUB_REF_NAME}" \
+            -F "ENVIRONMENT=${{ github.event.inputs.environment || 'production' }}"
+          
+          echo "✓ Jenkins job triggered successfully"
+          echo "  Commit: ${{ steps.commit.outputs.sha_short }}"
+          echo "  Message: ${{ steps.commit.outputs.message }}"
+          echo "  Branch: ${GITHUB_REF_NAME}"
+          echo "  Environment: ${{ github.event.inputs.environment || 'production' }}"
+      
+      - name: Wait for job to start
+        run: sleep 5
+      
+      - name: Get Jenkins job status
+        id: jenkins-status
+        env:
+          JENKINS_URL: ${{ secrets.JENKINS_URL }}
+          JENKINS_USER: ${{ secrets.JENKINS_USER }}
+          JENKINS_TOKEN: ${{ secrets.JENKINS_TOKEN }}
+          JENKINS_JOB: ${{ secrets.JENKINS_JOB_NAME || 'golem-century-deploy' }}
+        run: |
+          # Get the latest build number
+          BUILD_NUM=$(curl -s -u "${JENKINS_USER}:${JENKINS_TOKEN}" \
+            "${JENKINS_URL}/job/${JENKINS_JOB}/lastBuild/buildNumber")
+          
+          echo "build_number=${BUILD_NUM}" >> $GITHUB_OUTPUT
+          echo "Jenkins build #${BUILD_NUM} started"
+          echo "View at: ${JENKINS_URL}/job/${JENKINS_JOB}/${BUILD_NUM}/"
+      
+      - name: Add deployment summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🚀 Deployment Triggered
+          
+          **Commit:** \`${{ steps.commit.outputs.sha_short }}\`  
+          **Message:** ${{ steps.commit.outputs.message }}  
+          **Branch:** \`${GITHUB_REF_NAME}\`  
+          **Environment:** \`${{ github.event.inputs.environment || 'production' }}\`  
+          **Jenkins Build:** [#${{ steps.jenkins-status.outputs.build_number }}](${{ secrets.JENKINS_URL }}/job/${{ secrets.JENKINS_JOB_NAME || 'golem-century-deploy' }}/${{ steps.jenkins-status.outputs.build_number }}/)
+          
+          ---
+          
+          📊 Monitor the deployment progress in Jenkins
+          EOF

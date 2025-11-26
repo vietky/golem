@@ -1,0 +1,167 @@
+---
+- name: Deploy Golem Century Game Server
+  hosts: all
+  become: yes
+  vars:
+    app_name: golem-century
+    app_user: golem
+    app_dir: /opt/golem-century
+    app_port: 8081
+    git_repo: https://github.com/vietky/golem.git
+    git_branch: main
+    
+  tasks:
+    # System dependencies setup
+    - name: Update package repositories
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Install required packages
+      apt:
+        name:
+          - git
+          - curl
+          - ca-certificates
+          - gnupg
+        state: present
+      when: ansible_os_family == "Debian"
+
+    # Docker setup
+    - name: Check if Docker is installed
+      command: which docker
+      register: docker_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install Docker if not present
+      block:
+        - name: Add Docker GPG key
+          apt_key:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
+
+        - name: Add Docker repository
+          apt_repository:
+            repo: "deb [arch={{ 'amd64' if ansible_architecture == 'x86_64' else ansible_architecture }}] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+            state: present
+
+        - name: Install Docker packages
+          apt:
+            name:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+              - docker-buildx-plugin
+              - docker-compose-plugin
+            state: present
+            update_cache: yes
+      when: docker_check.rc != 0 and ansible_os_family == "Debian"
+
+    - name: Ensure Docker service is running
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    # Docker Compose setup
+    - name: Check docker-compose version
+      shell: docker-compose version --short 2>/dev/null || echo "0.0.0"
+      register: docker_compose_version
+      changed_when: false
+      failed_when: false
+
+    - name: Install docker-compose if not present or outdated
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/v2.32.1/docker-compose-linux-{{ 'x86_64' if ansible_architecture == 'x86_64' else 'aarch64' }}"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+        force: yes
+      when: docker_compose_version.stdout is defined and docker_compose_version.stdout is version('2.30.0', '<')
+
+    # Application user setup
+    - name: Create application user
+      user:
+        name: "{{ app_user }}"
+        system: yes
+        shell: /bin/bash
+        create_home: yes
+        groups: docker
+        append: yes
+
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+
+    # Deploy script setup
+    - name: Create scripts directory
+      file:
+        path: "{{ app_dir }}/scripts"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+
+    - name: Copy deploy script to server
+      copy:
+        src: ../scripts/deploy.sh
+        dest: "{{ app_dir }}/scripts/deploy.sh"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+
+    # Run deployment
+    - name: Run deploy script
+      shell: "{{ app_dir }}/scripts/deploy.sh"
+      args:
+        chdir: "{{ app_dir }}"
+      become_user: "{{ app_user if ansible_user != 'root' else omit }}"
+      environment:
+        APP_NAME: "{{ app_name }}"
+        APP_DIR: "{{ app_dir }}"
+        APP_PORT: "{{ app_port }}"
+        GIT_REPO: "{{ git_repo }}"
+        GIT_BRANCH: "{{ git_branch }}"
+      register: deploy_result
+
+    - name: Display deployment output
+      debug:
+        msg: "{{ deploy_result.stdout_lines }}"
+
+    # Verify deployment
+    - name: Check container status
+      shell: "docker ps --filter 'name={{ app_name }}' --format '{{ '{{' }}.Names{{ '}}' }}: {{ '{{' }}.Status{{ '}}' }}'"
+      register: container_status
+      changed_when: false
+
+    - name: Display container status
+      debug:
+        msg: "{{ container_status.stdout_lines }}"
+
+    - name: Verify application is accessible
+      uri:
+        url: "http://localhost:{{ app_port }}/"
+        status_code: 200
+        timeout: 30
+      register: health_check
+      retries: 3
+      delay: 5
+      until: health_check is succeeded
+      ignore_errors: yes
+
+    - name: Display deployment summary
+      debug:
+        msg: |
+          ==========================================
+          Deployment Summary
+          ==========================================
+          Application: {{ app_name }}
+          Directory: {{ app_dir }}
+          Port: {{ app_port }}
+          Health Check: {{ 'PASSED' if health_check is succeeded else 'FAILED' }}
+          ==========================================
