@@ -206,8 +206,9 @@ function getCardImagePath(cardName) {
     }
     
     // Normalize card name to match image file names
-    // All images are stored as: [cardName].PNG
-    const imageName = actualCardName + '.PNG';
+    // All images are stored as: [cardName].JPG
+    const imageName = actualCardName + '.JPG';
+    // Use relative path (server serves from web/static root)
     const imagePath = `images/${imageName}`;
     
     return imagePath;
@@ -235,7 +236,7 @@ function getCardImage(cardName, className = 'card-image') {
         return '';
     }
     
-    return `<img src="${imagePath}" alt="${cardName}" class="${className}" onerror="console.warn('Image not found:', '${imagePath}'); this.style.display='none'">`;
+    return `<img src="${imagePath}" alt="${cardName}" class="${className}" loading="lazy" decoding="async" onerror="console.warn('Image not found:', '${imagePath}'); this.style.display='none'">`;
 }
 
 /**
