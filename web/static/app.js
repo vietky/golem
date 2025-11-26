@@ -289,7 +289,11 @@ function createCardElement(card, type, index, cost = null) {
         }
     }
     
-    html += `<div class="card-header">${card.name}</div>`;
+    // Use Vietnamese name if available, otherwise use original name
+    const displayName = typeof getVietnameseCardName !== 'undefined' 
+        ? getVietnameseCardName(card.name) 
+        : card.name;
+    html += `<div class="card-header">${displayName}</div>`;
     html += '<div class="card-body">';
     
     // Add card image - images already show all input/output/requirements
@@ -348,7 +352,11 @@ function updatePlayerHand() {
             html += `<div class="card-type-badge ${actionType}">${actionType}</div>`;
         }
         
-        html += `<div class="card-header">${card.name}</div>`;
+        // Use Vietnamese name if available, otherwise use original name
+        const displayName = typeof getVietnameseCardName !== 'undefined' 
+            ? getVietnameseCardName(card.name) 
+            : card.name;
+        html += `<div class="card-header">${displayName}</div>`;
         html += '<div class="card-body">';
         
         // Add card image - images already show all input/output information
