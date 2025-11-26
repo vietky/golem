@@ -46,7 +46,7 @@ generate-inventory: ## Generate inventory.yml from .env file
 
 deploy: generate-inventory create-archive ## Deploy to remote server using Ansible (creates archive first)
 	@echo "Deploying $(APP_NAME) to remote server..."
-	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK) --ask-pass
+	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK)
 
 deploy-only: generate-inventory ## Deploy to remote server using Ansible (requires archive to exist)
 	@echo "Deploying $(APP_NAME) to remote server..."
@@ -54,7 +54,7 @@ deploy-only: generate-inventory ## Deploy to remote server using Ansible (requir
 		echo "Error: Archive not found. Run 'make create-archive' first."; \
 		exit 1; \
 	fi
-	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK) --ask-pass
+	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK)
 
 deploy-check: generate-inventory ## Check deployment without making changes (dry-run)
 	@echo "Checking deployment (dry-run)..."
