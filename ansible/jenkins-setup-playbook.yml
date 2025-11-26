@@ -1,0 +1,172 @@
+---
+- name: Setup Jenkins Job for Golem Century Deployment
+  hosts: all
+  become: yes
+  vars:
+    app_name: golem-century
+    app_dir: /opt/golem-century
+    app_port: 8081
+    git_repo: https://github.com/vietky/golem.git
+    git_branch: main
+    jenkins_url: "http://{{ ansible_host }}:8080"
+    jenkins_job_name: "golem-century-deploy"
+    jenkins_user: "{{ lookup('env', 'JENKINS_USER') | default('admin', true) }}"
+    jenkins_token: "{{ lookup('env', 'JENKINS_TOKEN') | default('', true) }}"
+    
+  tasks:
+    - name: Check if Jenkins is accessible
+      uri:
+        url: "{{ jenkins_url }}"
+        method: GET
+        status_code: [200, 403]
+      register: jenkins_check
+      failed_when: false
+
+    - name: Fail if Jenkins is not accessible
+      fail:
+        msg: "Jenkins is not accessible at {{ jenkins_url }}. Please ensure Jenkins is running."
+      when: jenkins_check.status is not defined or jenkins_check.status not in [200, 403]
+
+    - name: Create Jenkins job configuration from template
+      template:
+        src: templates/jenkins-job-config.xml.j2
+        dest: /tmp/jenkins-job-{{ jenkins_job_name }}.xml
+        mode: '0644'
+
+    - name: Create Jenkins job creation script
+      copy:
+        content: |
+          #!/bin/bash
+          set -e
+          
+          JENKINS_URL="{{ jenkins_url }}"
+          JOB_NAME="{{ jenkins_job_name }}"
+          CONFIG_FILE="/tmp/jenkins-job-{{ jenkins_job_name }}.xml"
+          COOKIE_JAR="/tmp/jenkins-cookies.txt"
+          
+          echo "Creating/updating Jenkins job: ${JOB_NAME}"
+          echo "Jenkins URL: ${JENKINS_URL}"
+          
+          # Get CSRF crumb with cookies
+          CRUMB_JSON=$(curl -s -c "${COOKIE_JAR}" "${JENKINS_URL}/crumbIssuer/api/json" 2>/dev/null || echo "")
+          
+          if [ -n "$CRUMB_JSON" ]; then
+            CRUMB=$(echo "$CRUMB_JSON" | grep -o '"crumb":"[^"]*"' | cut -d'"' -f4)
+            CRUMB_FIELD=$(echo "$CRUMB_JSON" | grep -o '"crumbRequestField":"[^"]*"' | cut -d'"' -f4)
+            echo "Using CSRF crumb: ${CRUMB_FIELD}"
+          else
+            CRUMB=""
+            CRUMB_FIELD=""
+            echo "No CSRF crumb needed"
+          fi
+          
+          # Try to create job first
+          echo "Attempting to create job..."
+          if [ -n "$CRUMB" ]; then
+            CREATE_RESPONSE=$(curl -s -b "${COOKIE_JAR}" -w "\n%{http_code}" -X POST \
+              -H "${CRUMB_FIELD}: ${CRUMB}" \
+              -H "Content-Type: application/xml" \
+              "${JENKINS_URL}/createItem?name=${JOB_NAME}" \
+              --data-binary "@${CONFIG_FILE}")
+          else
+            CREATE_RESPONSE=$(curl -s -b "${COOKIE_JAR}" -w "\n%{http_code}" -X POST \
+              -H "Content-Type: application/xml" \
+              "${JENKINS_URL}/createItem?name=${JOB_NAME}" \
+              --data-binary "@${CONFIG_FILE}")
+          fi
+          
+          CREATE_HTTP_CODE=$(echo "$CREATE_RESPONSE" | tail -n1)
+          
+          if [ "$CREATE_HTTP_CODE" = "200" ]; then
+            echo "✓ Job created successfully"
+            exit 0
+          elif [ "$CREATE_HTTP_CODE" = "400" ]; then
+            # Job already exists, try to update
+            echo "Job already exists, updating..."
+            if [ -n "$CRUMB" ]; then
+              UPDATE_RESPONSE=$(curl -s -b "${COOKIE_JAR}" -w "\n%{http_code}" -X POST \
+                -H "${CRUMB_FIELD}: ${CRUMB}" \
+                -H "Content-Type: application/xml" \
+                "${JENKINS_URL}/job/${JOB_NAME}/config.xml" \
+                --data-binary "@${CONFIG_FILE}")
+            else
+              UPDATE_RESPONSE=$(curl -s -b "${COOKIE_JAR}" -w "\n%{http_code}" -X POST \
+                -H "Content-Type: application/xml" \
+                "${JENKINS_URL}/job/${JOB_NAME}/config.xml" \
+                --data-binary "@${CONFIG_FILE}")
+            fi
+            
+            UPDATE_HTTP_CODE=$(echo "$UPDATE_RESPONSE" | tail -n1)
+            
+            if [ "$UPDATE_HTTP_CODE" = "200" ]; then
+              echo "✓ Job updated successfully"
+              exit 0
+            else
+              echo "✗ Failed to update job (HTTP ${UPDATE_HTTP_CODE})"
+              echo "$UPDATE_RESPONSE" | head -n -1
+              exit 1
+            fi
+          else
+            echo "✗ Failed to create job (HTTP ${CREATE_HTTP_CODE})"
+            echo "$CREATE_RESPONSE" | head -n -1
+            exit 1
+          fi
+          
+          # Verify job was created/updated
+          if curl -s -b "${COOKIE_JAR}" "${JENKINS_URL}/job/${JOB_NAME}/api/json" > /dev/null 2>&1; then
+            echo "✓ Job verified: ${JENKINS_URL}/job/${JOB_NAME}/"
+          else
+            echo "✗ Job verification failed"
+            exit 1
+          fi
+          
+          # Cleanup
+          rm -f "${COOKIE_JAR}"
+        dest: /tmp/create-jenkins-job.sh
+        mode: '0755'
+
+    - name: Execute Jenkins job creation script
+      command: /tmp/create-jenkins-job.sh
+      register: jenkins_job_result
+
+    - name: Display job creation result
+      debug:
+        var: jenkins_job_result.stdout_lines
+
+    - name: Display job creation instructions (if credentials not provided)
+      debug:
+        msg: |
+          ==========================================
+          Jenkins Job Setup
+          ==========================================
+          Job configuration has been generated at: /tmp/jenkins-job-config.xml
+          
+          To create the job manually:
+          1. Go to {{ jenkins_url }}
+          2. Click "New Item"
+          3. Name it "{{ jenkins_job_name }}"
+          4. Select "Pipeline" project
+          5. Copy the contents from /tmp/jenkins-job-config.xml
+          
+          To automate this, set environment variables:
+          export JENKINS_USER=your_username
+          export JENKINS_TOKEN=your_api_token
+          
+          Then re-run this playbook.
+          ==========================================
+      when: jenkins_user == '' or jenkins_token == ''
+
+    - name: Display job URL
+      debug:
+        msg: |
+          ==========================================
+          Jenkins Job Created Successfully
+          ==========================================
+          Job Name: {{ jenkins_job_name }}
+          Job URL: {{ jenkins_url }}/job/{{ jenkins_job_name }}
+          
+          The job will:
+          - Run the deployment script on the server
+          - Can be triggered manually or via GitHub webhook
+          ==========================================
+      when: jenkins_user != '' and jenkins_token != ''
