@@ -2,6 +2,7 @@ let ws = null;
 let sessionId = null;
 let playerId = null;
 let playerName = '';
+let playerAvatar = '4'; // Default avatar
 let gameState = null;
 
 // Initialize
@@ -15,6 +16,16 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('lobby').classList.remove('hidden');
         document.getElementById('game').classList.add('hidden');
         document.getElementById('sessionInfo').classList.add('hidden');
+    });
+    
+    // Avatar selection
+    document.querySelectorAll('.avatar-option').forEach(option => {
+        option.addEventListener('click', () => {
+            document.querySelectorAll('.avatar-option').forEach(opt => opt.classList.remove('selected'));
+            option.classList.add('selected');
+            playerAvatar = option.dataset.avatar;
+            document.getElementById('selectedAvatar').value = playerAvatar;
+        });
     });
 });
 
@@ -147,7 +158,8 @@ async function joinGame() {
 function connectWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     // Don't send player ID - let server auto-assign
-    let wsUrl = `${protocol}//${window.location.host}/ws?session=${sessionId}&name=${encodeURIComponent(playerName)}`;
+    playerAvatar = document.getElementById('selectedAvatar').value || '4';
+    let wsUrl = `${protocol}//${window.location.host}/ws?session=${sessionId}&name=${encodeURIComponent(playerName)}&avatar=${playerAvatar}`;
     if (playerId) {
         wsUrl += `&player=${playerId}`;
     }
@@ -232,8 +244,15 @@ function updatePlayersList() {
             div.classList.add('current-turn');
         }
         
+        // Get avatar number (default to player ID if not set)
+        const avatarNum = player.avatar || player.id || '1';
+        const avatarPath = `images/avatar/${avatarNum}.webp`;
+        
         const resourcesHTML = formatResourcesHTML(player.resources);
         div.innerHTML = `
+            <div class="player-avatar">
+                <img src="${avatarPath}" alt="${player.name}" onerror="this.src='images/avatar/1.webp'">
+            </div>
             <h4>${player.name}</h4>
             <div class="player-resources">
                 <div class="crystal-group">${resourcesHTML}</div>

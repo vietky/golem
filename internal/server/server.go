@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -20,13 +21,14 @@ var upgrader = websocket.Upgrader{
 
 // GameSession represents a multiplayer game session
 type GameSession struct {
-	ID           string
-	GameState    *game.GameState
-	Engine       *game.Engine
-	Connections  map[int]*websocket.Conn // Player ID -> WebSocket connection
-	PlayerNames  map[int]string          // Player ID -> Player name
-	mu           sync.RWMutex
-	ActionChan   chan PlayerAction
+	ID            string
+	GameState     *game.GameState
+	Engine        *game.Engine
+	Connections   map[int]*websocket.Conn // Player ID -> WebSocket connection
+	PlayerNames   map[int]string          // Player ID -> Player name
+	PlayerAvatars map[int]string          // Player ID -> Avatar number
+	mu            sync.RWMutex
+	ActionChan    chan PlayerAction
 	BroadcastChan chan []byte
 }
 
@@ -45,23 +47,28 @@ func NewGameSession(sessionID string, numPlayers int, seed int64) *GameSession {
 	}
 
 	return &GameSession{
-		ID:           sessionID,
-		GameState:    gameState,
-		Engine:       engine,
-		Connections:  make(map[int]*websocket.Conn),
-		PlayerNames:  make(map[int]string),
-		ActionChan:   make(chan PlayerAction, 10),
+		ID:            sessionID,
+		GameState:     gameState,
+		Engine:        engine,
+		Connections:   make(map[int]*websocket.Conn),
+		PlayerNames:   make(map[int]string),
+		PlayerAvatars: make(map[int]string),
+		ActionChan:    make(chan PlayerAction, 10),
 		BroadcastChan: make(chan []byte, 100),
 	}
 }
 
 // AddPlayer adds a player to the session
-func (gs *GameSession) AddPlayer(playerID int, name string, conn *websocket.Conn) {
+func (gs *GameSession) AddPlayer(playerID int, name string, avatar string, conn *websocket.Conn) {
 	gs.mu.Lock()
 	defer gs.mu.Unlock()
-	
+
 	gs.Connections[playerID] = conn
 	gs.PlayerNames[playerID] = name
+	if avatar == "" {
+		avatar = fmt.Sprintf("%d", playerID) // Default to player ID
+	}
+	gs.PlayerAvatars[playerID] = avatar
 	// Player IDs are 1-indexed, array is 0-indexed
 	if playerID >= 1 && playerID <= len(gs.GameState.Players) {
 		gs.GameState.Players[playerID-1].Name = name
@@ -75,13 +82,14 @@ func (gs *GameSession) RemovePlayer(playerID int) {
 	defer gs.mu.Unlock()
 	delete(gs.Connections, playerID)
 	delete(gs.PlayerNames, playerID)
+	delete(gs.PlayerAvatars, playerID)
 }
 
 // Broadcast sends a message to all connected players
 func (gs *GameSession) Broadcast(message []byte) {
 	gs.mu.RLock()
 	defer gs.mu.RUnlock()
-	
+
 	for _, conn := range gs.Connections {
 		if conn != nil {
 			conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
@@ -94,12 +102,12 @@ func (gs *GameSession) Broadcast(message []byte) {
 func (gs *GameSession) SendToPlayer(playerID int, message []byte) error {
 	gs.mu.RLock()
 	defer gs.mu.RUnlock()
-	
+
 	conn, ok := gs.Connections[playerID]
 	if !ok || conn == nil {
 		return nil
 	}
-	
+
 	conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 	return conn.WriteMessage(websocket.TextMessage, message)
 }
@@ -121,13 +129,13 @@ func NewGameServer() *GameServer {
 func (gs *GameServer) CreateSession(sessionID string, numPlayers int, seed int64) *GameSession {
 	gs.mu.Lock()
 	defer gs.mu.Unlock()
-	
+
 	session := NewGameSession(sessionID, numPlayers, seed)
 	gs.Sessions[sessionID] = session
-	
+
 	// Start game loop
 	go session.RunGameLoop()
-	
+
 	return session
 }
 
@@ -143,7 +151,7 @@ func (gs *GameServer) GetSession(sessionID string) (*GameSession, bool) {
 func (gs *GameSession) RunGameLoop() {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
-	
+
 	for !gs.GameState.GameOver {
 		select {
 		case action := <-gs.ActionChan:
@@ -167,12 +175,12 @@ func (gs *GameSession) RunGameLoop() {
 					}
 				}
 			}
-			
+
 		case <-ticker.C:
 			// No AI processing - all players are human
 		}
 	}
-	
+
 	// Game over - send final state
 	gs.BroadcastState()
 }
@@ -192,13 +200,18 @@ func (gs *GameSession) BroadcastState() {
 func (gs *GameSession) SerializeState() map[string]interface{} {
 	gs.mu.RLock()
 	defer gs.mu.RUnlock()
-	
+
 	players := make([]map[string]interface{}, len(gs.GameState.Players))
 	for i, p := range gs.GameState.Players {
+		avatar := gs.PlayerAvatars[p.ID]
+		if avatar == "" {
+			avatar = fmt.Sprintf("%d", p.ID) // Default to player ID
+		}
 		players[i] = map[string]interface{}{
-			"id":          p.ID,
-			"name":        p.Name,
-			"resources":   map[string]int{
+			"id":     p.ID,
+			"name":   p.Name,
+			"avatar": avatar,
+			"resources": map[string]int{
 				"yellow": p.Resources.Yellow,
 				"green":  p.Resources.Green,
 				"blue":   p.Resources.Blue,
@@ -211,26 +224,26 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 			"isAI":        p.IsAI,
 		}
 	}
-	
+
 	marketActionCards := make([]map[string]interface{}, len(gs.GameState.Market.ActionCards))
 	for i, card := range gs.GameState.Market.ActionCards {
 		cost := gs.GameState.Market.GetActionCardCost(i)
 		marketActionCards[i] = serializeCardWithCost(card, cost)
 	}
-	
+
 	marketPointCards := make([]map[string]interface{}, len(gs.GameState.Market.PointCards))
 	for i, card := range gs.GameState.Market.PointCards {
 		marketPointCards[i] = serializeCard(card)
 	}
-	
+
 	return map[string]interface{}{
-		"type":         "state",
-		"currentTurn":  gs.GameState.CurrentTurn,
+		"type":          "state",
+		"currentTurn":   gs.GameState.CurrentTurn,
 		"currentPlayer": gs.GameState.GetCurrentPlayer().ID,
-		"round":        gs.GameState.Round,
-		"gameOver":     gs.GameState.GameOver,
-		"winner":       gs.getWinnerInfo(),
-		"players":      players,
+		"round":         gs.GameState.Round,
+		"gameOver":      gs.GameState.GameOver,
+		"winner":        gs.getWinnerInfo(),
+		"players":       players,
 		"market": map[string]interface{}{
 			"actionCards": marketActionCards,
 			"pointCards":  marketPointCards,
@@ -245,8 +258,8 @@ func (gs *GameSession) getWinnerInfo() map[string]interface{} {
 		return nil
 	}
 	return map[string]interface{}{
-		"id":    gs.GameState.Winner.ID,
-		"name":  gs.GameState.Winner.Name,
+		"id":     gs.GameState.Winner.ID,
+		"name":   gs.GameState.Winner.Name,
 		"points": gs.GameState.Winner.Points,
 	}
 }
@@ -265,7 +278,7 @@ func serializeCard(card *game.Card) map[string]interface{} {
 		"name": card.Name,
 		"type": card.Type,
 	}
-	
+
 	if card.Type == game.ActionCard {
 		result["actionType"] = card.ActionType
 		if card.Input != nil {
@@ -295,7 +308,7 @@ func serializeCard(card *game.Card) map[string]interface{} {
 			}
 		}
 	}
-	
+
 	return result
 }
 
@@ -311,4 +324,3 @@ func serializeCardWithCost(card *game.Card, cost *game.Resources) map[string]int
 	}
 	return result
 }
-
