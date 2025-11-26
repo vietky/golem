@@ -178,64 +178,111 @@ function getVietnameseCardName(cardName) {
  * 
  * ============================================================================
  */
-// Image mapping for edge cases (cards that might exist but images are missing)
-// Note: Backend now only generates cards for which images exist, so this is mainly a safety net
-const imageMapping = {
-    // Empty for now - all cards should have images
-    // Add mappings here only if needed for legacy cards or edge cases
-};
+// Sprite sheet data - loaded once
+let spriteData = null;
+let spriteSheetLoaded = false;
 
 /**
- * Get image path for a card based on its name following the naming convention
- * 
- * Supports:
- * - Merchant cards: mint_*, upgrade_*, trade_*, action_*
- * - Golem cards: golem_*
- * - Special cards: coin_*, stone_*, *_bg
- * 
- * @param {string} cardName - Card name following the naming convention
- * @returns {string|null} - Image path or null if invalid
+ * Load sprite sheet data from JSON
  */
-function getCardImagePath(cardName) {
-    if (!cardName) return null;
+async function loadSpriteData() {
+    if (spriteData) return spriteData;
     
-    // Check if there's a mapping for this card (for missing images)
-    let actualCardName = cardName;
-    if (imageMapping[cardName]) {
-        actualCardName = imageMapping[cardName];
+    try {
+        const response = await fetch('sprites.json');
+        spriteData = await response.json();
+        spriteSheetLoaded = true;
+        console.log('Sprite sheet data loaded:', Object.keys(spriteData.sprites).length, 'sprites');
+        return spriteData;
+    } catch (error) {
+        console.error('Failed to load sprite sheet data:', error);
+        return null;
     }
-    
-    // Normalize card name to match image file names
-    // All images are stored as: [cardName].PNG
-    const imageName = actualCardName + '.PNG';
-    const imagePath = `images/${imageName}`;
-    
-    return imagePath;
+}
+
+// Preload sprite sheet data when page loads
+if (typeof window !== 'undefined') {
+    loadSpriteData().then(() => {
+        // Reload UI if game is already loaded
+        if (typeof gameState !== 'undefined' && gameState) {
+            if (typeof updateUI !== 'undefined') {
+                updateUI();
+            }
+        }
+    });
 }
 
 /**
- * Get card image HTML element
+ * Get sprite coordinates for a card from the sprite sheet
  * 
- * Creates an <img> tag for the card image based on the card name.
- * Handles all card types: merchant cards, golem cards, coins, stones, backgrounds.
+ * @param {string} cardName - Card name following the naming convention
+ * @returns {object|null} - Sprite coordinates {x, y, width, height} or null if not found
+ */
+function getSpriteCoordinates(cardName) {
+    if (!cardName || !spriteData) return null;
+    
+    // Remove .PNG extension if present
+    const spriteName = cardName.replace(/\.PNG$/i, '');
+    
+    return spriteData.sprites[spriteName] || null;
+}
+
+/**
+ * Get card image HTML element using sprite sheet
+ * 
+ * Creates a div with background-image using sprite sheet coordinates.
+ * This reduces HTTP requests from 89+ images to just 1 sprite sheet + 1 JSON.
  * 
  * @param {string} cardName - Card name following naming convention
  * @param {string} className - CSS class for the image (default: 'card-image')
- * @returns {string} - HTML string for the image element
+ * @returns {string} - HTML string for the sprite element
  */
-function getCardImage(cardName, className = 'card-image') {
+function getCardImage(cardName, className = 'card-image', maxSize = null) {
     if (!cardName) {
         console.warn('getCardImage called with empty cardName');
         return '';
     }
     
-    const imagePath = getCardImagePath(cardName);
-    if (!imagePath) {
-        console.warn('getCardImagePath returned null for:', cardName);
-        return '';
+    // Wait for sprite data to load
+    if (!spriteData || !spriteSheetLoaded) {
+        // Fallback: use individual image while sprite loads
+        const imagePath = `images/${cardName}.PNG`;
+        return `<img src="${imagePath}" alt="${cardName}" class="${className}" onerror="console.warn('Image not found:', '${imagePath}'); this.style.display='none'">`;
     }
     
-    return `<img src="${imagePath}" alt="${cardName}" class="${className}" onerror="console.warn('Image not found:', '${imagePath}'); this.style.display='none'">`;
+    // Get sprite coordinates
+    const coords = getSpriteCoordinates(cardName);
+    
+    if (!coords) {
+        console.warn('Sprite coordinates not found for:', cardName);
+        // Fallback: try to use individual image (for backwards compatibility)
+        const imagePath = `images/${cardName}.PNG`;
+        return `<img src="${imagePath}" alt="${cardName}" class="${className}" onerror="console.warn('Image not found:', '${imagePath}'); this.style.display='none'">`;
+    }
+    
+    // Calculate scale - use maxSize if provided (for stone icons), otherwise use default container size
+    const containerMaxHeight = maxSize || 180;
+    const scale = Math.min(1, containerMaxHeight / coords.height);
+    
+    const scaledWidth = coords.width * scale;
+    const scaledHeight = coords.height * scale;
+    const scaledSheetWidth = spriteData.width * scale;
+    const scaledSheetHeight = spriteData.height * scale;
+    const scaledX = coords.x * scale;
+    const scaledY = coords.y * scale;
+    
+    const style = `
+        background-image: url('spritesheet.jpg');
+        background-position: -${scaledX}px -${scaledY}px;
+        background-size: ${scaledSheetWidth}px ${scaledSheetHeight}px;
+        width: ${scaledWidth}px;
+        height: ${scaledHeight}px;
+        background-repeat: no-repeat;
+        max-width: 100%;
+        max-height: 100%;
+    `.replace(/\s+/g, ' ').trim();
+    
+    return `<div class="${className}" style="${style}" data-sprite="${cardName}" title="${cardName}"></div>`;
 }
 
 /**

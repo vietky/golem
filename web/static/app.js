@@ -4,8 +4,29 @@ let playerId = null;
 let playerName = '';
 let gameState = null;
 
+// Pause animations during scroll for better performance
+let isScrolling = false;
+let scrollTimeout;
+
+window.addEventListener('scroll', () => {
+    if (!isScrolling) {
+        isScrolling = true;
+        document.body.classList.add('scrolling');
+    }
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+        isScrolling = false;
+        document.body.classList.remove('scrolling');
+    }, 150);
+}, { passive: true });
+
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Preload sprite sheet data
+    if (typeof loadSpriteData !== 'undefined') {
+        await loadSpriteData();
+    }
+    
     document.getElementById('createBtn').addEventListener('click', createGame);
     document.getElementById('joinBtn').addEventListener('click', joinGame);
     document.getElementById('restBtn').addEventListener('click', () => sendAction('rest'));
@@ -185,7 +206,12 @@ function connectWebSocket() {
 function handleMessage(message) {
     if (message.type === 'state') {
         gameState = message;
-        updateUI();
+        // Ensure sprite data is loaded before updating UI
+        if (typeof loadSpriteData !== 'undefined' && !spriteSheetLoaded) {
+            loadSpriteData().then(() => updateUI());
+        } else {
+            updateUI();
+        }
     } else if (message.type === 'error') {
         alert(`Error: ${message.error}`);
     }
@@ -386,19 +412,24 @@ function updateResources() {
     
     const resources = currentPlayer.resources;
     const resourceTypes = [
-        { name: 'Yellow', value: resources.yellow, class: 'yellow' },
-        { name: 'Green', value: resources.green, class: 'green' },
-        { name: 'Blue', value: resources.blue, class: 'blue' },
-        { name: 'Pink', value: resources.pink, class: 'pink' }
+        { name: 'Yellow', stoneName: 'stone_yellow', value: resources.yellow, class: 'yellow' },
+        { name: 'Green', stoneName: 'stone_green', value: resources.green, class: 'green' },
+        { name: 'Blue', stoneName: 'stone_blue', value: resources.blue, class: 'blue' },
+        { name: 'Pink', stoneName: 'stone_pink', value: resources.pink, class: 'pink' }
     ];
     
     resourceTypes.forEach(res => {
         if (res.value > 0) {
             const div = document.createElement('div');
             div.className = 'resource-item';
+            // Use stone image from sprite sheet - use 40px max size for stone icons
+            const stoneImage = typeof getCardImage !== 'undefined' 
+                ? getCardImage(res.stoneName, 'stone-icon', 40)
+                : `<img src="images/${res.stoneName}.PNG" alt="${res.name}" class="stone-icon">`;
             div.innerHTML = `
-                <span class="crystal ${res.class}">
-                    <span class="crystal-count">${res.value}</span>
+                <span class="stone-resource ${res.class}">
+                    ${stoneImage}
+                    <span class="stone-count">${res.value}</span>
                 </span>
                 <span>${res.name}</span>
             `;
@@ -457,16 +488,21 @@ function formatResourcesHTML(resources) {
     
     let html = '';
     const colors = [
-        { name: 'yellow', value: resources.yellow || 0 },
-        { name: 'green', value: resources.green || 0 },
-        { name: 'blue', value: resources.blue || 0 },
-        { name: 'pink', value: resources.pink || 0 }
+        { name: 'yellow', stoneName: 'stone_yellow', value: resources.yellow || 0 },
+        { name: 'green', stoneName: 'stone_green', value: resources.green || 0 },
+        { name: 'blue', stoneName: 'stone_blue', value: resources.blue || 0 },
+        { name: 'pink', stoneName: 'stone_pink', value: resources.pink || 0 }
     ];
     
     colors.forEach(color => {
         if (color.value > 0) {
-            html += `<span class="crystal ${color.name}">
-                <span class="crystal-count">${color.value}</span>
+            // Use stone image from sprite sheet - use 40px max size for stone icons
+            const stoneImage = typeof getCardImage !== 'undefined' 
+                ? getCardImage(color.stoneName, 'stone-icon', 40)
+                : `<img src="images/${color.stoneName}.PNG" alt="${color.name}" class="stone-icon">`;
+            html += `<span class="stone-resource ${color.name}">
+                ${stoneImage}
+                <span class="stone-count">${color.value}</span>
             </span>`;
         }
     });

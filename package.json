@@ -1,0 +1,12 @@
+{
+  "name": "golem-century",
+  "version": "1.0.0",
+  "description": "Century: Golem Edition - Web Game",
+  "scripts": {
+    "generate-sprites": "node generate-spritesheet.js"
+  },
+  "devDependencies": {
+    "spritesmith": "^3.4.2"
+  }
+}
+
