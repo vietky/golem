@@ -1,0 +1,595 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+}
+
+.screen {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Lobby Styles */
+#lobby {
+    background: white;
+    border-radius: 15px;
+    padding: 40px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+#lobby h1 {
+    color: #667eea;
+    margin-bottom: 30px;
+    font-size: 2.5em;
+}
+
+.lobby-content {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    margin: 5px;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #5568d3;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+}
+
+.btn-action {
+    background: #28a745;
+    color: white;
+    padding: 15px 30px;
+    font-size: 18px;
+    margin-top: 20px;
+}
+
+.btn-action:hover {
+    background: #218838;
+}
+
+.status {
+    margin-top: 20px;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.status.error {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.status.success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.session-info {
+    margin-top: 30px;
+    padding: 20px;
+    background: #e7f3ff;
+    border-radius: 10px;
+    border: 2px solid #667eea;
+}
+
+.session-info h3 {
+    color: #667eea;
+    margin-bottom: 10px;
+}
+
+.session-id-display {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.session-id-display input {
+    flex: 1;
+    padding: 12px;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    border: 2px solid #667eea;
+    border-radius: 5px;
+    background: white;
+    color: #333;
+}
+
+.btn-small {
+    padding: 12px 20px;
+    font-size: 14px;
+}
+
+/* Game Styles */
+#game {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #eee;
+}
+
+.game-header h2 {
+    color: #667eea;
+}
+
+.game-info {
+    display: flex;
+    gap: 20px;
+    font-size: 16px;
+}
+
+.game-container {
+    display: grid;
+    grid-template-columns: 250px 1fr 200px;
+    gap: 20px;
+}
+
+/* Players Panel */
+.players-panel {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    height: fit-content;
+}
+
+.players-panel h3 {
+    margin-bottom: 15px;
+    color: #667eea;
+}
+
+.player-card {
+    background: white;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    border-left: 4px solid #667eea;
+}
+
+.player-card.current-turn {
+    border-left-color: #28a745;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.player-card h4 {
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.player-resources {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.player-points {
+    font-weight: bold;
+    color: #667eea;
+}
+
+/* Main Area */
+.main-area {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.market-section {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.market-section h3 {
+    margin-bottom: 15px;
+    color: #667eea;
+}
+
+.market-group {
+    margin-bottom: 30px;
+}
+
+.market-group h4 {
+    margin-bottom: 10px;
+    color: #555;
+}
+
+.hand-section {
+    background: #fff3cd;
+    padding: 20px;
+    border-radius: 10px;
+    border: 2px solid #ffc107;
+}
+
+.hand-section h3 {
+    margin-bottom: 15px;
+    color: #856404;
+}
+
+/* Cards Grid */
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 15px;
+}
+
+.card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 3px solid #ddd;
+    position: relative;
+    overflow: hidden;
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+}
+
+.card.action-card::before {
+    background: linear-gradient(90deg, #17a2b8, #138496);
+}
+
+.card.point-card::before {
+    background: linear-gradient(90deg, #ffc107, #ff9800);
+}
+
+.card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+}
+
+.card.playable {
+    border-color: #28a745;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.card.playable::after {
+    content: '✓';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #28a745;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.card.affordable {
+    border-color: #17a2b8;
+    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+}
+
+.card.selected {
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.4);
+    transform: scale(1.05);
+}
+
+.card-header {
+    font-weight: bold;
+    padding: 15px 15px 10px;
+    color: #333;
+    font-size: 16px;
+    background: rgba(255,255,255,0.9);
+    border-bottom: 2px solid #eee;
+    text-align: center;
+}
+
+.card-body {
+    padding: 15px;
+    font-size: 13px;
+    color: #555;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.card-cost {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: linear-gradient(135deg, #ffc107, #ff9800);
+    color: #333;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 11px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 10;
+}
+
+.card-type-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 4px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    z-index: 10;
+}
+
+.card-type-badge.produce {
+    background: #28a745;
+    color: white;
+}
+
+.card-type-badge.upgrade {
+    background: #17a2b8;
+    color: white;
+}
+
+.card-type-badge.trade {
+    background: #6f42c1;
+    color: white;
+}
+
+.card-type-badge.points {
+    background: #ffc107;
+    color: #333;
+}
+
+.card-arrow {
+    text-align: center;
+    font-size: 20px;
+    color: #667eea;
+    margin: 5px 0;
+    font-weight: bold;
+}
+
+.crystal {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin: 0 3px;
+    font-size: 14px;
+    font-weight: bold;
+    color: white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    position: relative;
+    border: 2px solid rgba(255,255,255,0.3);
+}
+
+.crystal::before {
+    content: '◆';
+    font-size: 18px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.crystal.yellow {
+    background: linear-gradient(135deg, #ffc107, #ff9800);
+    color: #333;
+    border-color: rgba(255,193,7,0.5);
+}
+
+.crystal.green {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    border-color: rgba(40,167,69,0.5);
+}
+
+.crystal.blue {
+    background: linear-gradient(135deg, #17a2b8, #007bff);
+    border-color: rgba(23,162,184,0.5);
+}
+
+.crystal.pink {
+    background: linear-gradient(135deg, #e91e63, #c2185b);
+    border-color: rgba(233,30,99,0.5);
+}
+
+.crystal-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 8px 0;
+    flex-wrap: wrap;
+}
+
+.crystal-label {
+    font-size: 12px;
+    color: #666;
+    margin-right: 5px;
+}
+
+.crystal-count {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+/* Resources Panel */
+.resources-panel {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    height: fit-content;
+}
+
+.resources-panel h3 {
+    margin-bottom: 15px;
+    color: #667eea;
+}
+
+.resources {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.resource-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    background: white;
+    border-radius: 5px;
+}
+
+.points {
+    padding: 15px;
+    background: #667eea;
+    color: white;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 18px;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    max-width: 500px;
+    text-align: center;
+}
+
+.modal-content h2 {
+    color: #667eea;
+    margin-bottom: 20px;
+}
+
+#finalResults {
+    margin: 20px 0;
+    text-align: left;
+}
+
+.result-item {
+    padding: 10px;
+    margin-bottom: 10px;
+    background: #f8f9fa;
+    border-radius: 5px;
+}
+
+.result-item.winner {
+    background: #d4edda;
+    border-left: 4px solid #28a745;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .game-container {
+        grid-template-columns: 200px 1fr 180px;
+    }
+}
+
+@media (max-width: 900px) {
+    .game-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .cards-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+}
+

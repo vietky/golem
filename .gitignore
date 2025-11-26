@@ -1,0 +1,7 @@
+vendor/
+
+# Environment files with sensitive information
+.env
+
+# Generated inventory (contains sensitive data from .env)
+ansible/inventory.yml

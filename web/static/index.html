@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Century: Golem Edition</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="cards.css">
+    <script src="characters.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Lobby Screen -->
+        <div id="lobby" class="screen">
+            <h1>Century: Golem Edition</h1>
+            <div class="lobby-content">
+                <div class="form-group">
+                    <label for="playerName">Your Name:</label>
+                    <input type="text" id="playerName" placeholder="Enter your name" value="Player 1">
+                </div>
+                <div class="form-group">
+                    <label for="numPlayers">Number of Players:</label>
+                    <select id="numPlayers">
+                        <option value="2">2 Players</option>
+                        <option value="3" selected>3 Players</option>
+                        <option value="4">4 Players</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="customSessionId">Custom Session ID (optional, e.g., "123"):</label>
+                    <input type="text" id="customSessionId" placeholder="Leave empty for auto-generated">
+                </div>
+                <div class="form-group">
+                    <label for="sessionId">Session ID (to join an existing game):</label>
+                    <input type="text" id="sessionId" placeholder="Paste session ID here (e.g., '123')" required>
+                </div>
+                <button id="createBtn" class="btn btn-primary">Create New Game</button>
+                <button id="joinBtn" class="btn btn-secondary">Join Existing Game</button>
+                <div id="sessionInfo" class="session-info hidden">
+                    <h3>Game Created!</h3>
+                    <p>Share this Session ID with your friends:</p>
+                    <div class="session-id-display">
+                        <input type="text" id="createdSessionId" readonly>
+                        <button id="copyBtn" class="btn btn-small">Copy</button>
+                    </div>
+                </div>
+            </div>
+            <div id="lobbyStatus" class="status"></div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game" class="screen hidden">
+            <div class="game-header">
+                <h2>Century: Golem Edition</h2>
+                <div class="game-info">
+                    <span>Round: <span id="round">1</span></span>
+                    <span>Turn: <span id="turn">1</span></span>
+                    <span id="currentPlayerName"></span>
+                </div>
+            </div>
+
+            <div class="game-container">
+                <!-- Players Panel -->
+                <div class="players-panel">
+                    <h3>Players</h3>
+                    <div id="playersList"></div>
+                </div>
+
+                <!-- Main Game Area -->
+                <div class="main-area">
+                    <!-- Market -->
+                    <div class="market-section">
+                        <h3>Market</h3>
+                        <div class="market-cards">
+                            <div class="market-group">
+                                <h4>Action Cards</h4>
+                                <div id="actionCards" class="cards-grid"></div>
+                            </div>
+                            <div class="market-group">
+                                <h4>Point Cards</h4>
+                                <div id="pointCards" class="cards-grid"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Player Hand -->
+                    <div class="hand-section">
+                        <h3>Your Hand</h3>
+                        <div id="playerHand" class="cards-grid"></div>
+                        <div class="hand-actions">
+                            <button id="restBtn" class="btn btn-action">Rest</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Player Resources -->
+                <div class="resources-panel">
+                    <h3>Your Resources</h3>
+                    <div id="playerResources" class="resources"></div>
+                    <div class="points">
+                        <strong>Points: <span id="playerPoints">0</span></strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Over Modal -->
+            <div id="gameOverModal" class="modal hidden">
+                <div class="modal-content">
+                    <h2>Game Over!</h2>
+                    <div id="finalResults"></div>
+                    <button id="newGameBtn" class="btn btn-primary">New Game</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+

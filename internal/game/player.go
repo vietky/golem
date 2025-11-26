@@ -1,0 +1,119 @@
+package game
+
+import "fmt"
+
+// Player represents a game player
+type Player struct {
+	ID           int
+	Name         string
+	Resources    *Resources
+	Hand         []*Card // Action cards in hand
+	PlayedCards  []*Card // Cards played this turn (will be returned on rest)
+	PointCards   []*Card // Claimed point cards
+	Points       int
+	IsAI         bool
+	HasRested    bool // Whether player has rested this round
+}
+
+// NewPlayer creates a new player
+func NewPlayer(id int, name string, isAI bool) *Player {
+	return &Player{
+		ID:          id,
+		Name:        name,
+		Resources:   NewResources(),
+		Hand:        make([]*Card, 0),
+		PlayedCards: make([]*Card, 0),
+		PointCards:  make([]*Card, 0),
+		Points:      0,
+		IsAI:        isAI,
+		HasRested:   false,
+	}
+}
+
+// AddCard adds a card to the player's hand
+func (p *Player) AddCard(card *Card) {
+	p.Hand = append(p.Hand, card)
+}
+
+// PlayCard plays a card from hand
+func (p *Player) PlayCard(cardIndex int) bool {
+	if cardIndex < 0 || cardIndex >= len(p.Hand) {
+		return false
+	}
+	card := p.Hand[cardIndex]
+	if !card.CanPlay(p) {
+		return false
+	}
+	if !card.Play(p) {
+		return false
+	}
+	// Move card from hand to played cards
+	p.PlayedCards = append(p.PlayedCards, card)
+	p.Hand = append(p.Hand[:cardIndex], p.Hand[cardIndex+1:]...)
+	return true
+}
+
+// Rest returns all played cards to hand
+func (p *Player) Rest() {
+	p.Hand = append(p.Hand, p.PlayedCards...)
+	p.PlayedCards = make([]*Card, 0)
+	p.HasRested = true
+}
+
+// AcquireCard acquires a card from the market
+func (p *Player) AcquireCard(card *Card, cost *Resources) bool {
+	if !p.Resources.HasAll(cost) {
+		return false
+	}
+	if !p.Resources.SubtractAll(cost) {
+		return false
+	}
+	p.AddCard(card)
+	return true
+}
+
+// ClaimPointCard claims a point card
+func (p *Player) ClaimPointCard(card *Card) bool {
+	if !card.CanClaim(p) {
+		return false
+	}
+	if !card.Claim(p) {
+		return false
+	}
+	p.PointCards = append(p.PointCards, card)
+	return true
+}
+
+// CanClaimAny checks if player can claim any of the given point cards
+func (p *Player) CanClaimAny(pointCards []*Card) *Card {
+	for _, card := range pointCards {
+		if card.CanClaim(p) {
+			return card
+		}
+	}
+	return nil
+}
+
+// HasWon checks if player has won (5 point cards)
+func (p *Player) HasWon() bool {
+	return len(p.PointCards) >= 5
+}
+
+// GetHandString returns a string representation of the hand
+func (p *Player) GetHandString() string {
+	if len(p.Hand) == 0 {
+		return "Empty"
+	}
+	parts := []string{}
+	for i, card := range p.Hand {
+		parts = append(parts, fmt.Sprintf("%d:%s", i, card.Name))
+	}
+	return fmt.Sprintf("[%s]", fmt.Sprintf("%v", parts))
+}
+
+// String returns a string representation of the player
+func (p *Player) String() string {
+	return fmt.Sprintf("Player %d (%s): Resources=%s, Points=%d, Hand=%d cards, PointCards=%d",
+		p.ID, p.Name, p.Resources.String(), p.Points, len(p.Hand), len(p.PointCards))
+}
+
