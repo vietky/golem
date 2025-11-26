@@ -2,6 +2,11 @@
    FANTASTIC CARD DESIGNS WITH ANIMATIONS
    ============================================ */
 
+/* Devil Hand Cursor - Realistic Claw */
+body, .card, button, a {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><defs><filter id="shadow"><feDropShadow dx="1" dy="1" stdDeviation="1" flood-color="%23000" flood-opacity="0.5"/></filter></defs><g filter="url(%23shadow)"><path d="M20 8c-1.5 0-3 0.5-4 1.5-0.5-1-1.5-1.5-3-1.5-2 0-3.5 1.5-3.5 3.5 0 1.5 0.5 2.5 1.5 3l-1 2c-0.5 0.5-0.5 1.5 0 2 0.5 0.5 1.5 0.5 2 0l1-1 1 1c0.5 0.5 1.5 0.5 2 0 0.5-0.5 0.5-1.5 0-2l-1-2c1-0.5 1.5-1.5 1.5-3 0-2-1.5-3.5-3.5-3.5zm-4 4c-0.5 0-1 0.5-1 1s0.5 1 1 1 1-0.5 1-1-0.5-1-1-1zm6 0c-0.5 0-1 0.5-1 1s0.5 1 1 1 1-0.5 1-1-0.5-1-1-1z" fill="%23ff4444" stroke="%23cc0000" stroke-width="0.5"/><path d="M12 20c-0.5 0-1 0.5-1 1v3c0 0.5 0.5 1 1 1h6c0.5 0 1-0.5 1-1v-3c0-0.5-0.5-1-1-1h-6z" fill="%23ff6666"/><path d="M8 16l2 2-1 1-2-2zM30 16l-2 2 1 1 2-2z" fill="%23ff0000"/><path d="M10 14l1.5 1.5M28 14l-1.5 1.5" stroke="%23ff0000" stroke-width="1" stroke-linecap="round"/></g></svg>') 20 20, pointer;
+}
+
 /* Card Container with 3D Effect */
 .card {
     background: linear-gradient(145deg, #ffffff 0%, #f5f7fa 100%);
@@ -11,7 +16,6 @@
         0 8px 16px rgba(0,0,0,0.1),
         0 2px 4px rgba(0,0,0,0.06),
         inset 0 1px 0 rgba(255,255,255,0.8);
-    cursor: pointer;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     border: 3px solid transparent;
     position: relative;
@@ -85,28 +89,243 @@
     background-size: 200% 100%;
 }
 
-/* Glowing Hover Effect */
+/* Demon Hand Hover Effect - Fire for Action Cards, Freeze for Point Cards */
 .card:hover {
-    transform: translateY(-12px) scale(1.03) rotateX(5deg);
-    box-shadow: 
-        0 20px 40px rgba(0,0,0,0.2),
-        0 0 30px rgba(102, 126, 234, 0.3),
-        inset 0 1px 0 rgba(255,255,255,0.9);
-    border-color: rgba(102, 126, 234, 0.5);
+    transform: translateY(-8px) translateZ(0);
+    position: relative;
+    z-index: 10;
 }
 
-.card:hover::after {
+/* Realistic Fire effect for action cards on hover */
+.card.action-card:hover {
+    animation: fireGlow 1.2s ease-in-out infinite;
+    box-shadow: 
+        0 12px 24px rgba(0,0,0,0.2),
+        0 0 40px rgba(255, 69, 0, 0.8),
+        0 0 60px rgba(255, 140, 0, 0.6),
+        0 0 80px rgba(255, 200, 0, 0.4),
+        inset 0 0 30px rgba(255, 100, 0, 0.3),
+        inset 0 -10px 40px rgba(255, 69, 0, 0.2);
+    border-color: rgba(255, 69, 0, 0.9);
+    filter: brightness(1.1) contrast(1.05);
+    text-shadow: 0 0 10px rgba(255, 100, 0, 0.5);
+}
+
+/* Realistic Freeze effect for point cards on hover */
+.card.point-card:hover {
+    animation: freezeGlow 1.8s ease-in-out infinite;
+    box-shadow: 
+        0 12px 24px rgba(0,0,0,0.2),
+        0 0 40px rgba(135, 206, 250, 0.8),
+        0 0 60px rgba(173, 216, 230, 0.6),
+        0 0 80px rgba(200, 230, 255, 0.4),
+        inset 0 0 30px rgba(176, 224, 230, 0.3),
+        inset 0 -10px 40px rgba(135, 206, 250, 0.2);
+    border-color: rgba(135, 206, 250, 0.9);
+    filter: brightness(1.1) contrast(1.05);
+    text-shadow: 0 0 10px rgba(176, 224, 230, 0.5);
+}
+
+/* Realistic Fire animation */
+@keyframes fireGlow {
+    0% {
+        box-shadow: 
+            0 12px 24px rgba(0,0,0,0.2),
+            0 0 40px rgba(255, 69, 0, 0.8),
+            0 0 60px rgba(255, 140, 0, 0.6),
+            0 0 80px rgba(255, 200, 0, 0.4),
+            inset 0 0 30px rgba(255, 100, 0, 0.3),
+            inset 0 -10px 40px rgba(255, 69, 0, 0.2);
+        filter: brightness(1.1) contrast(1.05) hue-rotate(0deg);
+    }
+    33% {
+        box-shadow: 
+            0 12px 24px rgba(0,0,0,0.2),
+            0 0 50px rgba(255, 100, 0, 0.9),
+            0 0 70px rgba(255, 150, 0, 0.7),
+            0 0 90px rgba(255, 200, 0, 0.5),
+            inset 0 0 35px rgba(255, 120, 0, 0.4),
+            inset 0 -10px 45px rgba(255, 80, 0, 0.3);
+        filter: brightness(1.2) contrast(1.1) hue-rotate(3deg);
+    }
+    66% {
+        box-shadow: 
+            0 12px 24px rgba(0,0,0,0.2),
+            0 0 45px rgba(255, 80, 0, 0.85),
+            0 0 65px rgba(255, 130, 0, 0.65),
+            0 0 85px rgba(255, 180, 0, 0.45),
+            inset 0 0 32px rgba(255, 110, 0, 0.35),
+            inset 0 -10px 42px rgba(255, 70, 0, 0.25);
+        filter: brightness(1.15) contrast(1.08) hue-rotate(-2deg);
+    }
+    100% {
+        box-shadow: 
+            0 12px 24px rgba(0,0,0,0.2),
+            0 0 40px rgba(255, 69, 0, 0.8),
+            0 0 60px rgba(255, 140, 0, 0.6),
+            0 0 80px rgba(255, 200, 0, 0.4),
+            inset 0 0 30px rgba(255, 100, 0, 0.3),
+            inset 0 -10px 40px rgba(255, 69, 0, 0.2);
+        filter: brightness(1.1) contrast(1.05) hue-rotate(0deg);
+    }
+}
+
+/* Realistic Freeze animation */
+@keyframes freezeGlow {
+    0% {
+        box-shadow: 
+            0 12px 24px rgba(0,0,0,0.2),
+            0 0 40px rgba(135, 206, 250, 0.8),
+            0 0 60px rgba(173, 216, 230, 0.6),
+            0 0 80px rgba(200, 230, 255, 0.4),
+            inset 0 0 30px rgba(176, 224, 230, 0.3),
+            inset 0 -10px 40px rgba(135, 206, 250, 0.2);
+        filter: brightness(1.1) contrast(1.05) hue-rotate(0deg);
+    }
+    33% {
+        box-shadow: 
+            0 12px 24px rgba(0,0,0,0.2),
+            0 0 50px rgba(150, 220, 255, 0.9),
+            0 0 70px rgba(180, 230, 255, 0.7),
+            0 0 90px rgba(200, 240, 255, 0.5),
+            inset 0 0 35px rgba(190, 230, 255, 0.4),
+            inset 0 -10px 45px rgba(140, 210, 255, 0.3);
+        filter: brightness(1.2) contrast(1.1) hue-rotate(-3deg);
+    }
+    66% {
+        box-shadow: 
+            0 12px 24px rgba(0,0,0,0.2),
+            0 0 45px rgba(130, 200, 250, 0.85),
+            0 0 65px rgba(170, 225, 255, 0.65),
+            0 0 85px rgba(195, 235, 255, 0.45),
+            inset 0 0 32px rgba(185, 225, 255, 0.35),
+            inset 0 -10px 42px rgba(138, 205, 250, 0.25);
+        filter: brightness(1.15) contrast(1.08) hue-rotate(2deg);
+    }
+    100% {
+        box-shadow: 
+            0 12px 24px rgba(0,0,0,0.2),
+            0 0 40px rgba(135, 206, 250, 0.8),
+            0 0 60px rgba(173, 216, 230, 0.6),
+            0 0 80px rgba(200, 230, 255, 0.4),
+            inset 0 0 30px rgba(176, 224, 230, 0.3),
+            inset 0 -10px 40px rgba(135, 206, 250, 0.2);
+        filter: brightness(1.1) contrast(1.05) hue-rotate(0deg);
+    }
+}
+
+/* Realistic Fire particles effect on hover */
+.card.action-card:hover::after {
     content: '';
     position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, 
-        rgba(102, 126, 234, 0.1) 0%, 
-        transparent 70%);
-    animation: pulse 2s ease-in-out infinite;
+    top: -15px;
+    left: -15px;
+    right: -15px;
+    bottom: -15px;
+    background: 
+        /* Flames at edges */
+        radial-gradient(ellipse at 10% 20%, rgba(255, 200, 0, 0.6) 0%, rgba(255, 100, 0, 0.4) 20%, transparent 50%),
+        radial-gradient(ellipse at 90% 30%, rgba(255, 150, 0, 0.5) 0%, rgba(255, 69, 0, 0.3) 25%, transparent 50%),
+        radial-gradient(ellipse at 30% 80%, rgba(255, 200, 0, 0.5) 0%, rgba(255, 100, 0, 0.3) 20%, transparent 50%),
+        radial-gradient(ellipse at 70% 90%, rgba(255, 150, 0, 0.4) 0%, rgba(255, 69, 0, 0.2) 25%, transparent 50%),
+        /* Core fire glow */
+        radial-gradient(ellipse at 50% 50%, rgba(255, 100, 0, 0.2) 0%, transparent 60%);
+    border-radius: 16px;
+    animation: fireParticles 1.5s ease-in-out infinite, fireFlicker 0.3s ease-in-out infinite;
     pointer-events: none;
+    z-index: -1;
+    filter: blur(2px);
+}
+
+/* Realistic Freeze particles effect on hover */
+.card.point-card:hover::after {
+    content: '';
+    position: absolute;
+    top: -15px;
+    left: -15px;
+    right: -15px;
+    bottom: -15px;
+    background: 
+        /* Ice crystals at edges */
+        radial-gradient(ellipse at 15% 25%, rgba(200, 230, 255, 0.6) 0%, rgba(135, 206, 250, 0.4) 15%, transparent 40%),
+        radial-gradient(ellipse at 85% 35%, rgba(173, 216, 230, 0.5) 0%, rgba(135, 206, 250, 0.3) 20%, transparent 45%),
+        radial-gradient(ellipse at 25% 75%, rgba(200, 230, 255, 0.5) 0%, rgba(176, 224, 230, 0.3) 18%, transparent 42%),
+        radial-gradient(ellipse at 75% 85%, rgba(173, 216, 230, 0.4) 0%, rgba(135, 206, 250, 0.2) 22%, transparent 48%),
+        /* Core ice glow */
+        radial-gradient(ellipse at 50% 50%, rgba(176, 224, 230, 0.2) 0%, transparent 65%);
+    border-radius: 16px;
+    animation: freezeParticles 2s ease-in-out infinite, iceShimmer 0.5s ease-in-out infinite;
+    pointer-events: none;
+    z-index: -1;
+    filter: blur(2px);
+}
+
+@keyframes fireParticles {
+    0% {
+        opacity: 0.7;
+        transform: scale(1) rotate(0deg) translateY(0);
+    }
+    25% {
+        opacity: 0.9;
+        transform: scale(1.08) rotate(3deg) translateY(-2px);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.12) rotate(5deg) translateY(-4px);
+    }
+    75% {
+        opacity: 0.9;
+        transform: scale(1.08) rotate(3deg) translateY(-2px);
+    }
+    100% {
+        opacity: 0.7;
+        transform: scale(1) rotate(0deg) translateY(0);
+    }
+}
+
+@keyframes fireFlicker {
+    0%, 100% {
+        opacity: 1;
+        filter: blur(2px) brightness(1);
+    }
+    50% {
+        opacity: 0.85;
+        filter: blur(3px) brightness(1.1);
+    }
+}
+
+@keyframes freezeParticles {
+    0% {
+        opacity: 0.7;
+        transform: scale(1) rotate(0deg) translateY(0);
+    }
+    25% {
+        opacity: 0.85;
+        transform: scale(1.06) rotate(-2deg) translateY(1px);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.1) rotate(-4deg) translateY(2px);
+    }
+    75% {
+        opacity: 0.85;
+        transform: scale(1.06) rotate(-2deg) translateY(1px);
+    }
+    100% {
+        opacity: 0.7;
+        transform: scale(1) rotate(0deg) translateY(0);
+    }
+}
+
+@keyframes iceShimmer {
+    0%, 100% {
+        opacity: 1;
+        filter: blur(2px) brightness(1);
+    }
+    50% {
+        opacity: 0.9;
+        filter: blur(2.5px) brightness(1.15);
+    }
 }
 
 @keyframes pulse {
@@ -170,28 +389,140 @@
 }
 
 /* Selected Card */
+/* Selected Card - Electric Animation */
 .card.selected {
-    border-color: #667eea;
+    border-color: #00ffff;
     box-shadow: 
-        0 0 0 4px rgba(102, 126, 234, 0.4),
-        0 8px 24px rgba(102, 126, 234, 0.3),
-        0 0 40px rgba(102, 126, 234, 0.2);
-    transform: scale(1.05) rotateY(5deg);
-    animation: selectedGlow 1.5s ease-in-out infinite;
+        0 0 0 3px rgba(0, 255, 255, 0.6),
+        0 0 20px rgba(0, 255, 255, 0.8),
+        0 0 40px rgba(135, 206, 250, 0.6),
+        0 0 60px rgba(0, 191, 255, 0.4),
+        inset 0 0 20px rgba(0, 255, 255, 0.2);
+    transform: scale(1.05) translateZ(0);
+    animation: electricPulse 0.8s ease-in-out infinite;
+    position: relative;
+    z-index: 20;
 }
 
-@keyframes selectedGlow {
+@keyframes electricPulse {
     0%, 100% { 
         box-shadow: 
-            0 0 0 4px rgba(102, 126, 234, 0.4),
-            0 8px 24px rgba(102, 126, 234, 0.3),
-            0 0 40px rgba(102, 126, 234, 0.2);
+            0 0 0 3px rgba(0, 255, 255, 0.6),
+            0 0 20px rgba(0, 255, 255, 0.8),
+            0 0 40px rgba(135, 206, 250, 0.6),
+            0 0 60px rgba(0, 191, 255, 0.4),
+            inset 0 0 20px rgba(0, 255, 255, 0.2);
+        filter: brightness(1) contrast(1);
     }
     50% { 
         box-shadow: 
-            0 0 0 6px rgba(102, 126, 234, 0.6),
-            0 8px 24px rgba(102, 126, 234, 0.4),
-            0 0 50px rgba(102, 126, 234, 0.3);
+            0 0 0 4px rgba(0, 255, 255, 0.9),
+            0 0 30px rgba(0, 255, 255, 1),
+            0 0 60px rgba(135, 206, 250, 0.8),
+            0 0 90px rgba(0, 191, 255, 0.6),
+            inset 0 0 30px rgba(0, 255, 255, 0.3);
+        filter: brightness(1.2) contrast(1.1);
+    }
+}
+
+/* Realistic Electric sparks effect for selected card */
+.card.selected::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    right: -8px;
+    bottom: -8px;
+    background: 
+        /* Electric bolts */
+        linear-gradient(45deg, transparent 25%, rgba(0, 255, 255, 0.4) 30%, rgba(135, 206, 250, 0.3) 35%, transparent 40%),
+        linear-gradient(-45deg, transparent 25%, rgba(0, 255, 255, 0.4) 30%, rgba(135, 206, 250, 0.3) 35%, transparent 40%),
+        linear-gradient(135deg, transparent 60%, rgba(0, 191, 255, 0.4) 65%, rgba(0, 255, 255, 0.3) 70%, transparent 75%),
+        linear-gradient(-135deg, transparent 60%, rgba(0, 191, 255, 0.4) 65%, rgba(0, 255, 255, 0.3) 70%, transparent 75%),
+        /* Core electric field */
+        radial-gradient(ellipse at 50% 50%, rgba(0, 255, 255, 0.2) 0%, transparent 70%);
+    border-radius: 16px;
+    animation: electricSparks 0.8s linear infinite, electricField 0.4s ease-in-out infinite;
+    pointer-events: none;
+    z-index: -1;
+    filter: blur(1px);
+}
+
+@keyframes electricSparks {
+    0% {
+        opacity: 0.6;
+        transform: rotate(0deg) scale(1);
+        filter: blur(1px) brightness(1);
+    }
+    25% {
+        opacity: 1;
+        transform: rotate(90deg) scale(1.03);
+        filter: blur(0.5px) brightness(1.2);
+    }
+    50% {
+        opacity: 0.8;
+        transform: rotate(180deg) scale(1);
+        filter: blur(1px) brightness(1);
+    }
+    75% {
+        opacity: 1;
+        transform: rotate(270deg) scale(1.03);
+        filter: blur(0.5px) brightness(1.2);
+    }
+    100% {
+        opacity: 0.6;
+        transform: rotate(360deg) scale(1);
+        filter: blur(1px) brightness(1);
+    }
+}
+
+@keyframes electricField {
+    0%, 100% {
+        opacity: 1;
+        filter: blur(1px) brightness(1);
+    }
+    50% {
+        opacity: 0.9;
+        filter: blur(1.5px) brightness(1.3);
+    }
+}
+
+/* Electric border animation */
+.card.selected::after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    border: 2px solid transparent;
+    border-radius: 16px;
+    background: 
+        linear-gradient(90deg, 
+            rgba(0, 255, 255, 0.8) 0%,
+            transparent 25%,
+            transparent 75%,
+            rgba(0, 255, 255, 0.8) 100%);
+    background-size: 200% 100%;
+    -webkit-mask: 
+        linear-gradient(#fff 0 0) content-box, 
+        linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: 
+        linear-gradient(#fff 0 0) content-box, 
+        linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    animation: electricBorder 1.5s linear infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes electricBorder {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
     }
 }
 
@@ -199,9 +530,9 @@
 /* Card Header - Responsive */
 .card-header {
     font-weight: bold;
-    padding: 18px 18px 12px;
+    padding: 10px 12px 8px;
     color: #2c3e50;
-    font-size: clamp(12px, 1.1vw + 0.5rem, 17px); /* Responsive font size */
+    font-size: 10px; /* Fixed small font size */
     background: linear-gradient(180deg, 
         rgba(255,255,255,0.95) 0%, 
         rgba(248,249,250,0.9) 100%);
@@ -212,40 +543,45 @@
     text-shadow: 0 1px 2px rgba(255,255,255,0.8);
     word-wrap: break-word;
     overflow-wrap: break-word;
+    line-height: 1.2;
+    white-space: normal;
+    overflow: visible;
 }
 
 /* Card Body - Responsive */
 .card-body {
-    padding: 18px;
-    font-size: clamp(10px, 0.9vw + 0.4rem, 13px); /* Responsive font size */
+    padding: 10px;
+    font-size: 9px; /* Fixed small font size */
     color: #555;
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
     position: relative;
     z-index: 2;
     background: rgba(255,255,255,0.5);
     word-wrap: break-word;
     overflow-wrap: break-word;
+    line-height: 1.3;
 }
 
 /* Card Cost Badge - Responsive */
 .card-cost {
     position: absolute;
-    top: 12px;
-    right: 12px;
+    top: 8px;
+    right: 8px;
     background: linear-gradient(135deg, #ffc107, #ff9800);
     color: #333;
-    padding: clamp(4px, 0.4vw + 0.2rem, 6px) clamp(8px, 0.8vw + 0.3rem, 12px);
-    border-radius: 20px;
-    font-size: clamp(9px, 0.8vw + 0.2rem, 11px); /* Responsive font size */
+    padding: 3px 6px;
+    border-radius: 12px;
+    font-size: 8px; /* Fixed small font size */
     font-weight: bold;
     box-shadow: 
         0 2px 8px rgba(255, 193, 7, 0.4),
         inset 0 1px 0 rgba(255,255,255,0.5);
     z-index: 10;
     animation: costShine 2s ease-in-out infinite;
+    line-height: 1.2;
 }
 
 @keyframes costShine {
@@ -265,17 +601,18 @@
 /* Card Type Badge - Responsive */
 .card-type-badge {
     position: absolute;
-    top: 12px;
-    left: 12px;
-    padding: clamp(3px, 0.3vw + 0.2rem, 5px) clamp(6px, 0.6vw + 0.3rem, 10px);
-    border-radius: 12px;
-    font-size: clamp(8px, 0.7vw + 0.2rem, 10px); /* Responsive font size */
+    top: 8px;
+    left: 8px;
+    padding: 3px 6px;
+    border-radius: 10px;
+    font-size: 8px; /* Fixed small font size */
     font-weight: bold;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     z-index: 10;
     box-shadow: 0 2px 6px rgba(0,0,0,0.2);
     text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    line-height: 1.2;
 }
 
 .card-type-badge.produce {
@@ -627,13 +964,13 @@
     }
     
     .card-header {
-        font-size: 16px;
-        padding: 15px 15px 10px;
+        font-size: 10px;
+        padding: 10px 12px 8px;
     }
     
     .card-body {
-        font-size: 12px;
-        padding: 15px;
+        font-size: 9px;
+        padding: 10px;
     }
     
     .card-image-container {
@@ -648,13 +985,13 @@
     }
     
     .card-header {
-        font-size: 15px;
-        padding: 12px 12px 8px;
+        font-size: 10px;
+        padding: 10px 10px 7px;
     }
     
     .card-body {
-        font-size: 11px;
-        padding: 12px;
+        font-size: 9px;
+        padding: 10px;
     }
     
     .card-image-container {
@@ -695,14 +1032,14 @@
     }
     
     .card-header {
-        font-size: 14px;
-        padding: 10px 10px 6px;
+        font-size: 10px;
+        padding: 8px 8px 5px;
     }
     
     .card-body {
-        font-size: 10px;
-        padding: 10px;
-        gap: 8px;
+        font-size: 9px;
+        padding: 8px;
+        gap: 6px;
     }
     
     .card-image-container {
@@ -768,13 +1105,13 @@
     }
     
     .card-header {
-        font-size: 12px;
-        padding: 8px 8px 5px;
+        font-size: 10px;
+        padding: 7px 7px 4px;
     }
     
     .card-body {
         font-size: 9px;
-        padding: 8px;
+        padding: 7px;
         gap: 6px;
     }
     

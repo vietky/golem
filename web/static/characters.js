@@ -1,131 +1,127 @@
 /**
  * ============================================================================
- * FUNNY VIETNAMESE CARD NAMES MAPPING
+ * TIÊN HIỆP / TRUNG CỔ HIỆN ĐẠI CARD NAMES MAPPING
  * ============================================================================
  * 
- * Maps technical card names to funny Vietnamese names
+ * Maps technical card names to Tiên Hiệp (Immortal/Martial Arts Fantasy) 
+ * and Medieval/Modern themed Vietnamese names
  */
 const vietnameseCardNames = {
     // ============================================
-    // GOLEM CARDS (Point Cards) - Quỷ Đá, etc.
+    // GOLEM CARDS (Point Cards) - Thạch Linh, Huyền Thạch
     // ============================================
-    'golem_0022': 'Quỷ Đá Nhỏ',
-    'golem_0023': 'Quỷ Đá Xanh',
-    'golem_0032': 'Quỷ Đá Vàng',
-    'golem_0040': 'Quỷ Đá Xanh Lá',
-    'golem_0050': 'Quỷ Đá Xanh Dương',
-    'golem_0202': 'Quỷ Đá Xanh Biển',
-    'golem_0203': 'Quỷ Đá Xanh Ngọc',
-    'golem_0220': 'Quỷ Đá Xanh Lục',
-    'golem_0222': 'Quỷ Đá Tam Sắc',
-    'golem_0230': 'Quỷ Đá Xanh Lam',
-    'golem_0302': 'Quỷ Đá Xanh Thẳm',
-    'golem_0320': 'Quỷ Đá Xanh Biển',
-    'golem_0400': 'Quỷ Đá Xanh Dương',
-    'golem_0500': 'Quỷ Đá Xanh Đậm',
-    'golem_1012': 'Quỷ Đá Hồng',
-    'golem_1111': 'Quỷ Đá Tứ Sắc',
-    'golem_1113': 'Quỷ Đá Ngũ Sắc',
-    'golem_1120': 'Quỷ Đá Tam Nguyên',
-    'golem_1131': 'Quỷ Đá Lục Sắc',
-    'golem_1201': 'Quỷ Đá Hồng Vàng',
-    'golem_1311': 'Quỷ Đá Hồng Xanh',
-    'golem_2002': 'Quỷ Đá Hồng Lục',
-    'golem_2003': 'Quỷ Đá Hồng Xanh',
-    'golem_2020': 'Quỷ Đá Hồng Biển',
-    'golem_2022': 'Quỷ Đá Hồng Lục',
-    'golem_2030': 'Quỷ Đá Hồng Lam',
-    'golem_2200': 'Quỷ Đá Hồng Xanh',
-    'golem_2202': 'Quỷ Đá Hồng Vàng',
-    'golem_2220': 'Quỷ Đá Hồng Lục',
-    'golem_2300': 'Quỷ Đá Hồng Xanh',
-    'golem_3002': 'Quỷ Đá Hồng Đậm',
-    'golem_3020': 'Quỷ Đá Hồng Xanh',
-    'golem_3111': 'Quỷ Đá Hồng Tứ Sắc',
-    'golem_3200': 'Quỷ Đá Hồng Xanh',
-    'golem_4000': 'Quỷ Đá Hồng Tối',
+    'golem_0022': 'Thạch Linh Sơ Cấp',
+    'golem_0023': 'Huyền Thạch Lam',
+    'golem_0032': 'Linh Thạch Hoàng Kim',
+    'golem_0040': 'Thạch Linh Mộc Hành',
+    'golem_0050': 'Huyền Thạch Thủy Tinh',
+    'golem_0202': 'Thạch Linh Hải Lam',
+    'golem_0203': 'Linh Thạch Ngọc Bích',
+    'golem_0220': 'Huyền Thạch Mộc Linh',
+    'golem_0222': 'Tam Sắc Thạch Linh',
+    'golem_0230': 'Thạch Linh Băng Lam',
+    'golem_0302': 'Huyền Thạch Thâm Lam',
+    'golem_0320': 'Linh Thạch Hải Dương',
+    'golem_0400': 'Thạch Linh Thủy Hành',
+    'golem_0500': 'Huyền Thạch Huyền Lam',
+    'golem_1012': 'Thạch Linh Hỏa Hành',
+    'golem_1111': 'Tứ Tượng Thạch Linh',
+    'golem_1113': 'Ngũ Hành Thạch Linh',
+    'golem_1120': 'Tam Nguyên Thạch Linh',
+    'golem_1131': 'Lục Hợp Thạch Linh',
+    'golem_1201': 'Thạch Linh Hỏa Kim',
+    'golem_1311': 'Thạch Linh Hỏa Mộc',
+    'golem_2002': 'Thạch Linh Hỏa Mộc',
+    'golem_2003': 'Huyền Thạch Hỏa Thủy',
+    'golem_2020': 'Thạch Linh Hỏa Hải',
+    'golem_2022': 'Linh Thạch Hỏa Mộc',
+    'golem_2030': 'Thạch Linh Hỏa Lam',
+    'golem_2200': 'Huyền Thạch Song Hỏa',
+    'golem_2202': 'Thạch Linh Hỏa Kim',
+    'golem_2220': 'Linh Thạch Song Mộc',
+    'golem_2300': 'Thạch Linh Hỏa Thủy',
+    'golem_3002': 'Huyền Thạch Hỏa Tối',
+    'golem_3020': 'Thạch Linh Tam Hỏa',
+    'golem_3111': 'Tứ Hỏa Thạch Linh',
+    'golem_3200': 'Thạch Linh Hỏa Thủy',
+    'golem_4000': 'Cực Hỏa Thạch Linh',
     
     // ============================================
-    // ACTION CARDS (Full format) - if any exist
+    // MINT CARDS (Produce Cards) - Luyện Kim, Tạo Hóa
     // ============================================
-    // Add action_* cards here if needed
+    'mint_0002': 'Luyện Kim Thuật - Hoàng Kim',
+    'mint_0003': 'Luyện Kim Thuật - Hoàng Kim Cấp 2',
+    'mint_0004': 'Luyện Kim Thuật - Hoàng Kim Cấp 3',
+    'mint_0011': 'Tạo Hóa Thuật - Mộc Kim',
+    'mint_0012': 'Tạo Hóa Thuật - Mộc Kim Cấp 2',
+    'mint_0020': 'Sinh Tạo Thuật - Mộc Hành',
+    'mint_0100': 'Luyện Thủy Thuật - Thủy Tinh',
+    'mint_0101': 'Tạo Hóa Thuật - Thủy Kim',
+    'mint_1000': 'Luyện Hỏa Thuật - Hỏa Linh',
     
     // ============================================
-    // MINT CARDS (Produce Cards) - Trùm Bò, etc.
+    // UPGRADE CARDS - Tinh Luyện, Thăng Cấp
     // ============================================
-    'mint_0002': 'Trùm Bò Vàng',
-    'mint_0003': 'Trùm Bò Vàng Lớn',
-    'mint_0004': 'Trùm Bò Vàng Khổng Lồ',
-    'mint_0011': 'Trùm Bò Xanh Vàng',
-    'mint_0012': 'Trùm Bò Xanh Vàng Lớn',
-    'mint_0020': 'Trùm Bò Xanh',
-    'mint_0100': 'Trùm Bò Xanh Biển',
-    'mint_0101': 'Trùm Bò Xanh Vàng',
-    'mint_1000': 'Trùm Bò Hồng',
+    'upgrade_2': 'Tinh Luyện Thuật - Nhị Cấp',
+    'upgrade_3': 'Tinh Luyện Thuật - Tam Cấp',
     
     // ============================================
-    // UPGRADE CARDS - Nhà Tù, etc.
+    // TRADE CARDS - Dịch Vật, Giao Dịch, Hối Đoái
     // ============================================
-    'upgrade_2': 'Nhà Tù Cấp 2',
-    'upgrade_3': 'Nhà Tù Cấp 3',
+    'trade_0002_0020': 'Dịch Vật Pháp - Kim Mộc',
+    'trade_0002_0100': 'Dịch Vật Pháp - Kim Thủy',
+    'trade_0003_0030': 'Giao Dịch Thuật - Kim Thủy',
+    'trade_0003_0110': 'Hối Đoái Pháp - Kim Thủy Mộc',
+    'trade_0003_1000': 'Dịch Vật Pháp - Kim Hỏa',
+    'trade_0004_0200': 'Giao Dịch Thuật - Kim Mộc',
+    'trade_0004_1100': 'Hối Đoái Pháp - Kim Hỏa Mộc',
+    'trade_0005_0300': 'Dịch Vật Pháp - Kim Thủy',
+    'trade_0005_2000': 'Giao Dịch Thuật - Kim Hỏa',
+    'trade_0010_0003': 'Dịch Vật Pháp - Mộc Kim',
+    'trade_0011_1000': 'Hối Đoái Pháp - Mộc Hỏa',
+    'trade_0020_0103': 'Giao Dịch Thuật - Mộc Thủy',
+    'trade_0020_0200': 'Dịch Vật Pháp - Song Mộc',
+    'trade_0020_1002': 'Hối Đoái Pháp - Mộc Hỏa',
+    'trade_0030_0202': 'Giao Dịch Thuật - Thủy Mộc',
+    'trade_0030_0300': 'Dịch Vật Pháp - Tam Thủy',
+    'trade_0030_1101': 'Hối Đoái Pháp - Thủy Hỏa Mộc',
+    'trade_0030_2000': 'Giao Dịch Thuật - Thủy Hỏa',
+    'trade_0100_0014': 'Dịch Vật Pháp - Thủy Kim',
+    'trade_0100_0020': 'Hối Đoái Pháp - Thủy Mộc',
+    'trade_0100_0021': 'Giao Dịch Thuật - Thủy Mộc',
+    'trade_0200_0032': 'Dịch Vật Pháp - Song Thủy',
+    'trade_0200_1012': 'Hối Đoái Pháp - Thủy Hỏa Mộc',
+    'trade_0200_1020': 'Giao Dịch Thuật - Thủy Hỏa',
+    'trade_0200_2000': 'Dịch Vật Pháp - Thủy Hỏa',
+    'trade_0300_3000': 'Cực Thủy Hỏa Dịch Vật',
+    'trade_1000_0022': 'Dịch Vật Pháp - Hỏa Mộc',
+    'trade_1000_0030': 'Giao Dịch Thuật - Hỏa Thủy',
+    'trade_1000_0103': 'Hối Đoái Pháp - Hỏa Thủy',
+    'trade_1000_0111': 'Ngũ Hành Dịch Vật Pháp',
+    'trade_1000_0200': 'Giao Dịch Thuật - Hỏa Mộc',
+    'trade_1002_2000': 'Cực Hỏa Dịch Vật Pháp',
+    'trade_2000_0230': 'Dịch Vật Pháp - Song Hỏa Thủy',
+    'trade_2000_0311': 'Hối Đoái Pháp - Song Hỏa Thủy',
     
     // ============================================
-    // TRADE CARDS - Chợ Trời, etc.
+    // COIN CARDS - Linh Thạch, Huyền Tệ
     // ============================================
-    'trade_0002_0020': 'Chợ Trời Vàng Xanh',
-    'trade_0002_0100': 'Chợ Trời Vàng Xanh',
-    'trade_0003_0030': 'Chợ Trời Vàng Lớn',
-    'trade_0003_0110': 'Chợ Trời Vàng Xanh',
-    'trade_0003_1000': 'Chợ Trời Vàng Hồng',
-    'trade_0004_0200': 'Chợ Trời Vàng Xanh',
-    'trade_0004_1100': 'Chợ Trời Vàng Xanh',
-    'trade_0005_0300': 'Chợ Trời Vàng Xanh',
-    'trade_0005_2000': 'Chợ Trời Vàng Hồng',
-    'trade_0010_0003': 'Chợ Trời Xanh Vàng',
-    'trade_0011_1000': 'Chợ Trời Xanh Hồng',
-    'trade_0020_0103': 'Chợ Trời Xanh Xanh',
-    'trade_0020_0200': 'Chợ Trời Xanh Xanh',
-    'trade_0020_1002': 'Chợ Trời Xanh Hồng',
-    'trade_0030_0202': 'Chợ Trời Xanh Lớn',
-    'trade_0030_0300': 'Chợ Trời Xanh Xanh',
-    'trade_0030_1101': 'Chợ Trời Xanh Đa Sắc',
-    'trade_0030_2000': 'Chợ Trời Xanh Hồng',
-    'trade_0100_0014': 'Chợ Trời Xanh Vàng',
-    'trade_0100_0020': 'Chợ Trời Xanh Xanh',
-    'trade_0100_0021': 'Chợ Trời Xanh Xanh',
-    'trade_0200_0032': 'Chợ Trời Xanh Xanh',
-    'trade_0200_1012': 'Chợ Trời Xanh Hồng',
-    'trade_0200_1020': 'Chợ Trời Xanh Hồng',
-    'trade_0200_2000': 'Chợ Trời Xanh Hồng',
-    'trade_0300_3000': 'Chợ Trời Xanh Hồng',
-    'trade_1000_0022': 'Chợ Trời Hồng Xanh',
-    'trade_1000_0030': 'Chợ Trời Hồng Xanh',
-    'trade_1000_0103': 'Chợ Trời Hồng Xanh',
-    'trade_1000_0111': 'Chợ Trời Hồng Đa Sắc',
-    'trade_1000_0200': 'Chợ Trời Hồng Xanh',
-    'trade_1002_2000': 'Chợ Trời Hồng Hồng',
-    'trade_2000_0230': 'Chợ Trời Hồng Xanh',
-    'trade_2000_0311': 'Chợ Trời Hồng Xanh',
+    'coin_1': 'Linh Thạch Bạc',
+    'coin_3': 'Huyền Tệ Đồng',
     
     // ============================================
-    // COIN CARDS - Tiền Xu, etc.
+    // STONE CARDS - Huyền Thạch, Linh Thạch
     // ============================================
-    'coin_1': 'Tiền Xu Bạc',
-    'coin_3': 'Tiền Xu Đồng',
+    'stone_blue': 'Huyền Thạch Lam',
+    'stone_pink': 'Linh Thạch Hồng',
+    'stone_green': 'Huyền Thạch Mộc',
+    'stone_yellow': 'Linh Thạch Hoàng',
     
     // ============================================
-    // STONE CARDS - Đá, etc.
+    // BACKGROUND CARDS - Pháp Trận, Linh Trận
     // ============================================
-    'stone_blue': 'Đá Xanh',
-    'stone_pink': 'Đá Hồng',
-    'stone_green': 'Đá Xanh Lá',
-    'stone_yellow': 'Đá Vàng',
-    
-    // ============================================
-    // BACKGROUND CARDS - Nền, etc.
-    // ============================================
-    'golem_bg': 'Nền Quỷ Đá',
-    'merchant_bg': 'Nền Thương Gia',
+    'golem_bg': 'Thạch Linh Pháp Trận',
+    'merchant_bg': 'Thương Gia Linh Trận',
 };
 
 /**

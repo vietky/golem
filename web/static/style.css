@@ -6,7 +6,8 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: url('images/background.webp') center center / cover no-repeat fixed;
+    background-color: #667eea; /* Fallback color */
     min-height: 100vh;
     padding: 20px;
     color: #333;
