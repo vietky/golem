@@ -13,9 +13,6 @@ COPY go.mod go.sum ./
 # Download dependencies
 RUN go mod download
 
-# Copy vendor directory if it exists
-COPY vendor/ ./vendor/
-
 # Copy source code
 COPY . .
 
