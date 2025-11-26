@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -11,6 +12,9 @@ type CardType int
 const (
 	ActionCard CardType = iota
 	PointCard
+	CoinCard
+	StoneCard
+	BackgroundCard
 )
 
 // ActionType represents the type of action a card can perform
@@ -98,6 +102,10 @@ func (c *Card) Play(player *Player) bool {
 
 // CanClaim checks if a player can claim this point card
 func (c *Card) CanClaim(player *Player) bool {
+	// Coin cards can always be claimed (no resource requirement)
+	if c.Type == CoinCard {
+		return true
+	}
 	if c.Type != PointCard {
 		return false
 	}
@@ -112,8 +120,16 @@ func (c *Card) Claim(player *Player) bool {
 	if !c.CanClaim(player) {
 		return false
 	}
-	if !player.Resources.SubtractAll(c.Requirement) {
-		return false
+	// Coin cards don't require resources
+	if c.Type == CoinCard {
+		player.Points += c.Points
+		return true
+	}
+	// Point cards require resources
+	if c.Requirement != nil && c.Requirement.Total() > 0 {
+		if !player.Resources.SubtractAll(c.Requirement) {
+			return false
+		}
 	}
 	player.Points += c.Points
 	return true
@@ -145,10 +161,11 @@ func (c *Card) String() string {
 	var parts []string
 	parts = append(parts, fmt.Sprintf("[%s]", c.Name))
 
-	if c.Type == ActionCard {
+	switch c.Type {
+	case ActionCard:
 		switch c.ActionType {
 		case Produce:
-			parts = append(parts, "Produce:")
+			parts = append(parts, "Mint:")
 		case Upgrade:
 			parts = append(parts, "Upgrade:")
 		case Trade:
@@ -160,218 +177,359 @@ func (c *Card) String() string {
 		if c.Output != nil {
 			parts = append(parts, c.Output.String())
 		}
-	} else if c.Type == PointCard {
+	case PointCard:
 		parts = append(parts, fmt.Sprintf("Points: %d", c.Points))
 		if c.Requirement != nil {
 			parts = append(parts, fmt.Sprintf("Requires: %s", c.Requirement.String()))
 		}
+	case CoinCard:
+		parts = append(parts, fmt.Sprintf("Coin: %d points", c.Points))
+	case StoneCard:
+		parts = append(parts, "Stone Image")
+	case BackgroundCard:
+		parts = append(parts, "Background")
 	}
 
 	return strings.Join(parts, " ")
 }
 
-// CreateDefaultActionCards creates a set of default action cards for the game
+// parseResourceString parses a 4-digit string representing [pink][blue][green][yellow]
+// Example: "0002" = 2 Yellow, "0011" = 1 Green, 1 Yellow
+func parseResourceString(s string) *Resources {
+	if len(s) != 4 {
+		return NewResources()
+	}
+	pink, _ := strconv.Atoi(string(s[0]))
+	blue, _ := strconv.Atoi(string(s[1]))
+	green, _ := strconv.Atoi(string(s[2]))
+	yellow, _ := strconv.Atoi(string(s[3]))
+	return &Resources{
+		Pink:   pink,
+		Blue:   blue,
+		Green:  green,
+		Yellow: yellow,
+	}
+}
+
+// parseActionCardName parses an action card name in the format:
+// - action_[pink][blue][green][yellow]_[pink][blue][green][yellow] (full format)
+// - mint_0002 (get 2 Yellow)
+// - mint_0011 (get 1 Green, 1 Yellow)
+// - upgrade_2 (upgrade 2 crystals: 2 lower -> 1 higher)
+// - upgrade_3 (upgrade 3 crystals: 3 lower -> 1 higher)
+// - trade_0002_0100 (trade 2 Yellow for 1 Blue)
+func parseActionCardName(name string) (ActionType, *Resources, *Resources, *Resources) {
+	parts := strings.Split(name, "_")
+	if len(parts) < 2 {
+		return Produce, nil, nil, nil
+	}
+
+	actionType := parts[0]
+
+	switch actionType {
+	case "action":
+		// action_[input]_[output] format
+		if len(parts) >= 3 {
+			input := parseResourceString(parts[1])
+			output := parseResourceString(parts[2])
+			// Determine action type based on input/output
+			if input.Total() == 0 {
+				// No input = Produce/Mint
+				cost := NewResources()
+				cost.Yellow = output.Total() / 2
+				if cost.Yellow == 0 {
+					cost.Yellow = 1
+				}
+				return Produce, nil, output, cost
+			} else if input.Total() > output.Total() && output.Total() > 0 {
+				// More input than output = Upgrade
+				cost := NewResources()
+				cost.Yellow = input.Total()
+				return Upgrade, input, output, cost
+			} else {
+				// Trade
+				cost := NewResources()
+				cost.Yellow = input.Total()
+				return Trade, input, output, cost
+			}
+		}
+	case "mint":
+		// mint_0002 format: output only
+		if len(parts) >= 2 {
+			output := parseResourceString(parts[1])
+			// Cost is typically based on output, default to 1 yellow per output crystal
+			cost := NewResources()
+			cost.Yellow = output.Total() / 2
+			if cost.Yellow == 0 {
+				cost.Yellow = 1
+			}
+			return Produce, nil, output, cost
+		}
+	case "upgrade":
+		// upgrade_2 or upgrade_3 format: upgrade N crystals
+		// Upgrade converts N lower crystals to 1 higher crystal
+		// upgrade_2: 2 yellow -> 1 green
+		// upgrade_3: 3 yellow -> 1 green
+		if len(parts) >= 2 {
+			count, _ := strconv.Atoi(parts[1])
+			if count <= 0 {
+				count = 2 // Default
+			}
+			// Default upgrade: N lower -> 1 higher
+			input := &Resources{Yellow: count}
+			output := &Resources{Green: 1}
+			cost := NewResources()
+			cost.Yellow = count + 1
+			return Upgrade, input, output, cost
+		}
+	case "trade":
+		// trade_0002_0100 format: input and output
+		if len(parts) >= 3 {
+			input := parseResourceString(parts[1])
+			output := parseResourceString(parts[2])
+			// Cost based on input value
+			cost := NewResources()
+			cost.Yellow = input.Total()
+			return Trade, input, output, cost
+		}
+	}
+
+	return Produce, nil, nil, nil
+}
+
+// parseGolemCardName parses a golem card name in the format:
+// - golem_4000 (4 Pink = 16 points)
+// - golem_2300 (2 Pink, 3 Blue = 17 points)
+// Points = pink * 4 + blue * 3 + green * 2 + yellow * 1
+func parseGolemCardName(name string) (*Resources, int) {
+	parts := strings.Split(name, "_")
+	if len(parts) >= 2 {
+		requirement := parseResourceString(parts[1])
+		points := requirement.Pink*4 + requirement.Blue*3 + requirement.Green*2 + requirement.Yellow*1
+		return requirement, points
+	}
+	return NewResources(), 0
+}
+
+// CreateCardFromName creates a card from a name string using the new naming convention
+func CreateCardFromName(name string, id int) *Card {
+	// Check for coin cards
+	if strings.HasPrefix(name, "coin_") {
+		parts := strings.Split(name, "_")
+		if len(parts) >= 2 {
+			points, _ := strconv.Atoi(parts[1])
+			return &Card{
+				ID:     id,
+				Name:   name,
+				Type:   CoinCard,
+				Points: points,
+			}
+		}
+	}
+
+	// Check for stone cards
+	if strings.HasPrefix(name, "stone_") {
+		return &Card{
+			ID:   id,
+			Name: name,
+			Type: StoneCard,
+		}
+	}
+
+	// Check for background cards
+	if strings.HasSuffix(name, "_bg") {
+		return &Card{
+			ID:   id,
+			Name: name,
+			Type: BackgroundCard,
+		}
+	}
+
+	// Check for golem cards
+	if strings.HasPrefix(name, "golem_") {
+		requirement, points := parseGolemCardName(name)
+		return &Card{
+			ID:          id,
+			Name:        name,
+			Type:        PointCard,
+			Requirement: requirement,
+			Points:      points,
+		}
+	}
+
+	// Check for action cards (check action_ first, then others)
+	if strings.HasPrefix(name, "action_") {
+		actionType, input, output, cost := parseActionCardName(name)
+		return &Card{
+			ID:         id,
+			Name:       name,
+			Type:       ActionCard,
+			ActionType: actionType,
+			Input:      input,
+			Output:     output,
+			Cost:       cost,
+		}
+	}
+	if strings.HasPrefix(name, "mint_") || strings.HasPrefix(name, "upgrade_") || strings.HasPrefix(name, "trade_") {
+		actionType, input, output, cost := parseActionCardName(name)
+		return &Card{
+			ID:         id,
+			Name:       name,
+			Type:       ActionCard,
+			ActionType: actionType,
+			Input:      input,
+			Output:     output,
+			Cost:       cost,
+		}
+	}
+
+	// Default: return empty card
+	return &Card{
+		ID:   id,
+		Name: name,
+		Type: ActionCard,
+	}
+}
+
+// CreateDefaultActionCards creates action cards based ONLY on available images
+// Only generates cards for which image files exist
 func CreateDefaultActionCards() []*Card {
-	cards := []*Card{
-		// Produce cards
-		{
-			ID:         1,
-			Name:       "Yellow Mine",
-			Type:       ActionCard,
-			ActionType: Produce,
-			Output:     &Resources{Yellow: 2},
-			Cost:       &Resources{Yellow: 1},
-		},
-		{
-			ID:         2,
-			Name:       "Green Mine",
-			Type:       ActionCard,
-			ActionType: Produce,
-			Output:     &Resources{Green: 2},
-			Cost:       &Resources{Yellow: 2},
-		},
-		{
-			ID:         3,
-			Name:       "Blue Mine",
-			Type:       ActionCard,
-			ActionType: Produce,
-			Output:     &Resources{Blue: 2},
-			Cost:       &Resources{Green: 2},
-		},
-		{
-			ID:         4,
-			Name:       "Pink Mine",
-			Type:       ActionCard,
-			ActionType: Produce,
-			Output:     &Resources{Pink: 2},
-			Cost:       &Resources{Blue: 2},
-		},
-		// Upgrade cards
-		{
-			ID:         5,
-			Name:       "Yellow to Green",
-			Type:       ActionCard,
-			ActionType: Upgrade,
-			Input:      &Resources{Yellow: 2},
-			Output:     &Resources{Green: 1},
-			Cost:       &Resources{Yellow: 3},
-		},
-		{
-			ID:         6,
-			Name:       "Green to Blue",
-			Type:       ActionCard,
-			ActionType: Upgrade,
-			Input:      &Resources{Green: 2},
-			Output:     &Resources{Blue: 1},
-			Cost:       &Resources{Green: 3},
-		},
-		{
-			ID:         7,
-			Name:       "Blue to Pink",
-			Type:       ActionCard,
-			ActionType: Upgrade,
-			Input:      &Resources{Blue: 2},
-			Output:     &Resources{Pink: 1},
-			Cost:       &Resources{Blue: 3},
-		},
-		// Trade cards
-		{
-			ID:         8,
-			Name:       "Trade Green for Blue",
-			Type:       ActionCard,
-			ActionType: Trade,
-			Input:      &Resources{Green: 3},
-			Output:     &Resources{Blue: 1},
-			Cost:       &Resources{Yellow: 4},
-		},
-		{
-			ID:         9,
-			Name:       "Trade Blue for Pink",
-			Type:       ActionCard,
-			ActionType: Trade,
-			Input:      &Resources{Blue: 3},
-			Output:     &Resources{Pink: 1},
-			Cost:       &Resources{Green: 4},
-		},
-		{
-			ID:         10,
-			Name:       "Rich Yellow Mine",
-			Type:       ActionCard,
-			ActionType: Produce,
-			Output:     &Resources{Yellow: 3},
-			Cost:       &Resources{Green: 1},
-		},
-		{
-			ID:         11,
-			Name:       "Rich Green Mine",
-			Type:       ActionCard,
-			ActionType: Produce,
-			Output:     &Resources{Green: 3},
-			Cost:       &Resources{Blue: 1},
-		},
-		{
-			ID:         12,
-			Name:       "Efficient Upgrade",
-			Type:       ActionCard,
-			ActionType: Upgrade,
-			Input:      &Resources{Yellow: 3},
-			Output:     &Resources{Green: 2},
-			Cost:       &Resources{Green: 2},
-		},
+	// Only include card names that have corresponding image files
+	cardNames := []string{
+		// Mint cards (produce) - only cards with images
+		"mint_0002", // Get 2 Yellow
+		"mint_0003", // Get 3 Yellow
+		"mint_0004", // Get 4 Yellow
+		"mint_0011", // Get 1 Green, 1 Yellow
+		"mint_0012", // Get 1 Green, 2 Yellow
+		"mint_0020", // Get 2 Green
+		"mint_0100", // Get 1 Blue
+		"mint_0101", // Get 1 Blue, 1 Yellow
+		"mint_1000", // Get 1 Pink
+		// Upgrade cards - images exist
+		"upgrade_2", // Upgrade 2 crystals
+		"upgrade_3", // Upgrade 3 crystals
+		// Trade cards - only cards with images
+		"trade_0002_0020", // Trade 2 Yellow for 2 Green
+		"trade_0002_0100", // Trade 2 Yellow for 1 Blue
+		"trade_0003_0030", // Trade 3 Yellow for 3 Green
+		"trade_0003_0110", // Trade 3 Yellow for 1 Green, 1 Blue
+		"trade_0003_1000", // Trade 3 Yellow for 1 Pink
+		"trade_0004_0200", // Trade 4 Yellow for 2 Blue
+		"trade_0004_1100", // Trade 4 Yellow for 1 Blue, 1 Green
+		"trade_0005_0300", // Trade 5 Yellow for 3 Blue
+		"trade_0005_2000", // Trade 5 Yellow for 2 Pink
+		"trade_0010_0003", // Trade 1 Green for 3 Yellow
+		"trade_0011_1000", // Trade 1 Green, 1 Yellow for 1 Pink
+		"trade_0020_0103", // Trade 2 Green for 1 Blue, 3 Yellow
+		"trade_0020_0200", // Trade 2 Green for 2 Blue
+		"trade_0020_1002", // Trade 2 Green for 1 Pink, 2 Yellow
+		"trade_0030_0202", // Trade 3 Green for 2 Blue, 2 Yellow
+		"trade_0030_0300", // Trade 3 Green for 3 Blue
+		"trade_0030_1101", // Trade 3 Green for 1 Blue, 1 Green, 1 Yellow
+		"trade_0030_2000", // Trade 3 Green for 2 Pink
+		"trade_0100_0014", // Trade 1 Blue for 1 Green, 4 Yellow
+		"trade_0100_0020", // Trade 1 Blue for 2 Green
+		"trade_0100_0021", // Trade 1 Blue for 2 Green, 1 Yellow
+		"trade_0200_0032", // Trade 2 Blue for 3 Green, 2 Yellow
+		"trade_0200_1012", // Trade 2 Blue for 1 Pink, 1 Green, 2 Yellow
+		"trade_0200_1020", // Trade 2 Blue for 1 Pink, 2 Green
+		"trade_0200_2000", // Trade 2 Blue for 2 Pink
+		"trade_0300_3000", // Trade 3 Blue for 3 Pink
+		"trade_1000_0022", // Trade 1 Pink for 2 Green, 2 Yellow
+		"trade_1000_0030", // Trade 1 Pink for 3 Green
+		"trade_1000_0103", // Trade 1 Pink for 1 Blue, 3 Yellow
+		"trade_1000_0111", // Trade 1 Pink for 1 Blue, 1 Green, 1 Yellow
+		"trade_1000_0200", // Trade 1 Pink for 2 Blue
+		"trade_1002_2000", // Trade 1 Pink, 2 Green for 2 Pink
+		"trade_2000_0230", // Trade 2 Pink for 2 Green, 3 Blue
+		"trade_2000_0311", // Trade 2 Pink for 3 Blue, 1 Green, 1 Yellow
+	}
+
+	cards := make([]*Card, 0, len(cardNames))
+	for i, name := range cardNames {
+		card := CreateCardFromName(name, i+1)
+		cards = append(cards, card)
 	}
 
 	return cards
 }
 
-// CreateDefaultPointCards creates a set of default point cards
+// CreateDefaultPointCards creates point cards based ONLY on available images
+// Only generates golem cards for which image files exist
+// Format: golem_[pink][blue][green][yellow]
+// Points = pink * 4 + blue * 3 + green * 2 + yellow * 1
 func CreateDefaultPointCards() []*Card {
-	cards := []*Card{
-		{
-			ID:         101,
-			Name:       "Small Golem",
-			Type:       PointCard,
-			Requirement: &Resources{Yellow: 2, Green: 1},
-			Points:     2,
-		},
-		{
-			ID:         102,
-			Name:       "Medium Golem",
-			Type:       PointCard,
-			Requirement: &Resources{Green: 2, Blue: 1},
-			Points:     3,
-		},
-		{
-			ID:         103,
-			Name:       "Large Golem",
-			Type:       PointCard,
-			Requirement: &Resources{Blue: 2, Pink: 1},
-			Points:     4,
-		},
-		{
-			ID:         104,
-			Name:       "Grand Golem",
-			Type:       PointCard,
-			Requirement: &Resources{Pink: 2},
-			Points:     5,
-		},
-		{
-			ID:         105,
-			Name:       "Crystal Collector",
-			Type:       PointCard,
-			Requirement: &Resources{Yellow: 3},
-			Points:     2,
-		},
-		{
-			ID:         106,
-			Name:       "Green Master",
-			Type:       PointCard,
-			Requirement: &Resources{Green: 3},
-			Points:     3,
-		},
-		{
-			ID:         107,
-			Name:       "Blue Master",
-			Type:       PointCard,
-			Requirement: &Resources{Blue: 3},
-			Points:     4,
-		},
-		{
-			ID:         108,
-			Name:       "Pink Master",
-			Type:       PointCard,
-			Requirement: &Resources{Pink: 2, Blue: 1},
-			Points:     5,
-		},
-		{
-			ID:         109,
-			Name:       "Balanced Golem",
-			Type:       PointCard,
-			Requirement: &Resources{Yellow: 1, Green: 1, Blue: 1},
-			Points:     3,
-		},
-		{
-			ID:         110,
-			Name:       "Perfect Golem",
-			Type:       PointCard,
-			Requirement: &Resources{Yellow: 1, Green: 1, Blue: 1, Pink: 1},
-			Points:     6,
-		},
-		{
-			ID:         111,
-			Name:       "Simple Golem",
-			Type:       PointCard,
-			Requirement: &Resources{Yellow: 4},
-			Points:     2,
-		},
-		{
-			ID:         112,
-			Name:       "Elite Golem",
-			Type:       PointCard,
-			Requirement: &Resources{Pink: 3},
-			Points:     7,
-		},
+	// Only include golem card names that have corresponding image files
+	golemNames := []string{
+		"golem_0022", // 2 Yellow, 2 Green = 6 points
+		"golem_0023", // 2 Yellow, 3 Green = 8 points
+		"golem_0032", // 3 Yellow, 2 Green = 7 points
+		"golem_0040", // 4 Green = 8 points
+		"golem_0050", // 5 Green = 10 points
+		"golem_0202", // 2 Blue, 2 Green = 10 points
+		"golem_0203", // 2 Blue, 3 Green = 12 points
+		"golem_0220", // 2 Blue, 2 Green = 10 points
+		"golem_0222", // 2 Blue, 2 Green, 2 Yellow = 12 points
+		"golem_0230", // 2 Blue, 3 Green = 12 points
+		"golem_0302", // 3 Blue, 2 Green = 13 points
+		"golem_0320", // 3 Blue, 2 Green = 13 points
+		"golem_0400", // 4 Blue = 12 points
+		"golem_0500", // 5 Blue = 15 points
+		"golem_1012", // 1 Pink, 1 Green, 2 Yellow = 9 points
+		"golem_1111", // 1 of each = 10 points (1*4 + 1*3 + 1*2 + 1*1 = 10)
+		"golem_1113", // 1 Pink, 1 Blue, 1 Green, 3 Yellow = 12 points
+		"golem_1120", // 1 Pink, 1 Blue, 2 Green = 11 points
+		"golem_1131", // 1 Pink, 1 Blue, 3 Green, 1 Yellow = 14 points
+		"golem_1201", // 1 Pink, 2 Blue, 1 Yellow = 11 points
+		"golem_1311", // 1 Pink, 3 Blue, 1 Green, 1 Yellow = 16 points
+		"golem_2002", // 2 Pink, 2 Green = 14 points
+		"golem_2003", // 2 Pink, 3 Green = 17 points
+		"golem_2020", // 2 Pink, 2 Green = 14 points
+		"golem_2022", // 2 Pink, 2 Green, 2 Yellow = 16 points
+		"golem_2030", // 2 Pink, 3 Green = 17 points
+		"golem_2200", // 2 Pink, 2 Blue = 14 points
+		"golem_2202", // 2 Pink, 2 Blue, 2 Yellow = 16 points
+		"golem_2220", // 2 Pink, 2 Blue, 2 Green = 16 points
+		"golem_2300", // 2 Pink, 3 Blue = 17 points (2*4 + 3*3 = 8+9 = 17)
+		"golem_3002", // 3 Pink, 2 Green = 16 points
+		"golem_3020", // 3 Pink, 2 Green = 16 points
+		"golem_3111", // 3 Pink, 1 Blue, 1 Green, 1 Yellow = 18 points
+		"golem_3200", // 3 Pink, 2 Blue = 18 points
+		"golem_4000", // 4 Pink = 16 points
+	}
+
+	cards := make([]*Card, 0, len(golemNames))
+	for i, name := range golemNames {
+		card := CreateCardFromName(name, 100+i+1)
+		cards = append(cards, card)
 	}
 
 	return cards
 }
 
+// CreateCoinCards creates coin cards
+func CreateCoinCards() []*Card {
+	return []*Card{
+		CreateCardFromName("coin_1", 200), // Silver coin = 1 point
+		CreateCardFromName("coin_3", 201), // Bronze coin = 3 points
+	}
+}
+
+// CreateStoneCards creates stone image cards
+func CreateStoneCards() []*Card {
+	return []*Card{
+		CreateCardFromName("stone_yellow", 300),
+		CreateCardFromName("stone_green", 301),
+		CreateCardFromName("stone_blue", 302),
+		CreateCardFromName("stone_pink", 303),
+	}
+}
+
+// CreateBackgroundCards creates background cards
+func CreateBackgroundCards() []*Card {
+	return []*Card{
+		CreateCardFromName("golem_bg", 400),
+		CreateCardFromName("merchant_bg", 401),
+	}
+}

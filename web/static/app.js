@@ -292,34 +292,9 @@ function createCardElement(card, type, index, cost = null) {
     html += `<div class="card-header">${card.name}</div>`;
     html += '<div class="card-body">';
     
-    if (type === 'action') {
-        if (card.input && Object.values(card.input).some(v => v > 0)) {
-            html += `<div class="crystal-group">
-                <span class="crystal-label">Input:</span>
-                ${formatResourcesHTML(card.input)}
-            </div>`;
-        }
-        if (card.input && card.output) {
-            html += '<div class="card-arrow">→</div>';
-        }
-        if (card.output && Object.values(card.output).some(v => v > 0)) {
-            html += `<div class="crystal-group">
-                <span class="crystal-label">Output:</span>
-                ${formatResourcesHTML(card.output)}
-            </div>`;
-        }
-    } else if (type === 'point') {
-        // Add character illustration for point cards
-        if (typeof getCharacterIllustration !== 'undefined') {
-            html += `<div class="character-illustration">${getCharacterIllustration(card.name)}</div>`;
-        }
-        html += `<div style="text-align: center; font-size: 32px; font-weight: bold; color: #ffc107; margin: 10px 0;">${card.points}</div>`;
-        if (card.requirement && Object.values(card.requirement).some(v => v > 0)) {
-            html += `<div class="crystal-group" style="justify-content: center;">
-                <span class="crystal-label">Requires:</span>
-                ${formatResourcesHTML(card.requirement)}
-            </div>`;
-        }
+    // Add card image - images already show all input/output/requirements
+    if (typeof getCardImage !== 'undefined' && card.name) {
+        html += `<div class="card-image-container">${getCardImage(card.name, 'card-image')}</div>`;
     }
     
     html += '</div>';
@@ -376,20 +351,9 @@ function updatePlayerHand() {
         html += `<div class="card-header">${card.name}</div>`;
         html += '<div class="card-body">';
         
-        if (card.input && Object.values(card.input).some(v => v > 0)) {
-            html += `<div class="crystal-group">
-                <span class="crystal-label">Input:</span>
-                ${formatResourcesHTML(card.input)}
-            </div>`;
-        }
-        if (card.input && card.output) {
-            html += '<div class="card-arrow">→</div>';
-        }
-        if (card.output && Object.values(card.output).some(v => v > 0)) {
-            html += `<div class="crystal-group">
-                <span class="crystal-label">Output:</span>
-                ${formatResourcesHTML(card.output)}
-            </div>`;
+        // Add card image - images already show all input/output information
+        if (typeof getCardImage !== 'undefined' && card.name) {
+            html += `<div class="card-image-container">${getCardImage(card.name, 'card-image')}</div>`;
         }
         
         html += '</div>';
