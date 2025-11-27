@@ -77,6 +77,7 @@ if [ ! -d ".git" ]; then
     git clone -b "$GIT_BRANCH" "$GIT_REPO" .
 else
     log "Repository exists. Pulling latest changes from ${GIT_BRANCH}..."
+    git reset --hard origin/"$GIT_BRANCH" || warning "Failed to reset to origin/${GIT_BRANCH}"
     git fetch origin
     git checkout "$GIT_BRANCH" || warning "Failed to checkout ${GIT_BRANCH}, staying on current branch"
     git pull origin "$GIT_BRANCH" || error "Failed to pull latest changes"
