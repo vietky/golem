@@ -33,9 +33,10 @@ func main() {
 	
 	// Serve static files - try React build first, fallback to vanilla JS
 	reactDir := filepath.Join(".", "web", "react")
+	reactIndexPath := filepath.Join(reactDir, "index.html")
 	
-	// Check if React build exists, otherwise serve vanilla JS
-	if reactStat, err := os.Stat(reactDir); err == nil && reactStat.IsDir() {
+	// Check if React build exists and has content (index.html exists), otherwise serve vanilla JS
+	if _, err := os.Stat(reactIndexPath); err == nil {
 		// Serve React build
 		http.Handle("/", http.FileServer(http.Dir("./web/react")))
 		log.Printf("Serving React frontend from ./web/react")
