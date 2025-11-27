@@ -1,0 +1,84 @@
+---
+# Ansible Playbook for Manual Deployment
+# This playbook deploys the Golem Century application using the deploy script
+#
+# Usage:
+#   ansible-playbook -i ansible/inventory.ini ansible/deploy-app.yml
+#   ansible-playbook -i ansible/inventory.ini ansible/deploy-app.yml --extra-vars "git_branch=develop"
+
+- name: Deploy Golem Century Application
+  hosts: deployment_servers
+  become: yes
+  
+  vars:
+    deploy_script_path: /tmp/golem-deploy.sh
+    
+  tasks:
+    - name: Ensure required packages are installed
+      apt:
+        name:
+          - git
+          - docker.io
+          - docker-compose
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+      
+    - name: Ensure required packages are installed (RedHat)
+      yum:
+        name:
+          - git
+          - docker
+          - docker-compose
+        state: present
+      when: ansible_os_family == "RedHat"
+      
+    - name: Ensure Docker service is running
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+        
+    - name: Create Jenkins directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ jenkins_home }}"
+        - "{{ jenkins_repos_dir }}"
+        - /var/log/golem-deploy
+        
+    - name: Copy deploy script to server
+      copy:
+        src: ../scripts/deploy.sh
+        dest: "{{ deploy_script_path }}"
+        mode: '0755'
+        
+    - name: Run deployment script
+      shell: |
+        export APP_NAME="{{ app_name }}"
+        export APP_DIR="{{ app_dir }}"
+        export APP_PORT="{{ app_port }}"
+        export GIT_REPO="{{ git_repo }}"
+        export GIT_BRANCH="{{ git_branch }}"
+        {{ deploy_script_path }}
+      register: deploy_output
+      
+    - name: Display deployment output
+      debug:
+        var: deploy_output.stdout_lines
+        
+    - name: Check if application is running
+      uri:
+        url: "http://localhost:{{ app_port }}"
+        status_code: 200
+        timeout: 30
+      retries: 5
+      delay: 10
+      register: app_health
+      ignore_errors: yes
+      
+    - name: Report deployment status
+      debug:
+        msg: "Deployment completed. Application is {{ 'running' if app_health is succeeded else 'NOT running' }}"

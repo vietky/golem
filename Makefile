@@ -114,3 +114,5 @@ deploy-to: ## Deploy to a specific host (usage: make deploy-to HOST=user@hostnam
 	fi
 	$(ANSIBLE_PLAYBOOK) -i "$(HOST)," $(PLAYBOOK)
 
+setup-jenkins:
+	ansible-playbook -i ansible/inventory.ini ansible/setup-jenkins-job.yml

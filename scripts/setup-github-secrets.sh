@@ -86,7 +86,9 @@ fi
 print_success ".env file found at: $ENV_FILE"
 
 # Source the .env file
+set -a  # automatically export all variables
 source "$ENV_FILE"
+set +a
 
 # Required variables
 REQUIRED_VARS=(

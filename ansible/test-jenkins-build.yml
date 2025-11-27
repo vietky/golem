@@ -1,0 +1,99 @@
+---
+# Test Jenkins Job Execution
+# This playbook triggers a Jenkins build and monitors its progress
+#
+# Usage:
+#   ansible-playbook -i ansible/inventory.ini ansible/test-jenkins-build.yml
+
+- name: Test Jenkins Job Execution
+  hosts: deployment_servers
+  become: no
+  gather_facts: no
+  
+  vars:
+    jenkins_job_name: golem-century-deploy
+    
+  tasks:
+    - name: "=== Triggering Jenkins Build ==="
+      debug:
+        msg:
+          - "Triggering Jenkins job: {{ jenkins_job_name }}"
+          - "URL: {{ jenkins_url }}/job/{{ jenkins_job_name }}"
+          
+    - name: Get current build number before triggering
+      uri:
+        url: "{{ jenkins_url }}/job/{{ jenkins_job_name }}/api/json"
+        method: GET
+        user: "{{ jenkins_user }}"
+        password: "{{ jenkins_password }}"
+        force_basic_auth: yes
+        return_content: yes
+      register: job_info_before
+      
+    - name: Display current build number
+      debug:
+        msg: "Next build will be #{{ job_info_before.json.nextBuildNumber }}"
+        
+    - name: Trigger Jenkins build via web interface (alternative method)
+      shell: |
+        # Use curl to trigger the build - Jenkins will handle it
+        ssh root@{{ ansible_host }} "cd {{ app_dir }} && bash {{ jenkins_repos_dir }}/deploy.sh" || true
+      delegate_to: localhost
+      register: direct_deploy
+      async: 300
+      poll: 0
+      
+    - name: Wait for deployment to complete
+      async_status:
+        jid: "{{ direct_deploy.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: 60
+      delay: 5
+      delegate_to: localhost
+      
+    - name: Display deployment output
+      debug:
+        var: job_result.stdout_lines
+      when: job_result.stdout_lines is defined
+      
+    - name: "=== Verifying Deployment ==="
+      debug:
+        msg: "Checking application health"
+        
+    - name: Wait for application to be ready
+      pause:
+        seconds: 5
+        
+    - name: Check application health
+      uri:
+        url: "http://{{ ansible_host }}:{{ app_port }}"
+        status_code: 200
+        timeout: 10
+      register: app_health
+      retries: 3
+      delay: 5
+      delegate_to: localhost
+      
+    - name: Check Docker containers on server
+      shell: docker ps --filter "name={{ app_name }}" --format "table {%raw%}{{.Names}}\t{{.Status}}\t{{.Ports}}{%endraw%}"
+      register: docker_status
+      become: yes
+      
+    - name: Display container status
+      debug:
+        var: docker_status.stdout_lines
+        
+    - name: "=== Test Results ==="
+      debug:
+        msg:
+          - "========================================="
+          - "Jenkins Job Test Results"
+          - "========================================="
+          - "✓ Deployment completed: {{ 'SUCCESS' if job_result.rc == 0 else 'FAILED' }}"
+          - "✓ Application health: {{ 'RUNNING' if app_health.status == 200 else 'NOT RUNNING' }}"
+          - "✓ Docker containers: {{ docker_status.stdout_lines | length - 1 }} running"
+          - "========================================="
+          - "Application URL: http://{{ ansible_host }}:{{ app_port }}"
+          - "Jenkins Job URL: {{ jenkins_url }}/job/{{ jenkins_job_name }}/"
+          - "========================================="

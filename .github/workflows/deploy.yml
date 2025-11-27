@@ -1,0 +1,142 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: false
+        default: 'main'
+
+jobs:
+  trigger-jenkins:
+    name: Trigger Jenkins Deployment
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Get commit information
+        id: commit_info
+        run: |
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "commit_msg=$(git log -1 --pretty=%B | head -n 1)" >> $GITHUB_OUTPUT
+          echo "author=$(git log -1 --pretty=%an)" >> $GITHUB_OUTPUT
+          
+      - name: Trigger Jenkins Job
+        env:
+          JENKINS_URL: ${{ secrets.JENKINS_URL }}
+          JENKINS_USER: ${{ secrets.JENKINS_USER }}
+          JENKINS_TOKEN: ${{ secrets.JENKINS_TOKEN }}
+          JENKINS_JOB_NAME: ${{ secrets.JENKINS_JOB_NAME }}
+          GIT_BRANCH: ${{ github.event.inputs.branch || 'main' }}
+        run: |
+          echo "Triggering Jenkins job: ${JENKINS_JOB_NAME}"
+          echo "Branch: ${GIT_BRANCH}"
+          echo "Commit: ${{ steps.commit_info.outputs.sha_short }} - ${{ steps.commit_info.outputs.commit_msg }}"
+          
+          # Trigger Jenkins job with parameters
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${JENKINS_URL}/job/${JENKINS_JOB_NAME}/buildWithParameters" \
+            --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
+            --data-urlencode "GIT_BRANCH=${GIT_BRANCH}" \
+            --data-urlencode "GITHUB_SHA=${{ github.sha }}" \
+            --data-urlencode "GITHUB_ACTOR=${{ github.actor }}")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+          
+          if [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "200" ]; then
+            echo "✓ Jenkins job triggered successfully (HTTP ${HTTP_CODE})"
+          else
+            echo "✗ Failed to trigger Jenkins job (HTTP ${HTTP_CODE})"
+            echo "$RESPONSE"
+            exit 1
+          fi
+          
+      - name: Wait for Jenkins job to start
+        env:
+          JENKINS_URL: ${{ secrets.JENKINS_URL }}
+          JENKINS_USER: ${{ secrets.JENKINS_USER }}
+          JENKINS_TOKEN: ${{ secrets.JENKINS_TOKEN }}
+          JENKINS_JOB_NAME: ${{ secrets.JENKINS_JOB_NAME }}
+        run: |
+          echo "Waiting for Jenkins job to start..."
+          sleep 10
+          
+          # Get last build number
+          BUILD_INFO=$(curl -s \
+            "${JENKINS_URL}/job/${JENKINS_JOB_NAME}/lastBuild/api/json" \
+            --user "${JENKINS_USER}:${JENKINS_TOKEN}")
+          
+          BUILD_NUMBER=$(echo "$BUILD_INFO" | grep -o '"number":[0-9]*' | head -1 | cut -d':' -f2)
+          BUILD_URL=$(echo "$BUILD_INFO" | grep -o '"url":"[^"]*"' | head -1 | cut -d'"' -f4)
+          
+          echo "Build Number: ${BUILD_NUMBER}"
+          echo "Build URL: ${BUILD_URL}"
+          echo "build_url=${BUILD_URL}" >> $GITHUB_ENV
+          
+      - name: Monitor Jenkins job status
+        env:
+          JENKINS_URL: ${{ secrets.JENKINS_URL }}
+          JENKINS_USER: ${{ secrets.JENKINS_USER }}
+          JENKINS_TOKEN: ${{ secrets.JENKINS_TOKEN }}
+          JENKINS_JOB_NAME: ${{ secrets.JENKINS_JOB_NAME }}
+        run: |
+          echo "Monitoring Jenkins job status..."
+          MAX_WAIT=300  # 5 minutes
+          WAIT_TIME=0
+          
+          while [ $WAIT_TIME -lt $MAX_WAIT ]; do
+            BUILD_STATUS=$(curl -s \
+              "${JENKINS_URL}/job/${JENKINS_JOB_NAME}/lastBuild/api/json" \
+              --user "${JENKINS_USER}:${JENKINS_TOKEN}" | \
+              grep -o '"building":[a-z]*' | cut -d':' -f2)
+            
+            if [ "$BUILD_STATUS" = "false" ]; then
+              echo "Build completed"
+              break
+            fi
+            
+            echo "Build in progress... (${WAIT_TIME}s)"
+            sleep 10
+            WAIT_TIME=$((WAIT_TIME + 10))
+          done
+          
+          if [ $WAIT_TIME -ge $MAX_WAIT ]; then
+            echo "⚠ Build timeout - check Jenkins for status"
+          fi
+          
+      - name: Get Jenkins build result
+        env:
+          JENKINS_URL: ${{ secrets.JENKINS_URL }}
+          JENKINS_USER: ${{ secrets.JENKINS_USER }}
+          JENKINS_TOKEN: ${{ secrets.JENKINS_TOKEN }}
+          JENKINS_JOB_NAME: ${{ secrets.JENKINS_JOB_NAME }}
+        run: |
+          BUILD_RESULT=$(curl -s \
+            "${JENKINS_URL}/job/${JENKINS_JOB_NAME}/lastBuild/api/json" \
+            --user "${JENKINS_USER}:${JENKINS_TOKEN}" | \
+            grep -o '"result":"[^"]*"' | head -1 | cut -d'"' -f4)
+          
+          echo "Build Result: ${BUILD_RESULT}"
+          
+          if [ "$BUILD_RESULT" = "SUCCESS" ]; then
+            echo "✓ Deployment successful!"
+            exit 0
+          elif [ "$BUILD_RESULT" = "FAILURE" ]; then
+            echo "✗ Deployment failed!"
+            exit 1
+          else
+            echo "⚠ Build status: ${BUILD_RESULT}"
+            exit 1
+          fi
+          
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Deployment failed. Check Jenkins logs at ${build_url}"
+          echo "Commit: ${{ steps.commit_info.outputs.sha_short }} by ${{ steps.commit_info.outputs.author }}"

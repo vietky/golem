@@ -1,0 +1,218 @@
+---
+# Ansible Playbook to Setup Jenkins Job for Golem Century Deployment
+# This playbook creates a Jenkins job that runs the deploy script
+#
+# Prerequisites:
+#   - Jenkins is running on the target server
+#   - python-jenkins module is installed (pip install python-jenkins)
+#
+# Usage:
+#   ansible-playbook -i ansible/inventory.ini ansible/setup-jenkins-job.yml
+
+- name: Setup Jenkins Job for Golem Century Deployment
+  hosts: deployment_servers
+  become: yes
+  
+  vars:
+    jenkins_job_name: golem-century-deploy
+    jenkins_job_config: /tmp/golem-jenkins-job.xml
+    
+  tasks:
+    - name: Ensure Java is installed (required for Jenkins CLI)
+      apt:
+        name:
+          - default-jre-headless
+        state: present
+      when: ansible_os_family == "Debian"
+      
+    - name: Ensure Jenkins home directory exists
+      file:
+        path: "{{ jenkins_home }}"
+        state: directory
+        mode: '0755'
+        
+    - name: Create Jenkins job configuration file
+      copy:
+        dest: "{{ jenkins_job_config }}"
+        content: |
+          <?xml version='1.1' encoding='UTF-8'?>
+          <project>
+            <description>Automated deployment job for Golem Century application</description>
+            <keepDependencies>false</keepDependencies>
+            <properties>
+              <hudson.model.ParametersDefinitionProperty>
+                <parameterDefinitions>
+                  <hudson.model.StringParameterDefinition>
+                    <name>GIT_BRANCH</name>
+                    <defaultValue>main</defaultValue>
+                    <trim>true</trim>
+                  </hudson.model.StringParameterDefinition>
+                  <hudson.model.StringParameterDefinition>
+                    <name>APP_DIR</name>
+                    <defaultValue>{{ app_dir }}</defaultValue>
+                    <trim>true</trim>
+                  </hudson.model.StringParameterDefinition>
+                </parameterDefinitions>
+              </hudson.model.ParametersDefinitionProperty>
+            </properties>
+            <scm class="hudson.scm.NullSCM"/>
+            <canRoam>true</canRoam>
+            <disabled>false</disabled>
+            <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+            <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+            <triggers>
+              <hudson.triggers.SCMTrigger>
+                <spec></spec>
+                <ignorePostCommitHooks>false</ignorePostCommitHooks>
+              </hudson.triggers.SCMTrigger>
+            </triggers>
+            <concurrentBuild>false</concurrentBuild>
+            <builders>
+              <hudson.tasks.Shell>
+                <command>#!/bin/bash
+          set -e
+          
+          # Export environment variables
+          export APP_NAME="{{ app_name }}"
+          export APP_DIR="${APP_DIR:-{{ app_dir }}}"
+          export APP_PORT="{{ app_port }}"
+          export GIT_REPO="{{ git_repo }}"
+          export GIT_BRANCH="${GIT_BRANCH:-main}"
+          
+          # Copy deploy script to workspace
+          cp {{ jenkins_repos_dir }}/golem/deploy.sh /tmp/deploy-${BUILD_NUMBER}.sh
+          chmod +x /tmp/deploy-${BUILD_NUMBER}.sh
+          
+          # Run deployment
+          /tmp/deploy-${BUILD_NUMBER}.sh
+          
+          # Cleanup
+          rm -f /tmp/deploy-${BUILD_NUMBER}.sh
+                </command>
+              </hudson.tasks.Shell>
+            </builders>
+            <publishers/>
+            <buildWrappers/>
+          </project>
+        mode: '0644'
+        
+    - name: Copy deploy script to Jenkins repos directory
+      copy:
+        src: ../scripts/deploy.sh
+        dest: "{{ jenkins_repos_dir }}/golem-deploy.sh"
+        mode: '0755'
+        
+    - name: Install Jenkins CLI
+      get_url:
+        url: "{{ jenkins_url }}/jnlpJars/jenkins-cli.jar"
+        dest: /tmp/jenkins-cli.jar
+        mode: '0644'
+      register: jenkins_cli_download
+      retries: 3
+      delay: 5
+      until: jenkins_cli_download is succeeded
+      ignore_errors: yes
+      
+    - name: Create Jenkins job using CLI
+      shell: |
+        java -jar /tmp/jenkins-cli.jar -s {{ jenkins_url }} \
+          -auth {{ jenkins_user }}:{{ jenkins_password }} \
+          create-job {{ jenkins_job_name }} < {{ jenkins_job_config }}
+      register: create_job_result
+      failed_when: 
+        - create_job_result.rc != 0
+        - "'already exists' not in create_job_result.stderr"
+      changed_when: create_job_result.rc == 0
+      ignore_errors: yes
+      
+    - name: Update existing Jenkins job if creation failed
+      shell: |
+        java -jar /tmp/jenkins-cli.jar -s {{ jenkins_url }} \
+          -auth {{ jenkins_user }}:{{ jenkins_password }} \
+          update-job {{ jenkins_job_name }} < {{ jenkins_job_config }}
+      when: create_job_result.rc != 0
+      ignore_errors: yes
+      
+    - name: Alternative - Create job directory manually
+      block:
+        - name: Create job directory
+          file:
+            path: "{{ jenkins_home }}/jobs/{{ jenkins_job_name }}"
+            state: directory
+            mode: '0755'
+            
+        - name: Copy job configuration
+          copy:
+            src: "{{ jenkins_job_config }}"
+            dest: "{{ jenkins_home }}/jobs/{{ jenkins_job_name }}/config.xml"
+            mode: '0644'
+            
+        - name: Reload Jenkins configuration
+          uri:
+            url: "{{ jenkins_url }}/reload"
+            method: POST
+            user: "{{ jenkins_user }}"
+            password: "{{ jenkins_password }}"
+            force_basic_auth: yes
+            status_code: [200, 302]
+          ignore_errors: yes
+      when: jenkins_cli_download is failed
+      
+    - name: Get Jenkins crumb for API calls
+      uri:
+        url: "{{ jenkins_url }}/crumbIssuer/api/json"
+        method: GET
+        user: "{{ jenkins_user }}"
+        password: "{{ jenkins_password }}"
+        force_basic_auth: yes
+        return_content: yes
+      register: jenkins_crumb
+      ignore_errors: yes
+      
+    - name: Create authentication token for GitHub webhook
+      uri:
+        url: "{{ jenkins_url }}/me/descriptorByName/jenkins.security.ApiTokenProperty/generateNewToken"
+        method: POST
+        user: "{{ jenkins_user }}"
+        password: "{{ jenkins_password }}"
+        force_basic_auth: yes
+        body: "newTokenName=github-webhook-token"
+        headers:
+          Jenkins-Crumb: "{{ jenkins_crumb.json.crumb | default('') }}"
+        status_code: [200, 201]
+      register: jenkins_token
+      ignore_errors: yes
+      when: jenkins_crumb is succeeded
+      
+    - name: Display Jenkins job information
+      debug:
+        msg: 
+          - "Jenkins job '{{ jenkins_job_name }}' has been configured"
+          - "Job URL: {{ jenkins_url }}/job/{{ jenkins_job_name }}"
+          - "Trigger URL: {{ jenkins_url }}/job/{{ jenkins_job_name }}/build"
+          - "With parameters: {{ jenkins_url }}/job/{{ jenkins_job_name }}/buildWithParameters?GIT_BRANCH=main"
+          
+    - name: Save job trigger information
+      copy:
+        dest: /tmp/jenkins-job-info.txt
+        content: |
+          Jenkins Job Configuration
+          =========================
+          Job Name: {{ jenkins_job_name }}
+          Job URL: {{ jenkins_url }}/job/{{ jenkins_job_name }}
+          
+          Trigger Job (no parameters):
+          curl -X POST {{ jenkins_url }}/job/{{ jenkins_job_name }}/build \
+            --user {{ jenkins_user }}:{{ jenkins_password }}
+          
+          Trigger Job (with parameters):
+          curl -X POST "{{ jenkins_url }}/job/{{ jenkins_job_name }}/buildWithParameters?GIT_BRANCH=main" \
+            --user {{ jenkins_user }}:{{ jenkins_password }}
+          
+          GitHub Webhook URL:
+          {{ jenkins_url }}/job/{{ jenkins_job_name }}/build?token=YOUR_TOKEN
+        mode: '0644'
+        
+    - name: Display saved information location
+      debug:
+        msg: "Job trigger information saved to /tmp/jenkins-job-info.txt"

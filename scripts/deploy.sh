@@ -2,19 +2,20 @@
 #
 # Deployment script for Golem Century
 # This script handles git pull and docker-compose deployment
+# Can be used by both Jenkins and Ansible
 #
 
 set -e
 
 # Default values
 APP_NAME="${APP_NAME:-golem-century}"
-APP_DIR="${APP_DIR:-/opt/golem-century}"
+APP_DIR="${APP_DIR:-/opt/jenkins/repos/golem}"
 APP_PORT="${APP_PORT:-8081}"
 GIT_REPO="${GIT_REPO:-https://github.com/vietky/golem.git}"
 GIT_BRANCH="${GIT_BRANCH:-main}"
 
 # Logging
-LOG_DIR="${APP_DIR}/logs"
+LOG_DIR="${LOG_DIR:-/var/log/golem-deploy}"
 LOG_FILE="${LOG_DIR}/deploy-$(date +%Y%m%d-%H%M%S).log"
 
 # Colors for output
