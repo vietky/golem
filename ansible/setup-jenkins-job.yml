@@ -16,6 +16,7 @@
   vars:
     jenkins_job_name: golem-century-deploy
     jenkins_job_config: /tmp/golem-jenkins-job.xml
+    deploy_script_path: "{{ jenkins_home }}/scripts/deploy.sh"
     
   tasks:
     - name: Ensure Java is installed (required for Jenkins CLI)
@@ -25,10 +26,28 @@
         state: present
       when: ansible_os_family == "Debian"
       
-    - name: Ensure Jenkins home directory exists
+    - name: Ensure Jenkins directories exist
       file:
-        path: "{{ jenkins_home }}"
+        path: "{{ item }}"
         state: directory
+        mode: '0755'
+      loop:
+        - "{{ jenkins_home }}"
+        - "{{ jenkins_home }}/scripts"
+        - "{{ jenkins_repos_dir }}"
+        
+    - name: Clone or update Git repository
+      git:
+        repo: "{{ git_repo }}"
+        dest: "{{ app_dir }}"
+        version: "{{ git_branch }}"
+        force: yes
+      ignore_errors: yes
+      
+    - name: Copy deploy script to Jenkins scripts directory
+      copy:
+        src: ../scripts/deploy.sh
+        dest: "{{ deploy_script_path }}"
         mode: '0755'
         
     - name: Create Jenkins job configuration file
@@ -79,15 +98,21 @@
           export GIT_REPO="{{ git_repo }}"
           export GIT_BRANCH="${GIT_BRANCH:-main}"
           
-          # Copy deploy script to workspace
-          cp {{ jenkins_repos_dir }}/golem/deploy.sh /tmp/deploy-${BUILD_NUMBER}.sh
-          chmod +x /tmp/deploy-${BUILD_NUMBER}.sh
+          # Check if deploy script exists in repo, otherwise use Jenkins copy
+          if [ -f "{{ app_dir }}/scripts/deploy.sh" ]; then
+            DEPLOY_SCRIPT="{{ app_dir }}/scripts/deploy.sh"
+          elif [ -f "{{ deploy_script_path }}" ]; then
+            DEPLOY_SCRIPT="{{ deploy_script_path }}"
+          else
+            echo "ERROR: Deploy script not found!"
+            exit 1
+          fi
+          
+          echo "Using deploy script: ${DEPLOY_SCRIPT}"
+          chmod +x "${DEPLOY_SCRIPT}"
           
           # Run deployment
-          /tmp/deploy-${BUILD_NUMBER}.sh
-          
-          # Cleanup
-          rm -f /tmp/deploy-${BUILD_NUMBER}.sh
+          "${DEPLOY_SCRIPT}"
                 </command>
               </hudson.tasks.Shell>
             </builders>
@@ -96,11 +121,14 @@
           </project>
         mode: '0644'
         
-    - name: Copy deploy script to Jenkins repos directory
-      copy:
-        src: ../scripts/deploy.sh
-        dest: "{{ jenkins_repos_dir }}/golem-deploy.sh"
-        mode: '0755'
+    - name: Verify deploy script was copied
+      stat:
+        path: "{{ deploy_script_path }}"
+      register: deploy_script_stat
+      
+    - name: Display deploy script status
+      debug:
+        msg: "Deploy script exists at {{ deploy_script_path }}: {{ deploy_script_stat.stat.exists }}"
         
     - name: Install Jenkins CLI
       get_url:

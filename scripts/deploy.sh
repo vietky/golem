@@ -50,9 +50,16 @@ if ! command -v docker &> /dev/null; then
     error "Docker is not installed. Please install Docker first."
 fi
 
-# Check if docker-compose is installed
-if ! command -v docker-compose &> /dev/null; then
-    error "docker-compose is not installed. Please install docker-compose first."
+# Check if docker-compose is installed (v1 or v2)
+DOCKER_COMPOSE_CMD=""
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker-compose"
+    log "Using Docker Compose v1 (docker-compose)"
+elif docker compose version &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker compose"
+    log "Using Docker Compose v2 (docker compose)"
+else
+    error "Docker Compose is not installed. Please install docker-compose or docker compose plugin."
 fi
 
 # Create application directory if it doesn't exist
@@ -82,11 +89,11 @@ fi
 
 # Stop existing containers
 log "Stopping existing containers..."
-docker-compose down || warning "No existing containers to stop"
+$DOCKER_COMPOSE_CMD down || warning "No existing containers to stop"
 
 # Build and start containers
 log "Building and starting containers..."
-if docker-compose up -d --build; then
+if $DOCKER_COMPOSE_CMD up -d --build; then
     log "✓ Containers started successfully"
 else
     error "Failed to start containers"
@@ -100,7 +107,7 @@ if docker ps --filter "name=${APP_NAME}-server" --format "{{.Status}}" | grep -q
     log "✓ Container is running"
     log "Application should be available at: http://localhost:${APP_PORT}"
 else
-    error "Container failed to start. Check logs with: docker-compose logs"
+    error "Container failed to start. Check logs with: $DOCKER_COMPOSE_CMD logs"
 fi
 
 # Show container status
