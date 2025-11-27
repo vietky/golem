@@ -12,6 +12,8 @@
     jenkins_job_name: "golem-century-deploy"
     jenkins_user: "{{ lookup('env', 'JENKINS_USER') | default('admin', true) }}"
     jenkins_token: "{{ lookup('env', 'JENKINS_TOKEN') | default('', true) }}"
+    jenkins_home: /opt/jenkins
+    jenkins_repos_dir: /opt/jenkins/repos
     
   tasks:
     - name: Check if Jenkins is accessible
