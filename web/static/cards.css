@@ -181,7 +181,7 @@ body, .card, button, a {
             inset 0 0 30px rgba(176, 224, 230, 0.3),
             inset 0 -10px 40px rgba(135, 206, 250, 0.2);
         filter: brightness(1.1) contrast(1.05) hue-rotate(0deg);
-    }
+}
     33% {
         box-shadow: 
             0 12px 24px rgba(0,0,0,0.2),
@@ -896,7 +896,7 @@ body, .card, button, a {
 
 .card.point-card:hover .card-image {
     filter: drop-shadow(0 6px 12px rgba(0,0,0,0.3)) drop-shadow(0 0 15px rgba(255, 193, 7, 0.4));
-}
+    }
 
 /* Legacy character illustration support (for backward compatibility) */
 .character-illustration {

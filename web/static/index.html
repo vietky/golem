@@ -72,55 +72,80 @@
 
         <!-- Game Screen -->
         <div id="game" class="screen hidden">
-            <div class="game-header">
-                <h2>Century: Golem Edition</h2>
-                <div class="game-info">
-                    <span>Round: <span id="round">1</span></span>
-                    <span>Turn: <span id="turn">1</span></span>
-                    <span id="currentPlayerName"></span>
+            <!-- Top Progress Bar -->
+            <div class="game-top-bar">
+                <div class="progress-indicator">
+                    <div class="progress-circle">
+                        <span class="progress-text"><span id="round">1</span>/<span id="maxRounds">10</span></span>
+                        <svg class="progress-ring" width="80" height="80">
+                            <circle class="progress-ring-circle" cx="40" cy="40" r="35" fill="transparent" stroke="rgba(255,255,255,0.3)" stroke-width="4"/>
+                            <circle class="progress-ring-progress" cx="40" cy="40" r="35" fill="transparent" stroke="#fff" stroke-width="4" stroke-dasharray="220" stroke-dashoffset="198"/>
+                        </svg>
+                    </div>
+                    <span class="progress-label">Round</span>
+                </div>
+                <div class="turn-indicator">
+                    <div class="turn-circle">
+                        <span class="turn-text"><span id="turn">1</span></span>
+                        <span class="turn-label">Turn</span>
+                    </div>
+                </div>
+                <div class="game-title">
+                    <h2>Century: Golem Edition</h2>
+                    <div id="currentPlayerName" class="current-player-name"></div>
+                </div>
+                <div class="top-actions">
+                    <button class="icon-btn settings-btn" title="Settings">⚙️</button>
+                    <button class="icon-btn exit-btn" title="Exit">✕</button>
                 </div>
             </div>
 
-            <div class="game-container">
-                <!-- Players Panel -->
-                <div class="players-panel">
-                    <h3>Players</h3>
-                    <div id="playersList"></div>
-                </div>
-
-                <!-- Main Game Area -->
-                <div class="main-area">
-                    <!-- Market -->
-                    <div class="market-section">
-                        <h3>Market</h3>
-                        <div class="market-cards">
-                            <div class="market-group">
-                                <h4>Action Cards</h4>
-                                <div id="actionCards" class="cards-grid"></div>
-                            </div>
-                            <div class="market-group">
-                                <h4>Point Cards</h4>
-                                <div id="pointCards" class="cards-grid"></div>
-                            </div>
-                        </div>
+            <div class="game-container-vertical">
+                <!-- Main Content Area (Center) -->
+                <div class="main-content-area">
+                    <!-- Players Section (Top Center) -->
+                    <div class="players-section-top">
+                        <div id="playersList" class="players-list-horizontal"></div>
                     </div>
 
-                    <!-- Player Hand -->
-                    <div class="hand-section">
-                        <h3>Your Hand</h3>
-                        <div id="playerHand" class="cards-grid"></div>
-                        <div class="hand-actions">
-                            <button id="restBtn" class="btn btn-action">Rest</button>
+                    <!-- Market Section -->
+                    <div class="market-section-vertical">
+                        <div class="section-title">
+                            <h3>Market</h3>
+                            <h4>Action Cards</h4>
+                        </div>
+                        <div id="actionCards" class="cards-list-vertical"></div>
+                    </div>
+
+                    <!-- Point Cards Section -->
+                    <div class="point-cards-section">
+                        <div class="section-title">
+                            <h4>Point Cards</h4>
+                        </div>
+                        <div id="pointCards" class="cards-list-vertical"></div>
+                    </div>
+
+                    <!-- Player Hand Section -->
+                    <div class="hand-section-vertical">
+                        <div class="section-title">
+                            <h3>Your Hand</h3>
+                        </div>
+                        <div id="playerHand" class="cards-list-vertical"></div>
+                        <div class="hand-actions-vertical">
+                            <button id="restBtn" class="btn-action-vertical">Rest</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Player Resources -->
-                <div class="resources-panel">
-                    <h3>Your Resources</h3>
-                    <div id="playerResources" class="resources"></div>
-                    <div class="points">
-                        <strong>Points: <span id="playerPoints">0</span></strong>
+                <!-- Right Sidebar - Resources -->
+                <div class="resources-sidebar-right">
+                    <div class="resources-panel-vertical">
+                        <h3>Your Resources</h3>
+                        <div id="playerResources" class="resources-vertical"></div>
+                        <div class="points-vertical">
+                            <div class="points-value"><span id="playerPoints">0</span></div>
+                            <div class="points-label">Points</div>
+                        </div>
                     </div>
                 </div>
             </div>

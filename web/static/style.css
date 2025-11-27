@@ -6,7 +6,11 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: url('images/background.webp') center center / cover no-repeat fixed;
+    background-image: url('images/background.jpg');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     background-color: #667eea; /* Fallback color */
     min-height: 100vh;
     padding: 20px;
@@ -253,58 +257,129 @@ body {
     color: #667eea;
 }
 
-.player-card {
-    background: white;
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    border-left: 4px solid #667eea;
+/* Modern Player Card */
+.player-card-modern {
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    padding: 15px;
+    border-radius: 15px;
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s;
+    border: 2px solid rgba(255,255,255,0.2);
 }
 
-.player-avatar {
-    width: 60px;
-    height: 60px;
+.player-card-modern:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    border-color: rgba(255,255,255,0.4);
+}
+
+.player-card-modern.current-turn {
+    border-color: rgba(40, 167, 69, 0.6);
+    box-shadow: 0 0 20px rgba(40, 167, 69, 0.4);
+    background: rgba(40, 167, 69, 0.2);
+}
+
+.player-avatar-modern {
+    width: 70px;
+    height: 70px;
     border-radius: 50%;
     overflow: hidden;
-    margin-bottom: 8px;
-    border: 3px solid #667eea;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    margin-bottom: 10px;
+    border: 3px solid rgba(255,255,255,0.5);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    position: relative;
+    transition: all 0.3s;
 }
 
-.player-avatar img {
+.player-card-modern.current-turn .player-avatar-modern {
+    border-color: rgba(40, 167, 69, 0.8);
+    box-shadow: 0 0 20px rgba(40, 167, 69, 0.6);
+    transform: scale(1.1);
+}
+
+.player-avatar-modern img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.player-card.current-turn .player-avatar {
-    border-color: #28a745;
-    box-shadow: 0 0 12px rgba(40, 167, 69, 0.5);
-}
-
-.player-card.current-turn {
-    border-left-color: #28a745;
-    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
-}
-
-.player-card h4 {
-    margin-bottom: 5px;
-    color: #333;
-}
-
-.player-resources {
-    font-size: 12px;
-    color: #666;
-    margin-bottom: 5px;
-}
-
-.player-points {
+.turn-badge {
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #28a745;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 9px;
     font-weight: bold;
-    color: #667eea;
+    text-transform: uppercase;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.player-info-modern {
+    width: 100%;
+}
+
+.player-info-modern h4 {
+    margin: 0 0 10px 0;
+    color: white;
+    font-size: 14px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.player-stats-modern {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 10px;
+    gap: 10px;
+}
+
+.stat-item {
+    flex: 1;
+    background: rgba(255,255,255,0.1);
+    padding: 8px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stat-value {
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.stat-label {
+    font-size: 10px;
+    color: rgba(255,255,255,0.8);
+    text-transform: uppercase;
+    margin-top: 2px;
+}
+
+.player-resources-modern {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.player-resources-modern .crystal-group {
+    justify-content: center;
+}
+
+/* Legacy player card styles (hidden) */
+.player-card {
+    display: none;
 }
 
 /* Main Area */
@@ -718,5 +793,345 @@ body {
         font-size: 11px;
         padding: 10px;
     }
+}
+
+/* ============================================
+   VERTICAL LAYOUT STYLES (New Design)
+   ============================================ */
+
+/* Vertical Game Container */
+.game-container-vertical {
+    display: grid;
+    grid-template-columns: 1fr 250px;
+    gap: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.main-content-area {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    background: rgba(255,255,255,0.95);
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+/* Players Section Top */
+.players-section-top {
+    margin-bottom: 20px;
+}
+
+.players-list-horizontal {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.player-card-vertical {
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s;
+    border: 3px solid transparent;
+    min-width: 120px;
+}
+
+.player-card-vertical.current-turn {
+    border-color: #28a745;
+    background: #f0fff4;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.player-avatar-vertical {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-bottom: 10px;
+    border: 3px solid #ddd;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    position: relative;
+}
+
+.player-card-vertical.current-turn .player-avatar-vertical {
+    border-color: #28a745;
+    box-shadow: 0 0 15px rgba(40, 167, 69, 0.5);
+}
+
+.player-avatar-vertical img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.turn-badge-vertical {
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #28a745;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.player-name-vertical {
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.player-badges-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+}
+
+.badge-vertical {
+    background: #f0f0f0;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: bold;
+    color: #666;
+    text-transform: uppercase;
+}
+
+/* Market Section Vertical */
+.market-section-vertical,
+.point-cards-section {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid #e0e0e0;
+}
+
+.section-title h3 {
+    font-size: 18px;
+    color: #667eea;
+    margin: 0 0 5px 0;
+}
+
+.section-title h4 {
+    font-size: 14px;
+    color: #666;
+    margin: 0 0 15px 0;
+    font-weight: normal;
+}
+
+.cards-list-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.card-vertical {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s;
+    border: 2px solid transparent;
+    cursor: pointer;
+    position: relative;
+}
+
+.card-vertical:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    border-color: #667eea;
+}
+
+.card-vertical.playable {
+    border-color: #28a745;
+}
+
+.card-vertical.affordable {
+    border-color: #17a2b8;
+}
+
+.card-name-vertical {
+    font-size: 12px;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.card-wrapper-vertical {
+    position: relative;
+}
+
+.card-type-badge-vertical {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: bold;
+    text-transform: uppercase;
+    z-index: 10;
+    color: white;
+}
+
+.card-type-badge-vertical.produce {
+    background: #28a745;
+}
+
+.card-type-badge-vertical.upgrade {
+    background: #17a2b8;
+}
+
+.card-type-badge-vertical.trade {
+    background: #6f42c1;
+}
+
+.card-type-badge-vertical.points {
+    background: #ffc107;
+    color: #333;
+}
+
+.card-quantity-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 24px;
+    height: 24px;
+    background: #ff9800;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    z-index: 10;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.card-image-container-vertical {
+    width: 100%;
+    margin: 0 auto;
+}
+
+.card-image-container-vertical img,
+.card-image-container-vertical div {
+    width: 100%;
+    max-width: 200px;
+    height: auto;
+    border-radius: 8px;
+    display: block;
+    margin: 0 auto;
+}
+
+.card-points-value {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,193,7,0.9);
+    color: #333;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Hand Section Vertical */
+.hand-section-vertical {
+    background: #fff3cd;
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid #ffc107;
+}
+
+.hand-actions-vertical {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.btn-action-vertical {
+    background: linear-gradient(135deg, #ffc107, #ff9800);
+    color: #333;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(255,193,7,0.4);
+    transition: all 0.3s;
+    text-transform: uppercase;
+}
+
+.btn-action-vertical:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255,193,7,0.6);
+}
+
+/* Resources Sidebar Right */
+.resources-sidebar-right {
+    position: sticky;
+    top: 20px;
+    height: fit-content;
+}
+
+.resources-panel-vertical {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.resources-panel-vertical h3 {
+    font-size: 16px;
+    color: #667eea;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.resources-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.points-vertical {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.points-vertical .points-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.points-vertical .points-label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.9);
+    text-transform: uppercase;
+    margin-top: 5px;
 }
 

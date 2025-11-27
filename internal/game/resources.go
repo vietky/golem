@@ -166,4 +166,3 @@ func (r *Resources) String() string {
 	}
 	return strings.Join(parts, ", ")
 }
-

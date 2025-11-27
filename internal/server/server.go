@@ -27,6 +27,8 @@ type GameSession struct {
 	Connections   map[int]*websocket.Conn // Player ID -> WebSocket connection
 	PlayerNames   map[int]string          // Player ID -> Player name
 	PlayerAvatars map[int]string          // Player ID -> Avatar number
+	CreatedAt     time.Time               // When session was created
+	LastActivity  time.Time               // Last time someone was in the room
 	mu            sync.RWMutex
 	ActionChan    chan PlayerAction
 	BroadcastChan chan []byte
@@ -46,6 +48,7 @@ func NewGameSession(sessionID string, numPlayers int, seed int64) *GameSession {
 		AI:        nil, // No AI players
 	}
 
+	now := time.Now()
 	return &GameSession{
 		ID:            sessionID,
 		GameState:     gameState,
@@ -53,6 +56,8 @@ func NewGameSession(sessionID string, numPlayers int, seed int64) *GameSession {
 		Connections:   make(map[int]*websocket.Conn),
 		PlayerNames:   make(map[int]string),
 		PlayerAvatars: make(map[int]string),
+		CreatedAt:     now,
+		LastActivity:  now,
 		ActionChan:    make(chan PlayerAction, 10),
 		BroadcastChan: make(chan []byte, 100),
 	}
@@ -69,6 +74,7 @@ func (gs *GameSession) AddPlayer(playerID int, name string, avatar string, conn 
 		avatar = fmt.Sprintf("%d", playerID) // Default to player ID
 	}
 	gs.PlayerAvatars[playerID] = avatar
+	gs.LastActivity = time.Now() // Update activity time
 	// Player IDs are 1-indexed, array is 0-indexed
 	if playerID >= 1 && playerID <= len(gs.GameState.Players) {
 		gs.GameState.Players[playerID-1].Name = name
@@ -136,7 +142,48 @@ func (gs *GameServer) CreateSession(sessionID string, numPlayers int, seed int64
 	// Start game loop
 	go session.RunGameLoop()
 
+	// Start cleanup timer for empty rooms
+	go gs.startCleanupTimer(sessionID)
+
 	return session
+}
+
+// startCleanupTimer starts a timer to clean up empty rooms after 5 minutes
+func (gs *GameServer) startCleanupTimer(sessionID string) {
+	ticker := time.NewTicker(30 * time.Second) // Check every 30 seconds
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			session, exists := gs.GetSession(sessionID)
+			if !exists {
+				return // Session already deleted
+			}
+
+			session.mu.RLock()
+			hasPlayers := len(session.Connections) > 0
+			lastActivity := session.LastActivity
+			session.mu.RUnlock()
+
+			// If no players and last activity was more than 5 minutes ago, delete
+			if !hasPlayers {
+				timeSinceActivity := time.Since(lastActivity)
+				if timeSinceActivity >= 5*time.Minute {
+					log.Printf("Deleting empty room %s (inactive for %v)", sessionID, timeSinceActivity)
+					gs.mu.Lock()
+					delete(gs.Sessions, sessionID)
+					gs.mu.Unlock()
+					return
+				}
+			} else {
+				// Update last activity if players are present
+				session.mu.Lock()
+				session.LastActivity = time.Now()
+				session.mu.Unlock()
+			}
+		}
+	}
 }
 
 // GetSession retrieves a game session

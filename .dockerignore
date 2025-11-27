@@ -1,4 +1,4 @@
-# Git files
+# Git
 .git
 .gitignore
 .gitattributes
@@ -8,19 +8,28 @@ README.md
 *.md
 
 # Build artifacts
-game
 server
+game
 *.exe
 *.dll
 *.so
 *.dylib
 
-# IDE files
+# Development files
 .vscode
 .idea
 *.swp
 *.swo
 *~
+
+# Node modules (will be installed in container)
+web/react-frontend/node_modules
+web/react-frontend/dist
+web/react-frontend/.vite
+
+# Logs
+*.log
+/tmp
 
 # OS files
 .DS_Store
@@ -28,19 +37,12 @@ Thumbs.db
 
 # Test files
 *_test.go
-test/
-tests/
+test_*
 
-# Temporary files
-*.tmp
-*.log
-*.bak
+# Ansible (deployment scripts)
+ansible/
 
-# Docker files (don't copy into image)
-Dockerfile
+# Docker files (don't need in image)
 docker-compose.yml
+Dockerfile
 .dockerignore
-
-# Other
-manifest
-

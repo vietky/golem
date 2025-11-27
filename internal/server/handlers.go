@@ -242,3 +242,55 @@ func (gs *GameServer) HandleJoinSession(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
+
+// HandleListSessions lists all active game sessions
+func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request) {
+	gs.mu.RLock()
+	defer gs.mu.RUnlock()
+
+	sessions := make([]map[string]interface{}, 0)
+	for sessionID, session := range gs.Sessions {
+		session.mu.RLock()
+		connectedPlayers := len(session.Connections)
+		maxPlayers := len(session.GameState.Players)
+		isFull := connectedPlayers >= maxPlayers
+		isGameOver := session.GameState.GameOver
+		
+		// Get player names
+		playerNames := make([]string, 0)
+		for i := 1; i <= maxPlayers; i++ {
+			if name, exists := session.PlayerNames[i]; exists {
+				playerNames = append(playerNames, name)
+			}
+		}
+		
+		timeSinceActivity := time.Since(session.LastActivity)
+		timeUntilDelete := 5*time.Minute - timeSinceActivity
+		var timeUntilDeleteSeconds int64
+		if timeUntilDelete > 0 && connectedPlayers == 0 {
+			timeUntilDeleteSeconds = int64(timeUntilDelete.Seconds())
+		}
+		
+		session.mu.RUnlock()
+		
+		// Only show active, non-full, non-game-over sessions
+		if !isFull && !isGameOver {
+			sessions = append(sessions, map[string]interface{}{
+				"sessionID":        sessionID,
+				"numPlayers":       maxPlayers,
+				"connectedPlayers": connectedPlayers,
+				"players":          playerNames,
+				"status":           "open",
+				"timeUntilDelete":  timeUntilDeleteSeconds, // Seconds until auto-delete (only if empty)
+			})
+		}
+	}
+
+	response := map[string]interface{}{
+		"sessions": sessions,
+		"count":    len(sessions),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}

@@ -207,12 +207,27 @@ function updateUI() {
     if (!gameState) return;
     
     // Update game info
-    document.getElementById('round').textContent = gameState.round;
-    document.getElementById('turn').textContent = gameState.currentTurn + 1;
+    const roundEl = document.getElementById('round');
+    const turnEl = document.getElementById('turn');
+    const maxRoundsEl = document.getElementById('maxRounds');
+    
+    if (roundEl) roundEl.textContent = gameState.round;
+    if (turnEl) turnEl.textContent = gameState.currentTurn + 1;
+    if (maxRoundsEl) maxRoundsEl.textContent = '10'; // You can make this dynamic
+    
+    // Update progress ring
+    const progressRing = document.querySelector('.progress-ring-progress');
+    if (progressRing) {
+        const progress = (gameState.round / 10) * 100;
+        const circumference = 2 * Math.PI * 35;
+        const offset = circumference - (progress / 100) * circumference;
+        progressRing.style.strokeDashoffset = offset;
+    }
     
     const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
-    if (currentPlayer) {
-        document.getElementById('currentPlayerName').textContent = `Current Player: ${currentPlayer.name}`;
+    const currentPlayerNameEl = document.getElementById('currentPlayerName');
+    if (currentPlayer && currentPlayerNameEl) {
+        currentPlayerNameEl.textContent = currentPlayer.name;
     }
     
     // Update players list
@@ -235,32 +250,39 @@ function updateUI() {
 
 function updatePlayersList() {
     const container = document.getElementById('playersList');
+    if (!container) return;
+    
     container.innerHTML = '';
     
     gameState.players.forEach(player => {
-        const div = document.createElement('div');
-        div.className = 'player-card';
-        if (player.id === gameState.currentPlayer) {
-            div.classList.add('current-turn');
-        }
-        
-        // Get avatar number (default to player ID if not set)
-        const avatarNum = player.avatar || player.id || '1';
-        const avatarPath = `images/avatar/${avatarNum}.webp`;
-        
-        const resourcesHTML = formatResourcesHTML(player.resources);
-        div.innerHTML = `
-            <div class="player-avatar">
-                <img src="${avatarPath}" alt="${player.name}" onerror="this.src='images/avatar/1.webp'">
-            </div>
-            <h4>${player.name}</h4>
-            <div class="player-resources">
-                <div class="crystal-group">${resourcesHTML}</div>
-            </div>
-            <div class="player-points">Points: ${player.points} | Cards: ${player.pointCards.length}</div>
-        `;
+        const div = createPlayerCardElement(player);
         container.appendChild(div);
     });
+}
+
+function createPlayerCardElement(player) {
+    const div = document.createElement('div');
+    div.className = 'player-card-vertical';
+    if (player.id === gameState.currentPlayer) {
+        div.classList.add('current-turn');
+    }
+    
+    // Get avatar number (default to player ID if not set)
+    const avatarNum = player.avatar || player.id || '1';
+    const avatarPath = `images/avatar/${avatarNum}.webp`;
+    
+    div.innerHTML = `
+        <div class="player-avatar-vertical">
+            <img src="${avatarPath}" alt="${player.name}" onerror="this.src='images/avatar/1.webp'">
+            ${player.id === gameState.currentPlayer ? '<div class="turn-badge-vertical">TURN</div>' : ''}
+        </div>
+        <div class="player-name-vertical">${player.name}</div>
+        <div class="player-badges-vertical">
+            <span class="badge-vertical">${player.points} POINTS</span>
+            <span class="badge-vertical">${player.pointCards.length} CARDS</span>
+        </div>
+    `;
+    return div;
 }
 
 function updateMarket() {
@@ -285,39 +307,45 @@ function updateMarket() {
 
 function createCardElement(card, type, index, cost = null) {
     const div = document.createElement('div');
-    div.className = `card ${type}-card`;
+    div.className = `card-vertical ${type}-card`;
     div.dataset.index = index;
     div.dataset.type = type;
     
     let html = '';
     
-    // Card type badge
-    if (type === 'action' && card.actionType !== undefined) {
-        const actionTypes = ['produce', 'upgrade', 'trade'];
-        const actionType = actionTypes[card.actionType] || '';
-        html += `<div class="card-type-badge ${actionType}">${actionType}</div>`;
-    } else if (type === 'point') {
-        html += `<div class="card-type-badge points">Points</div>`;
-    }
-    
-    // Cost badge
-    if (cost && type === 'action') {
-        const costTotal = (cost.yellow || 0) + (cost.green || 0) + (cost.blue || 0) + (cost.pink || 0);
-        if (costTotal > 0) {
-            html += `<div class="card-cost">${formatResourcesHTML(cost)}</div>`;
-        }
-    }
-    
-    // Use Vietnamese name if available, otherwise use original name
+    // Use Vietnamese name if available
     const displayName = typeof getVietnameseCardName !== 'undefined' 
         ? getVietnameseCardName(card.name) 
         : card.name;
-    html += `<div class="card-header">${displayName}</div>`;
-    html += '<div class="card-body">';
     
-    // Add card image - images already show all input/output/requirements
+    // Card name above image
+    html += `<div class="card-name-vertical">${displayName}</div>`;
+    
+    // Card container
+    html += '<div class="card-wrapper-vertical">';
+    
+    // Card type badge (top left)
+    if (type === 'action' && card.actionType !== undefined) {
+        const actionTypes = ['produce', 'upgrade', 'trade'];
+        const actionType = actionTypes[card.actionType] || '';
+        html += `<div class="card-type-badge-vertical ${actionType}">${actionType.toUpperCase()}</div>`;
+    } else if (type === 'point') {
+        html += `<div class="card-type-badge-vertical points">POINTS</div>`;
+    }
+    
+    // Quantity badge (top right) - for market cards
+    if (type === 'action' || type === 'point') {
+        html += `<div class="card-quantity-badge">1</div>`;
+    }
+    
+    // Card image
     if (typeof getCardImage !== 'undefined' && card.name) {
-        html += `<div class="card-image-container">${getCardImage(card.name, 'card-image')}</div>`;
+        html += `<div class="card-image-container-vertical">${getCardImage(card.name, 'card-image-vertical')}</div>`;
+    }
+    
+    // Point value for point cards (bottom center)
+    if (type === 'point' && card.points !== undefined) {
+        html += `<div class="card-points-value">${card.points}</div>`;
     }
     
     html += '</div>';
@@ -355,7 +383,7 @@ function updatePlayerHand() {
     
     currentPlayer.hand.forEach((card, index) => {
         const cardDiv = document.createElement('div');
-        cardDiv.className = 'card action-card';
+        cardDiv.className = 'card-vertical action-card';
         if (gameState.currentPlayer === playerId) {
             cardDiv.classList.add('playable');
         }
@@ -364,23 +392,25 @@ function updatePlayerHand() {
         
         let html = '';
         
+        // Use Vietnamese name if available
+        const displayName = typeof getVietnameseCardName !== 'undefined' 
+            ? getVietnameseCardName(card.name) 
+            : card.name;
+        
+        // Card name above image
+        html += `<div class="card-name-vertical">${displayName}</div>`;
+        html += '<div class="card-wrapper-vertical">';
+        
         // Card type badge
         if (card.actionType !== undefined) {
             const actionTypes = ['produce', 'upgrade', 'trade'];
             const actionType = actionTypes[card.actionType] || '';
-            html += `<div class="card-type-badge ${actionType}">${actionType}</div>`;
+            html += `<div class="card-type-badge-vertical ${actionType}">${actionType.toUpperCase()}</div>`;
         }
         
-        // Use Vietnamese name if available, otherwise use original name
-        const displayName = typeof getVietnameseCardName !== 'undefined' 
-            ? getVietnameseCardName(card.name) 
-            : card.name;
-        html += `<div class="card-header">${displayName}</div>`;
-        html += '<div class="card-body">';
-        
-        // Add card image - images already show all input/output information
+        // Card image
         if (typeof getCardImage !== 'undefined' && card.name) {
-            html += `<div class="card-image-container">${getCardImage(card.name, 'card-image')}</div>`;
+            html += `<div class="card-image-container-vertical">${getCardImage(card.name, 'card-image-vertical')}</div>`;
         }
         
         html += '</div>';
