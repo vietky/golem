@@ -23,7 +23,124 @@
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>echo "Deploying {{ app_name }} from ${GIT_BRANCH} branch..." &amp;&amp; ssh -o StrictHostKeyChecking=no root@{{ ansible_host }} "cd {{ app_dir }}/scripts &amp;&amp; chmod +x deploy.sh &amp;&amp; ./deploy.sh" &amp;&amp; echo "Deployment completed successfully!"</command>
+      <command>#!/bin/bash
+set -e
+
+echo "Deploying {{ app_name }} from ${GIT_BRANCH} branch..."
+
+# SSH command that creates directory structure and deploy script if needed
+ssh -o StrictHostKeyChecking=no root@{{ ansible_host }} &lt;&lt;'DEPLOY_SCRIPT'
+set -e
+
+APP_NAME="{{ app_name }}"
+APP_DIR="{{ app_dir }}"
+APP_PORT="{{ app_port }}"
+GIT_REPO="{{ git_repo }}"
+GIT_BRANCH="${GIT_BRANCH:-{{ git_branch }}}"
+SCRIPTS_DIR="${APP_DIR}/scripts"
+LOG_DIR="${APP_DIR}/logs"
+LOG_FILE="${LOG_DIR}/deploy-$(date +%Y%m%d-%H%M%S).log"
+
+# Create directories
+mkdir -p "${SCRIPTS_DIR}"
+mkdir -p "${LOG_DIR}"
+
+# Create deploy.sh script if it doesn't exist
+if [ ! -f "${SCRIPTS_DIR}/deploy.sh" ]; then
+  cat &gt; "${SCRIPTS_DIR}/deploy.sh" &lt;&lt;'SCRIPT_EOF'
+#!/bin/bash
+set -e
+
+APP_NAME="${APP_NAME:-golem-century}"
+APP_DIR="${APP_DIR:-/opt/golem-century}"
+APP_PORT="${APP_PORT:-8081}"
+GIT_REPO="${GIT_REPO:-https://github.com/vietky/golem.git}"
+GIT_BRANCH="${GIT_BRANCH:-main}"
+LOG_DIR="${APP_DIR}/logs"
+LOG_FILE="${LOG_DIR}/deploy-$(date +%Y%m%d-%H%M%S).log"
+
+mkdir -p "${LOG_DIR}"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Starting deployment" | tee -a "${LOG_FILE}"
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Branch: ${GIT_BRANCH}" | tee -a "${LOG_FILE}"
+
+# Check Docker
+if ! command -v docker &gt;/dev/null 2&gt;&amp;1; then
+  echo "ERROR: Docker not installed" | tee -a "${LOG_FILE}"
+  exit 1
+fi
+
+if ! command -v docker-compose &gt;/dev/null 2&gt;&amp;1; then
+  echo "ERROR: docker-compose not installed" | tee -a "${LOG_FILE}"
+  exit 1
+fi
+
+# Create app directory
+mkdir -p "${APP_DIR}"
+cd "${APP_DIR}" || exit 1
+
+# Clone or pull repository
+if [ ! -d ".git" ]; then
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] Cloning repository..." | tee -a "${LOG_FILE}"
+  git clone -b "${GIT_BRANCH}" "${GIT_REPO}" .
+else
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] Pulling latest changes..." | tee -a "${LOG_FILE}"
+  git fetch origin
+  git checkout "${GIT_BRANCH}" 2&gt;/dev/null || git checkout -b "${GIT_BRANCH}" "origin/${GIT_BRANCH}" || true
+  git pull origin "${GIT_BRANCH}" || exit 1
+fi
+
+# Verify docker-compose.yml exists
+if [ ! -f "docker-compose.yml" ]; then
+  echo "ERROR: docker-compose.yml not found" | tee -a "${LOG_FILE}"
+  exit 1
+fi
+
+# Stop existing containers
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Stopping existing containers..." | tee -a "${LOG_FILE}"
+docker-compose down || true
+
+# Build and start
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Building and starting containers..." | tee -a "${LOG_FILE}"
+if docker-compose up -d --build; then
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✓ Containers started" | tee -a "${LOG_FILE}"
+else
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✗ Failed to start containers" | tee -a "${LOG_FILE}"
+  docker-compose logs | tee -a "${LOG_FILE}"
+  exit 1
+fi
+
+# Wait for containers
+sleep 5
+
+# Verify
+if docker ps --filter "name=${APP_NAME}-server" --format "{{.Status}}" | grep -q "Up"; then
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✓ Deployment successful" | tee -a "${LOG_FILE}"
+  docker ps --filter "name=${APP_NAME}-server" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | tee -a "${LOG_FILE}"
+else
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✗ Container not running" | tee -a "${LOG_FILE}"
+  docker-compose logs | tee -a "${LOG_FILE}"
+  exit 1
+fi
+
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Deployment completed" | tee -a "${LOG_FILE}"
+SCRIPT_EOF
+  chmod +x "${SCRIPTS_DIR}/deploy.sh"
+  echo "Created deploy.sh script"
+fi
+
+# Run deployment
+cd "${SCRIPTS_DIR}"
+export APP_NAME="${APP_NAME}"
+export APP_DIR="${APP_DIR}"
+export APP_PORT="${APP_PORT}"
+export GIT_REPO="${GIT_REPO}"
+export GIT_BRANCH="${GIT_BRANCH}"
+./deploy.sh
+
+DEPLOY_SCRIPT
+
+echo "Deployment completed successfully!"
+</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers/>
