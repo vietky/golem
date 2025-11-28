@@ -137,12 +137,13 @@ const UpgradeModal = ({ card, playerResources, onConfirm, onCancel, maxTurnUpgra
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.9 }}
-          className="bg-white rounded-2xl shadow-2xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          transition={{ type: "spring", duration: 0.5 }}
+          className="bg-white rounded-2xl shadow-2xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto"
         >
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Upgrade Crystals - {card?.name || "Upgrade Card"}</h2>
           <p className="text-sm text-gray-600 mb-6">
@@ -152,33 +153,31 @@ const UpgradeModal = ({ card, playerResources, onConfirm, onCancel, maxTurnUpgra
           {/* Input Section */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-700 mb-3">Input Crystals (Crystals you have)</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {crystalColors.map(({ key, name, level }) => (
-                <div key={key} className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <CrystalIcon color={key} count={0} size="md" />
-                      <div>
-                        <div className="font-semibold text-gray-700">{name}</div>
-                        <div className="text-xs text-gray-500">Level {level}</div>
-                      </div>
+                <div key={key} className="bg-gray-50 rounded-lg p-3 border-2 border-gray-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CrystalIcon color={key} count={0} size="md" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-700 text-sm">{name}</div>
+                      <div className="text-xs text-gray-500">Level {level}</div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Have: {availableResources[key] + inputResources[key]}</span>
-                    <div className="flex items-center gap-2">
+                  <div className="space-y-1">
+                    <div className="text-xs text-gray-600">Have: {availableResources[key] + inputResources[key]}</div>
+                    <div className="flex items-center justify-center gap-2">
                       <button
                         onClick={() => adjustInput(key, -1)}
                         disabled={inputResources[key] <= 0}
-                        className="w-8 h-8 rounded-full bg-red-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-red-600 transition"
+                        className="w-8 h-8 rounded-full bg-red-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-red-600 transition flex items-center justify-center"
                       >
                         -
                       </button>
-                      <span className="w-8 text-center font-bold text-gray-800">{inputResources[key]}</span>
+                      <span className="w-10 text-center font-bold text-gray-800 text-lg">{inputResources[key]}</span>
                       <button
                         onClick={() => adjustInput(key, 1)}
                         disabled={availableResources[key] <= 0}
-                        className="w-8 h-8 rounded-full bg-green-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-green-600 transition"
+                        className="w-8 h-8 rounded-full bg-green-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-green-600 transition flex items-center justify-center"
                       >
                         +
                       </button>
@@ -187,15 +186,15 @@ const UpgradeModal = ({ card, playerResources, onConfirm, onCancel, maxTurnUpgra
                 </div>
               ))}
             </div>
-            <div className="mt-2 text-sm text-gray-600">Total: {totalInput} crystals</div>
+            <div className="mt-3 text-sm font-semibold text-gray-700">Total: {totalInput} crystals</div>
           </div>
 
           {/* Arrow */}
-          <div className="flex justify-center my-4">
+          <div className="flex justify-center my-3">
             <motion.div
-              animate={{ y: [0, -5, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-              className="text-4xl text-gray-400"
+              animate={{ y: [0, 8, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+              className="text-5xl text-blue-400"
             >
               ↓
             </motion.div>
@@ -204,44 +203,40 @@ const UpgradeModal = ({ card, playerResources, onConfirm, onCancel, maxTurnUpgra
           {/* Output Section */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-700 mb-3">Output Crystals (Crystals you want to receive)</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {crystalColors.map(({ key, name, level }) => (
-                <div key={key} className="bg-blue-50 rounded-lg p-4 border-2 border-blue-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <CrystalIcon color={key} count={0} size="md" />
-                      <div>
-                        <div className="font-semibold text-gray-700">{name}</div>
-                        <div className="text-xs text-gray-500">Level {level}</div>
-                      </div>
+                <div key={key} className="bg-blue-50 rounded-lg p-3 border-2 border-blue-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CrystalIcon color={key} count={0} size="md" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-700 text-sm">{name}</div>
+                      <div className="text-xs text-gray-500">Level {level}</div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-center">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => adjustOutput(key, -1)}
-                        disabled={outputResources[key] <= 0}
-                        className="w-8 h-8 rounded-full bg-red-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-red-600 transition"
-                      >
-                        -
-                      </button>
-                      <span className="w-8 text-center font-bold text-gray-800">{outputResources[key]}</span>
-                      <button
-                        onClick={() => adjustOutput(key, 1)}
-                        disabled={totalOutput >= totalInput || totalInput === 0}
-                        className="w-8 h-8 rounded-full bg-green-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-green-600 transition"
-                      >
-                        +
-                      </button>
-                    </div>
+                  <div className="flex items-center justify-center gap-2 mt-2">
+                    <button
+                      onClick={() => adjustOutput(key, -1)}
+                      disabled={outputResources[key] <= 0}
+                      className="w-8 h-8 rounded-full bg-red-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-red-600 transition flex items-center justify-center"
+                    >
+                      -
+                    </button>
+                    <span className="w-10 text-center font-bold text-gray-800 text-lg">{outputResources[key]}</span>
+                    <button
+                      onClick={() => adjustOutput(key, 1)}
+                      disabled={totalOutput >= totalInput || totalInput === 0}
+                      className="w-8 h-8 rounded-full bg-green-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-green-600 transition flex items-center justify-center"
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-2 text-sm text-gray-600">Total: {totalOutput} crystals</div>
+            <div className="mt-3 text-sm font-semibold text-gray-700">Total: {totalOutput} crystals</div>
             {totalInput > 0 && totalInput === totalOutput && (
-              <div className="mt-2 text-sm text-green-600 font-semibold">
-                Upgrade: +
+              <div className="mt-2 text-sm text-green-600 font-bold bg-green-50 px-3 py-2 rounded-lg inline-block">
+                ⬆️ Upgrade: +
                 {outputResources.yellow * 1 +
                   outputResources.green * 2 +
                   outputResources.blue * 3 +
@@ -258,28 +253,28 @@ const UpgradeModal = ({ card, playerResources, onConfirm, onCancel, maxTurnUpgra
           {/* Error Message */}
           {error && (
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-red-100 border-2 border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-red-50 border-2 border-red-300 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm font-medium"
             >
-              {error}
+              ⚠️ {error}
             </motion.div>
           )}
 
           {/* Buttons */}
-          <div className="flex gap-4 justify-end">
+          <div className="flex gap-3 justify-end mt-6">
             <button
               onClick={onCancel}
-              className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-400 transition"
+              className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-all"
             >
               Cancel
             </button>
             <button
               onClick={handleConfirm}
               disabled={totalInput === 0 || totalInput !== totalOutput || error !== ""}
-              className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed hover:from-blue-600 hover:to-purple-600 transition"
+              className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:from-blue-600 hover:to-purple-600 transition-all shadow-lg hover:shadow-xl disabled:shadow-none"
             >
-              Confirm
+              Confirm Upgrade
             </button>
           </div>
         </motion.div>
