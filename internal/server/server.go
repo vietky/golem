@@ -264,7 +264,7 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 				"blue":   p.Resources.Blue,
 				"pink":   p.Resources.Pink,
 			},
-			"points":      p.Points,
+			"points":      p.GetPoints(),
 			"hand":        serializeCards(p.Hand),
 			"playedCards": serializeCards(p.PlayedCards),
 			"pointCards":  serializeCards(p.PointCards),
@@ -313,7 +313,7 @@ func (gs *GameSession) getWinnerInfo() map[string]interface{} {
 	return map[string]interface{}{
 		"id":     gs.GameState.Winner.ID,
 		"name":   gs.GameState.Winner.Name,
-		"points": gs.GameState.Winner.Points,
+		"points": gs.GameState.Winner.GetFinalPoints(),
 	}
 }
 

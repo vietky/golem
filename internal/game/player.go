@@ -33,17 +33,20 @@ func NewPlayer(id int, name string, isAI bool) *Player {
 }
 
 // GetPoints returns the player's points
-func (p *Player) GetFinalPoints() int {
-	finalPoints := 0
+func (p *Player) GetPoints() int {
+	totalPoints := 0
 	for _, pointCard := range p.PointCards {
-		finalPoints += pointCard.Points
+		totalPoints += pointCard.Points
 	}
 	for _, coin := range p.Coins {
-		finalPoints += coin.Points
+		totalPoints += coin.Points
 	}
-	finalPoints += p.Resources.GetFinalPoints()
+	return totalPoints
+}
 
-	return finalPoints
+// GetFinalPoints returns the player's final points when the game is over
+func (p *Player) GetFinalPoints() int {
+	return p.GetPoints() + p.Resources.GetFinalPoints()
 }
 
 // AddCard adds a card to the player's hand

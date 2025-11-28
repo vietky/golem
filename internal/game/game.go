@@ -129,7 +129,6 @@ func (gs *GameState) ExecuteAction(action Action) error {
 		// check bonus coin if player has claimed point card
 		if action.CardIndex <= 1 && gs.Market.Coins[action.CardIndex].Amount > 0 {
 			player.Coins = append(player.Coins, gs.Market.Coins[action.CardIndex])
-			player.Points += gs.Market.Coins[action.CardIndex].Points
 			gs.Market.Coins[action.CardIndex].Amount--
 		}
 
