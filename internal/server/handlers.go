@@ -170,12 +170,22 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
+			// Parse multiplier if present
+			multiplier := 1
+			if mult, ok := actionMsg["multiplier"].(float64); ok {
+				multiplier = int(mult)
+				if multiplier < 1 {
+					multiplier = 1
+				}
+			}
+
 			var gameAction game.Action
 			switch actionTypeStr {
 			case "playCard":
 				gameAction = game.Action{
 					Type:            game.PlayCard,
 					CardIndex:       int(cardIndex),
+					Multiplier:       multiplier,
 					InputResources:  inputResources,
 					OutputResources: outputResources,
 				}

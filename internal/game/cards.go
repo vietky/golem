@@ -100,7 +100,7 @@ func (c *Card) Play(player *Player, action Action) bool {
 	case Produce:
 		// Simply add output resources
 		if c.Output != nil {
-			player.Resources.AddAll(c.Output)
+			player.Resources.AddAll(c.Output, 1)
 		}
 	case Upgrade:
 		// Subtract input, add output
@@ -108,7 +108,7 @@ func (c *Card) Play(player *Player, action Action) bool {
 			return false
 		}
 		if action.OutputResources != nil {
-			player.Resources.AddAll(action.OutputResources)
+			player.Resources.AddAll(action.OutputResources, 1)
 		}
 	case Trade:
 		// Subtract input, add output
@@ -116,7 +116,7 @@ func (c *Card) Play(player *Player, action Action) bool {
 			return false
 		}
 		if c.Output != nil {
-			player.Resources.AddAll(c.Output)
+			player.Resources.AddAll(c.Output, action.Multiplier)
 		}
 	}
 

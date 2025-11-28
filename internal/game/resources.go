@@ -130,11 +130,14 @@ func (r *Resources) SubtractAll(required *Resources, multiplier int) bool {
 }
 
 // AddAll adds all resources from another Resources struct
-func (r *Resources) AddAll(other *Resources) {
-	r.Yellow += other.Yellow
-	r.Green += other.Green
-	r.Blue += other.Blue
-	r.Pink += other.Pink
+func (r *Resources) AddAll(other *Resources, multiplier int) {
+	if multiplier <= 0 {
+		multiplier = 1
+	}
+	r.Yellow += other.Yellow * multiplier
+	r.Green += other.Green * multiplier
+	r.Blue += other.Blue * multiplier
+	r.Pink += other.Pink * multiplier
 }
 
 // Copy creates a copy of the resources

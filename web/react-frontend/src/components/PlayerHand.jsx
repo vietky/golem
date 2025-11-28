@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import Card from "./Card";
 import UpgradeModal from "./UpgradeModal";
+import TradeModal from "./TradeModal";
 import useGameStore from "../store/gameStore";
 
 const PlayerHand = () => {
@@ -10,11 +11,16 @@ const PlayerHand = () => {
     currentPlayer,
     playCard,
     playCardWithUpgrade,
+    playCardWithTrade,
     setIsDragging,
     upgradeModalCard,
     upgradeModalCardIndex,
+    tradeModalCard,
+    tradeModalCardIndex,
     showUpgradeModal,
     hideUpgradeModal,
+    showTradeModal,
+    hideTradeModal,
   } = useGameStore();
   const handRef = useRef(null);
   const [draggedCardIndex, setDraggedCardIndex] = useState(null);
@@ -69,15 +75,17 @@ const PlayerHand = () => {
     }
   };
 
-  // Handle card click - show upgrade modal if upgrade card, otherwise play directly
+  // Handle card click - show modal if upgrade/trade card, otherwise play directly
   const handleCardClick = (cardIndex) => {
     if (!isMyTurn) return;
 
     const card = hand[cardIndex];
-    console.log(card);
     if (card && card.actionType === 1) {
       // 1 = Upgrade action type
       showUpgradeModal(card, cardIndex);
+    } else if (card && card.actionType === 2) {
+      // 2 = Trade action type
+      showTradeModal(card, cardIndex);
     } else {
       playCard(cardIndex);
     }
@@ -87,6 +95,13 @@ const PlayerHand = () => {
   const handleUpgradeConfirm = (inputResources, outputResources) => {
     if (upgradeModalCardIndex !== null) {
       playCardWithUpgrade(upgradeModalCardIndex, inputResources, outputResources);
+    }
+  };
+
+  // Handle trade confirmation
+  const handleTradeConfirm = (multiplier) => {
+    if (tradeModalCardIndex !== null) {
+      playCardWithTrade(tradeModalCardIndex, multiplier);
     }
   };
 
@@ -205,6 +220,16 @@ const PlayerHand = () => {
           maxTurnUpgrade={upgradeModalCard?.turnUpgrade || 1}
           onConfirm={handleUpgradeConfirm}
           onCancel={hideUpgradeModal}
+        />
+      )}
+
+      {/* Trade Modal */}
+      {tradeModalCard && (
+        <TradeModal
+          card={tradeModalCard}
+          playerResources={myPlayer?.resources}
+          onConfirm={handleTradeConfirm}
+          onCancel={hideTradeModal}
         />
       )}
     </>
