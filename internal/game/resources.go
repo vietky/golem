@@ -104,7 +104,10 @@ func (r *Resources) Has(crystal CrystalType, count int) bool {
 }
 
 // HasAll checks if the resources have all the required crystals
-func (r *Resources) HasAll(required *Resources) bool {
+func (r *Resources) HasAll(required *Resources, multiplier int) bool {
+	if multiplier <= 0 {
+		multiplier = 1
+	}
 	return r.Yellow >= required.Yellow &&
 		r.Green >= required.Green &&
 		r.Blue >= required.Blue &&
@@ -112,14 +115,17 @@ func (r *Resources) HasAll(required *Resources) bool {
 }
 
 // SubtractAll subtracts all required resources (returns false if insufficient)
-func (r *Resources) SubtractAll(required *Resources) bool {
-	if !r.HasAll(required) {
+func (r *Resources) SubtractAll(required *Resources, multiplier int) bool {
+	if multiplier <= 0 {
+		multiplier = 1
+	}
+	if !r.HasAll(required, multiplier) {
 		return false
 	}
-	r.Yellow -= required.Yellow
-	r.Green -= required.Green
-	r.Blue -= required.Blue
-	r.Pink -= required.Pink
+	r.Yellow -= required.Yellow*multiplier
+	r.Green -= required.Green*multiplier
+	r.Blue -= required.Blue*multiplier
+	r.Pink -= required.Pink*multiplier
 	return true
 }
 
@@ -172,7 +178,41 @@ func (r *Resources) String() string {
 	return strings.Join(parts, ", ")
 }
 
-func (r *Resources) GetTotalLevels() int {
+func (r *Resources) GetLevels() int {
 	return r.Yellow*1 + r.Green*2 + r.Blue*3 + r.Pink*4
 }
 
+func (r *Resources) CanUpgraded(other *Resources, maxTurnUpgrade int) bool {
+	if r.Total() != other.Total() {
+		return false
+	}
+	beforeLevels := r.GetLevels()
+	afterLevels := other.GetLevels()
+	if afterLevels-beforeLevels > maxTurnUpgrade || afterLevels-beforeLevels < 0 {
+		return false
+	}
+
+	before := []int{r.Yellow, r.Green, r.Blue, r.Pink}
+	after := []int{other.Yellow, other.Green, other.Blue, other.Pink}
+	aidx := 0
+	for bidx, stones := range before {
+		for stones > 0 {
+			for aidx < len(after) && after[aidx] == 0 {
+				aidx++
+			}
+			if aidx >= len(after) || aidx < bidx {
+				return false
+			}
+			stones--
+			after[aidx]--
+		}
+	}
+	for aidx < len(after) && after[aidx] == 0 {
+		aidx++
+	}
+	if aidx < len(after) {
+		return false
+	}
+
+	return true
+}

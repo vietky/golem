@@ -20,6 +20,7 @@ const (
 type Action struct {
 	Type            PlayerActionType
 	CardIndex       int // Index in hand/market depending on action type
+	Multiplier      int // Multiplier for the trade action
 	InputResources  *Resources // Input resources for upgrade
 	OutputResources *Resources // Output resources for upgrade
 }
@@ -94,7 +95,7 @@ func (gs *GameState) ExecuteAction(action Action) error {
 		if action.CardIndex < 0 || action.CardIndex >= len(player.Hand) {
 			return fmt.Errorf("invalid card index")
 		}
-		if !player.PlayCard(action.CardIndex, action.InputResources, action.OutputResources) {
+		if !player.PlayCard(action) {
 			return fmt.Errorf("cannot play card")
 		}
 

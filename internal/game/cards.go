@@ -59,7 +59,7 @@ type PointCardInterface interface {
 }
 
 // CanPlay checks if a player can play this action card
-func (c *Card) CanPlay(player *Player, inputResources *Resources, outputResources *Resources) bool {
+func (c *Card) CanPlay(player *Player, action Action) bool {
 	if c.Type != ActionCard {
 		return false
 	}
@@ -68,20 +68,21 @@ func (c *Card) CanPlay(player *Player, inputResources *Resources, outputResource
 			return false
 		}
 
-		if inputResources == nil || outputResources == nil {
+		if action.InputResources == nil || action.OutputResources == nil {
 			return false
 		}
 
-		if !player.Resources.HasAll(inputResources) {
+		if !player.Resources.HasAll(action.InputResources, action.Multiplier) {
 			return false
 		}
 
-		if outputResources.GetTotalLevels() - inputResources.GetTotalLevels() > c.TurnUpgrade {
+		if !action.InputResources.CanUpgraded(action.OutputResources, c.TurnUpgrade) {
 			return false
 		}
+
 	} else {
 		// Check if player has required input resources
-		if c.Input != nil && !player.Resources.HasAll(c.Input) {
+		if c.Input != nil && !player.Resources.HasAll(c.Input, action.Multiplier) {
 			return false
 		}
 	}
@@ -90,8 +91,8 @@ func (c *Card) CanPlay(player *Player, inputResources *Resources, outputResource
 }
 
 // Play executes the card's action
-func (c *Card) Play(player *Player, inputResources *Resources, outputResources *Resources) bool {
-	if !c.CanPlay(player, inputResources, outputResources) {
+func (c *Card) Play(player *Player, action Action) bool {
+	if !c.CanPlay(player, action) {
 		return false
 	}
 
@@ -103,7 +104,7 @@ func (c *Card) Play(player *Player, inputResources *Resources, outputResources *
 		}
 	case Upgrade:
 		// Subtract input, add output
-		if c.Input != nil && !player.Resources.SubtractAll(c.Input) {
+		if c.Input != nil && !player.Resources.SubtractAll(c.Input, 1) {
 			return false
 		}
 		if c.Output != nil {
@@ -111,7 +112,7 @@ func (c *Card) Play(player *Player, inputResources *Resources, outputResources *
 		}
 	case Trade:
 		// Subtract input, add output
-		if c.Input != nil && !player.Resources.SubtractAll(c.Input) {
+		if c.Input != nil && !player.Resources.SubtractAll(c.Input, action.Multiplier) {
 			return false
 		}
 		if c.Output != nil {
@@ -130,7 +131,7 @@ func (c *Card) CanClaim(player *Player) bool {
 	if c.Requirement == nil {
 		return false
 	}
-	return player.Resources.HasAll(c.Requirement)
+	return player.Resources.HasAll(c.Requirement, 1)
 }
 
 // Claim claims the point card and subtracts required resources
@@ -140,7 +141,7 @@ func (c *Card) Claim(player *Player) bool {
 	}
 	// Point cards require resources
 	if c.Requirement != nil && c.Requirement.Total() > 0 {
-		if !player.Resources.SubtractAll(c.Requirement) {
+		if !player.Resources.SubtractAll(c.Requirement, 1) {
 			return false
 		}
 	}

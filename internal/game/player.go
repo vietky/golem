@@ -52,17 +52,17 @@ func (p *Player) AddCard(card *Card) {
 }
 
 // PlayCard plays a card from hand
-func (p *Player) PlayCard(cardIndex int, inputResources *Resources, outputResources *Resources) bool {
-	if cardIndex < 0 || cardIndex >= len(p.Hand) {
+func (p *Player) PlayCard(action Action) bool {
+	if action.CardIndex < 0 || action.CardIndex >= len(p.Hand) {
 		return false
 	}
-	card := p.Hand[cardIndex]
-	if !card.Play(p, inputResources, outputResources) {
+	card := p.Hand[action.CardIndex]
+	if !card.Play(p, action) {
 		return false
 	}
 	// Move card from hand to played cards
 	p.PlayedCards = append(p.PlayedCards, card)
-	p.Hand = append(p.Hand[:cardIndex], p.Hand[cardIndex+1:]...)
+	p.Hand = append(p.Hand[:action.CardIndex], p.Hand[action.CardIndex+1:]...)
 	return true
 }
 
@@ -75,10 +75,10 @@ func (p *Player) Rest() {
 
 // AcquireCard acquires a card from the market
 func (p *Player) AcquireCard(card *Card, cost *Resources) bool {
-	if !p.Resources.HasAll(cost) {
+	if !p.Resources.HasAll(cost, 1) {
 		return false
 	}
-	if !p.Resources.SubtractAll(cost) {
+	if !p.Resources.SubtractAll(cost, 1) {
 		return false
 	}
 	p.AddCard(card)
