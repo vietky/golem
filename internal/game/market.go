@@ -7,15 +7,17 @@ import (
 
 // Market represents the card market
 type Market struct {
-	ActionCards []*Card // Available action cards (face up)
-	PointCards  []*Card // Available point cards (face up)
-	ActionDeck  []*Card // Deck of action cards
-	PointDeck   []*Card // Deck of point cards
-	MaxVisible  int     // Maximum visible cards in market
+	ActionCards      []*Card // Available action cards (face up)
+	PointCards       []*Card // Available point cards (face up)
+	ActionDeck       []*Card // Deck of action cards
+	PointDeck        []*Card // Deck of point cards
+	Coins            []*Card // Available bonus coins (face up)
+	MaxActionVisible int     // Maximum visible action cards in market
+	MaxPointVisible  int     // Maximum visible point cards in market
 }
 
 // NewMarket creates a new market with shuffled decks
-func NewMarket(actionCards, pointCards []*Card, maxVisible int, rng *rand.Rand) *Market {
+func NewMarket(actionCards, pointCards []*Card, coins []*Card, maxActionVisible int, maxPointVisible int, rng *rand.Rand) *Market {
 	// Shuffle decks
 	shuffledActions := make([]*Card, len(actionCards))
 	copy(shuffledActions, actionCards)
@@ -33,23 +35,26 @@ func NewMarket(actionCards, pointCards []*Card, maxVisible int, rng *rand.Rand) 
 	}
 
 	market := &Market{
-		ActionCards: make([]*Card, 0),
-		PointCards:  make([]*Card, 0),
-		ActionDeck:  shuffledActions,
-		PointDeck:   shuffledPoints,
-		MaxVisible:  maxVisible,
+		ActionCards:      make([]*Card, 0),
+		PointCards:       make([]*Card, 0),
+		ActionDeck:       shuffledActions,
+		PointDeck:        shuffledPoints,
+		Coins:            coins,
+		MaxActionVisible: maxActionVisible,
+		MaxPointVisible:  maxPointVisible,
 	}
 
 	// Draw initial cards
 	market.RefillActionCards()
 	market.RefillPointCards()
+	market.RefillCoins()
 
 	return market
 }
 
 // RefillActionCards refills the action card market up to MaxVisible
 func (m *Market) RefillActionCards() {
-	for len(m.ActionCards) < m.MaxVisible && len(m.ActionDeck) > 0 {
+	for len(m.ActionCards) < m.MaxActionVisible && len(m.ActionDeck) > 0 {
 		m.ActionCards = append(m.ActionCards, m.ActionDeck[0])
 		m.ActionDeck = m.ActionDeck[1:]
 	}
@@ -57,9 +62,15 @@ func (m *Market) RefillActionCards() {
 
 // RefillPointCards refills the point card market up to MaxVisible
 func (m *Market) RefillPointCards() {
-	for len(m.PointCards) < m.MaxVisible && len(m.PointDeck) > 0 {
+	for len(m.PointCards) < m.MaxPointVisible && len(m.PointDeck) > 0 {
 		m.PointCards = append(m.PointCards, m.PointDeck[0])
 		m.PointDeck = m.PointDeck[1:]
+	}
+}
+
+func (m *Market) RefillCoins() {
+	for i := range m.Coins {
+		m.Coins[i].Amount = 10
 	}
 }
 
@@ -73,23 +84,12 @@ func (m *Market) GetActionCardCost(position int) *Resources {
 	// Position 0: 0 yellow
 	// Position 1: 1 yellow
 	// Position 2: 2 yellow
-	// Position 3: 1 green
-	// Position 4: 2 green
+	// Position 3: 3 yellow
+	// Position 4: 4 yellow
+	// TODO: need update to using different crystals
 	cost := NewResources()
-	switch position {
-	case 0:
-		// Free
-	case 1:
-		cost.Yellow = 1
-	case 2:
-		cost.Yellow = 2
-	case 3:
-		cost.Green = 1
-	case 4:
-		cost.Green = 2
-	default:
-		cost.Green = position - 1
-	}
+	cost.Yellow = position
+
 	return cost
 }
 
@@ -128,4 +128,3 @@ func (m *Market) String() string {
 	}
 	return actionStr + pointStr
 }
-

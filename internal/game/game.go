@@ -18,8 +18,10 @@ const (
 
 // Action represents a player action
 type Action struct {
-	Type      PlayerActionType
-	CardIndex int // Index in hand/market depending on action type
+	Type            PlayerActionType
+	CardIndex       int // Index in hand/market depending on action type
+	InputResources  *Resources // Input resources for upgrade
+	OutputResources *Resources // Output resources for upgrade
 }
 
 // GameState represents the current state of the game
@@ -30,6 +32,7 @@ type GameState struct {
 	Round       int
 	GameOver    bool
 	Winner      *Player
+	LastRound   bool // Whether the last round is being played
 	RNG         *rand.Rand
 }
 
@@ -44,12 +47,14 @@ func NewGameState(numPlayers int, seed int64) *GameState {
 		players[i] = NewPlayer(i+1, name, false)
 		// Give each player starting resources
 		players[i].Resources.Yellow = 2
+		players[i].Hand = append(players[i].Hand, CreateInitialActionCards(i)...)
 	}
 
 	// Create market
 	actionCards := CreateDefaultActionCards()
 	pointCards := CreateDefaultPointCards()
-	market := NewMarket(actionCards, pointCards, 5, rng)
+	coins := CreateCoinCards()
+	market := NewMarket(actionCards, pointCards, coins, 6, 5, rng)
 
 	return &GameState{
 		Players:     players,
@@ -58,6 +63,7 @@ func NewGameState(numPlayers int, seed int64) *GameState {
 		Round:       1,
 		GameOver:    false,
 		Winner:      nil,
+		LastRound:   false,
 		RNG:         rng,
 	}
 }
@@ -88,7 +94,7 @@ func (gs *GameState) ExecuteAction(action Action) error {
 		if action.CardIndex < 0 || action.CardIndex >= len(player.Hand) {
 			return fmt.Errorf("invalid card index")
 		}
-		if !player.PlayCard(action.CardIndex) {
+		if !player.PlayCard(action.CardIndex, action.InputResources, action.OutputResources) {
 			return fmt.Errorf("cannot play card")
 		}
 
@@ -119,10 +125,16 @@ func (gs *GameState) ExecuteAction(action Action) error {
 		gs.Market.PointCards = append(gs.Market.PointCards[:action.CardIndex], gs.Market.PointCards[action.CardIndex+1:]...)
 		gs.Market.RefillPointCards()
 
+		// check bonus coin if player has claimed point card
+		if action.CardIndex <= 1 && gs.Market.Coins[action.CardIndex].Amount > 0 {
+			player.Coins = append(player.Coins, gs.Market.Coins[action.CardIndex])
+			player.Points += gs.Market.Coins[action.CardIndex].Points
+			gs.Market.Coins[action.CardIndex].Amount--
+		}
+
 		// Check win condition
-		if player.HasWon() {
-			gs.GameOver = true
-			gs.Winner = player
+		if player.CheckLastRound() {
+			gs.LastRound = true
 		}
 
 	case Rest:
@@ -137,10 +149,10 @@ func (gs *GameState) ExecuteAction(action Action) error {
 
 // CheckGameOver checks if the game is over
 func (gs *GameState) CheckGameOver() {
-	for _, player := range gs.Players {
-		if player.HasWon() {
-			gs.GameOver = true
-			if gs.Winner == nil || player.Points > gs.Winner.Points {
+	if gs.LastRound {
+		gs.GameOver = true
+		for _, player := range gs.Players {
+			if gs.Winner == nil || player.GetFinalPoints() > gs.Winner.GetFinalPoints() {
 				gs.Winner = player
 			}
 		}

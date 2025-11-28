@@ -4,15 +4,16 @@ import "fmt"
 
 // Player represents a game player
 type Player struct {
-	ID           int
-	Name         string
-	Resources    *Resources
-	Hand         []*Card // Action cards in hand
-	PlayedCards  []*Card // Cards played this turn (will be returned on rest)
-	PointCards   []*Card // Claimed point cards
-	Points       int
-	IsAI         bool
-	HasRested    bool // Whether player has rested this round
+	ID          int
+	Name        string
+	Resources   *Resources
+	Hand        []*Card // Action cards in hand
+	PlayedCards []*Card // Cards played this turn (will be returned on rest)
+	PointCards  []*Card // Claimed point cards
+	Coins       []*Card // Claimed coins
+	Points      int
+	IsAI        bool
+	HasRested   bool // Whether player has rested this round
 }
 
 // NewPlayer creates a new player
@@ -24,10 +25,25 @@ func NewPlayer(id int, name string, isAI bool) *Player {
 		Hand:        make([]*Card, 0),
 		PlayedCards: make([]*Card, 0),
 		PointCards:  make([]*Card, 0),
+		Coins:       make([]*Card, 0),
 		Points:      0,
 		IsAI:        isAI,
 		HasRested:   false,
 	}
+}
+
+// GetPoints returns the player's points
+func (p *Player) GetFinalPoints() int {
+	finalPoints := 0
+	for _, pointCard := range p.PointCards {
+		finalPoints += pointCard.Points
+	}
+	for _, coin := range p.Coins {
+		finalPoints += coin.Points
+	}
+	finalPoints += p.Resources.GetFinalPoints()
+
+	return finalPoints
 }
 
 // AddCard adds a card to the player's hand
@@ -36,15 +52,12 @@ func (p *Player) AddCard(card *Card) {
 }
 
 // PlayCard plays a card from hand
-func (p *Player) PlayCard(cardIndex int) bool {
+func (p *Player) PlayCard(cardIndex int, inputResources *Resources, outputResources *Resources) bool {
 	if cardIndex < 0 || cardIndex >= len(p.Hand) {
 		return false
 	}
 	card := p.Hand[cardIndex]
-	if !card.CanPlay(p) {
-		return false
-	}
-	if !card.Play(p) {
+	if !card.Play(p, inputResources, outputResources) {
 		return false
 	}
 	// Move card from hand to played cards
@@ -94,8 +107,8 @@ func (p *Player) CanClaimAny(pointCards []*Card) *Card {
 	return nil
 }
 
-// HasWon checks if player has won (5 point cards)
-func (p *Player) HasWon() bool {
+// CheckLastRound checks if player has won (5 point cards)
+func (p *Player) CheckLastRound() bool {
 	return len(p.PointCards) >= 5
 }
 
@@ -116,4 +129,3 @@ func (p *Player) String() string {
 	return fmt.Sprintf("Player %d (%s): Resources=%s, Points=%d, Hand=%d cards, PointCards=%d",
 		p.ID, p.Name, p.Resources.String(), p.Points, len(p.Hand), len(p.PointCards))
 }
-

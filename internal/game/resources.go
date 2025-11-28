@@ -146,6 +146,11 @@ func (r *Resources) Total() int {
 	return r.Yellow + r.Green + r.Blue + r.Pink
 }
 
+// TotalPoints returns the total number of points
+func (r *Resources) GetFinalPoints() int {
+	return r.Green + r.Blue + r.Pink
+}
+
 // String returns a string representation of the resources
 func (r *Resources) String() string {
 	parts := []string{}
@@ -166,3 +171,8 @@ func (r *Resources) String() string {
 	}
 	return strings.Join(parts, ", ")
 }
+
+func (r *Resources) GetTotalLevels() int {
+	return r.Yellow*1 + r.Green*2 + r.Blue*3 + r.Pink*4
+}
+

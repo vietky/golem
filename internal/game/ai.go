@@ -52,7 +52,7 @@ func (ai *AIPlayer) findPlayableCard(player *Player) int {
 	// First pass: look for production cards
 	for i, card := range player.Hand {
 		if card.Type == ActionCard && card.ActionType == Produce {
-			if card.CanPlay(player) {
+			if card.CanPlay(player, nil, nil) {
 				return i
 			}
 		}
@@ -60,7 +60,7 @@ func (ai *AIPlayer) findPlayableCard(player *Player) int {
 	// Second pass: look for upgrade cards
 	for i, card := range player.Hand {
 		if card.Type == ActionCard && card.ActionType == Upgrade {
-			if card.CanPlay(player) {
+			if card.CanPlay(player, nil, nil) {
 				return i
 			}
 		}
@@ -68,7 +68,7 @@ func (ai *AIPlayer) findPlayableCard(player *Player) int {
 	// Third pass: look for trade cards
 	for i, card := range player.Hand {
 		if card.Type == ActionCard && card.ActionType == Trade {
-			if card.CanPlay(player) {
+			if card.CanPlay(player, nil, nil) {
 				return i
 			}
 		}
