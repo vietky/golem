@@ -136,7 +136,7 @@ const Card = ({
         isPlayable ? 'border-green-500 ring-2 ring-green-300' : ''
       } ${isAffordable ? 'border-blue-500 ring-2 ring-blue-300' : ''} ${
         isSelected ? 'ring-4 ring-yellow-400' : ''
-      } min-w-[200px]`}
+      } w-full min-w-0 sm:min-w-[160px] md:min-w-[200px]`}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       onClick={handleClick}

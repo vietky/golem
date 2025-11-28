@@ -170,11 +170,11 @@ const ResourcePanel = () => {
       </AnimatePresence>
 
       <div 
-        className="fixed bottom-24 right-6 z-30"
+        className="fixed bottom-24 sm:bottom-28 md:bottom-32 right-2 sm:right-4 md:right-6 z-30"
         data-resource-panel
       >
         <motion.div
-          className="bg-white/95 backdrop-blur-md rounded-xl p-6 shadow-2xl border-2 border-gray-300"
+          className="bg-white/95 backdrop-blur-md rounded-xl p-3 sm:p-4 md:p-6 shadow-2xl border-2 border-gray-300 w-[180px] sm:w-[200px] md:w-auto"
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
         >
