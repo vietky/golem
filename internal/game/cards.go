@@ -104,11 +104,11 @@ func (c *Card) Play(player *Player, action Action) bool {
 		}
 	case Upgrade:
 		// Subtract input, add output
-		if c.Input != nil && !player.Resources.SubtractAll(c.Input, 1) {
+		if action.InputResources != nil && !player.Resources.SubtractAll(action.InputResources, 1) {
 			return false
 		}
-		if c.Output != nil {
-			player.Resources.AddAll(c.Output)
+		if action.OutputResources != nil {
+			player.Resources.AddAll(action.OutputResources)
 		}
 	case Trade:
 		// Subtract input, add output
@@ -280,12 +280,12 @@ func parseActionCardName(name string) (ActionType, *Resources, *Resources, *Reso
 			return Produce, nil, output, cost, 0
 		}
 	case "upgrade":
-		// upgrate_x format: upgrade maximun x turn upgrade for some total upgradeable crystals
+		// upgrade_x format: upgrade maximum x turn upgrade for some total upgradeable crystals
 		// example: upgrade_2 means upgrade maximum 2 grade for some total upgradeable crystals,
 		// eg: 1 yellow -> 1 blue (2 turn upgrade) or 2 yellow -> 2 green (2 turn upgrade), or 1 blue -> 1 pink (1 turn upgrade)
 		if len(parts) >= 2 {
 			turnUpgrade, _ := strconv.Atoi(parts[1])
-			if turnUpgrade < 2 && turnUpgrade > 3 {
+			if turnUpgrade < 2 || turnUpgrade > 3 {
 				turnUpgrade = 2
 			}
 			input := NewResources()

@@ -268,6 +268,8 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 			"hand":        serializeCards(p.Hand),
 			"playedCards": serializeCards(p.PlayedCards),
 			"pointCards":  serializeCards(p.PointCards),
+			"coins":       serializeCards(p.Coins),
+			"hasRested":   p.HasRested,
 			"isAI":        p.IsAI,
 		}
 	}
@@ -283,12 +285,15 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 		marketPointCards[i] = serializeCard(card)
 	}
 
+	marketCoins := serializeCards(gs.GameState.Market.Coins)
+
 	return map[string]interface{}{
 		"type":          "state",
 		"currentTurn":   gs.GameState.CurrentTurn,
 		"currentPlayer": gs.GameState.GetCurrentPlayer().ID,
 		"round":         gs.GameState.Round,
 		"gameOver":      gs.GameState.GameOver,
+		"lastRound":     gs.GameState.LastRound,
 		"winner":        gs.getWinnerInfo(),
 		"players":       players,
 		"market": map[string]interface{}{
@@ -296,6 +301,7 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 			"pointCards":  marketPointCards,
 			"actionDeck":  len(gs.GameState.Market.ActionDeck),
 			"pointDeck":   len(gs.GameState.Market.PointDeck),
+			"coins":       marketCoins,
 		},
 	}
 }
@@ -344,6 +350,9 @@ func serializeCard(card *game.Card) map[string]interface{} {
 				"pink":   card.Output.Pink,
 			}
 		}
+		if card.ActionType == game.Upgrade {
+			result["turnUpgrade"] = card.TurnUpgrade
+		}
 	} else if card.Type == game.PointCard {
 		result["points"] = card.Points
 		if card.Requirement != nil {
@@ -354,6 +363,9 @@ func serializeCard(card *game.Card) map[string]interface{} {
 				"pink":   card.Requirement.Pink,
 			}
 		}
+	} else if card.Type == game.CoinCard {
+		result["points"] = card.Points
+		result["amount"] = card.Amount
 	}
 
 	return result

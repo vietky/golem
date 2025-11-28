@@ -21,6 +21,8 @@ const useGameStore = create((set, get) => ({
   isDragging: false,
   invalidAction: null, // Card name that triggered invalid action
   collectAnimations: [], // Array of {type, from, to} for flying crystals (initialized as empty array)
+  upgradeModalCard: null, // Card for which upgrade modal is shown
+  upgradeModalCardIndex: null, // Card index for upgrade modal
 
   // Actions
   connectWebSocket: (sessionId, playerName, playerAvatar) => {
@@ -74,7 +76,7 @@ const useGameStore = create((set, get) => ({
     set({ ws, sessionId })
   },
 
-  sendAction: (actionType, cardIndex = null) => {
+  sendAction: (actionType, cardIndex = null, inputResources = null, outputResources = null) => {
     const { ws } = get()
     if (!ws || ws.readyState !== WebSocket.OPEN) return
 
@@ -84,6 +86,13 @@ const useGameStore = create((set, get) => ({
       cardIndex,
     }
 
+    if (inputResources) {
+      message.inputResources = inputResources
+    }
+    if (outputResources) {
+      message.outputResources = outputResources
+    }
+
     ws.send(JSON.stringify(message))
   },
 
@@ -91,6 +100,18 @@ const useGameStore = create((set, get) => ({
     get().sendAction('playCard', cardIndex)
     get().addToLog(`Playing card from hand`)
   },
+
+  playCardWithUpgrade: (cardIndex, inputResources, outputResources) => {
+    get().sendAction('playCard', cardIndex, inputResources, outputResources)
+    get().addToLog(`Playing upgrade card`)
+    set({
+      upgradeModalCard: null,
+      upgradeModalCardIndex: cardIndex,
+    });
+  },
+
+  showUpgradeModal: (card, cardIndex) => set({ upgradeModalCard: card, upgradeModalCardIndex: cardIndex }),
+  hideUpgradeModal: () => set({ upgradeModalCard: null, upgradeModalCardIndex: null }),
 
   acquireCard: (cardIndex) => {
     const { gameState, myPlayer } = get()

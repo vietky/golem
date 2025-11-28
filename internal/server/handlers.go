@@ -132,12 +132,52 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			actionTypeStr, _ := actionMsg["actionType"].(string)
 			cardIndex, _ := actionMsg["cardIndex"].(float64)
 
+			// Parse input and output resources if present
+			var inputResources *game.Resources
+			var outputResources *game.Resources
+			
+			if inputRes, ok := actionMsg["inputResources"].(map[string]interface{}); ok {
+				getInt := func(m map[string]interface{}, key string) int {
+					if val, exists := m[key]; exists {
+						if f, ok := val.(float64); ok {
+							return int(f)
+						}
+					}
+					return 0
+				}
+				inputResources = &game.Resources{
+					Yellow: getInt(inputRes, "yellow"),
+					Green:  getInt(inputRes, "green"),
+					Blue:   getInt(inputRes, "blue"),
+					Pink:   getInt(inputRes, "pink"),
+				}
+			}
+			
+			if outputRes, ok := actionMsg["outputResources"].(map[string]interface{}); ok {
+				getInt := func(m map[string]interface{}, key string) int {
+					if val, exists := m[key]; exists {
+						if f, ok := val.(float64); ok {
+							return int(f)
+						}
+					}
+					return 0
+				}
+				outputResources = &game.Resources{
+					Yellow: getInt(outputRes, "yellow"),
+					Green:  getInt(outputRes, "green"),
+					Blue:   getInt(outputRes, "blue"),
+					Pink:   getInt(outputRes, "pink"),
+				}
+			}
+
 			var gameAction game.Action
 			switch actionTypeStr {
 			case "playCard":
 				gameAction = game.Action{
-					Type:      game.PlayCard,
-					CardIndex: int(cardIndex),
+					Type:            game.PlayCard,
+					CardIndex:       int(cardIndex),
+					InputResources:  inputResources,
+					OutputResources: outputResources,
 				}
 			case "acquireCard":
 				gameAction = game.Action{
