@@ -7,3 +7,6 @@ vendor/
 ansible/inventory.yml
 
 .DS_Store
+
+server
+bin/*

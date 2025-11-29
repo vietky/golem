@@ -1,17 +1,105 @@
+version: '3.8'
+
 services:
+  # Redis for event sourcing and pub/sub
+  redis:
+    image: redis:7-alpine
+    container_name: golem-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - golem-network
+
+  # PostgreSQL for persistent storage
+  postgres:
+    image: postgres:15-alpine
+    container_name: golem-postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-golem_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-golem_password}
+      POSTGRES_DB: ${POSTGRES_DB:-golem_db}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./internal/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-golem_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - golem-network
+
+  # Golem Century Game Server
   golem-century:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: golem-century-server
     ports:
-      - "3001:8080"  # Host port 3001 maps to container port 8080
+      - "${APP_PORT:-3001}:8080"
     restart: unless-stopped
     environment:
+      # Server config
       - PORT=8080
+      - HOST=0.0.0.0
+      # Redis config
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=${REDIS_DB:-0}
+      - REDIS_MAX_RETRIES=${REDIS_MAX_RETRIES:-3}
+      - REDIS_POOL_SIZE=${REDIS_POOL_SIZE:-10}
+      # PostgreSQL config
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-golem_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-golem_password}
+      - POSTGRES_DB=${POSTGRES_DB:-golem_db}
+      - POSTGRES_SSL_MODE=${POSTGRES_SSL_MODE:-disable}
+      - POSTGRES_MAX_CONNECTIONS=${POSTGRES_MAX_CONNECTIONS:-20}
+      - POSTGRES_MAX_IDLE_CONNECTIONS=${POSTGRES_MAX_IDLE_CONNECTIONS:-5}
+      - POSTGRES_CONNECTION_MAX_LIFETIME=${POSTGRES_CONNECTION_MAX_LIFETIME:-3600}
+      # Game config
+      - GAME_MAX_SESSIONS=${GAME_MAX_SESSIONS:-100}
+      - GAME_SESSION_TIMEOUT=${GAME_SESSION_TIMEOUT:-3600}
+      - GAME_CLEANUP_INTERVAL=${GAME_CLEANUP_INTERVAL:-300}
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - golem-network
+
+volumes:
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+
+networks:
+  golem-network:
+    driver: bridge

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,7 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"golem_century/internal/database"
 	"golem_century/internal/game"
+	"golem_century/internal/redis"
 
 	"github.com/gorilla/websocket"
 )
@@ -22,17 +25,20 @@ var upgrader = websocket.Upgrader{
 
 // GameSession represents a multiplayer game session
 type GameSession struct {
-	ID            string
-	GameState     *game.GameState
-	Engine        *game.Engine
-	Connections   map[int]*websocket.Conn // Player ID -> WebSocket connection
-	PlayerNames   map[int]string          // Player ID -> Player name
-	PlayerAvatars map[int]string          // Player ID -> Avatar number
-	CreatedAt     time.Time               // When session was created
-	LastActivity  time.Time               // Last time someone was in the room
-	mu            sync.RWMutex
-	ActionChan    chan PlayerAction
-	BroadcastChan chan []byte
+	ID             string
+	GameState      *game.GameState
+	Engine         *game.Engine
+	Connections    map[int]*websocket.Conn          // Player ID -> WebSocket connection
+	PlayerNames    map[int]string                   // Player ID -> Player name
+	PlayerAvatars  map[int]string                   // Player ID -> Avatar number
+	PlayerStatus   map[int]*PlayerConnectionTracker // Player ID -> Connection status
+	CreatedAt      time.Time                        // When session was created
+	LastActivity   time.Time                        // Last time someone was in the room
+	EventManager   *SessionEventManager             // Event manager for this session
+	OfflineHandler *OfflinePlayerHandler            // Handles offline players
+	mu             sync.RWMutex
+	ActionChan     chan PlayerAction
+	BroadcastChan  chan []byte
 }
 
 // PlayerAction represents an action from a player
@@ -42,26 +48,40 @@ type PlayerAction struct {
 }
 
 // NewGameSession creates a new game session
-func NewGameSession(sessionID string, numPlayers int, seed int64) *GameSession {
+func NewGameSession(sessionID string, numPlayers int, seed int64, eventStore redis.EventStore, notification redis.NotificationService) *GameSession {
 	gameState := game.NewGameState(numPlayers, seed)
 	engine := &game.Engine{
 		GameState: gameState,
-		AI:        nil, // No AI players
+		AI:        game.NewAIPlayer(gameState.RNG),
 	}
 
 	now := time.Now()
-	return &GameSession{
-		ID:            sessionID,
-		GameState:     gameState,
-		Engine:        engine,
-		Connections:   make(map[int]*websocket.Conn),
-		PlayerNames:   make(map[int]string),
-		PlayerAvatars: make(map[int]string),
-		CreatedAt:     now,
-		LastActivity:  now,
-		ActionChan:    make(chan PlayerAction, 10),
-		BroadcastChan: make(chan []byte, 100),
+	session := &GameSession{
+		ID:             sessionID,
+		GameState:      gameState,
+		Engine:         engine,
+		Connections:    make(map[int]*websocket.Conn),
+		PlayerNames:    make(map[int]string),
+		PlayerAvatars:  make(map[int]string),
+		PlayerStatus:   make(map[int]*PlayerConnectionTracker),
+		CreatedAt:      now,
+		LastActivity:   now,
+		EventManager:   NewSessionEventManager(sessionID, eventStore, notification),
+		OfflineHandler: NewOfflinePlayerHandler(engine.AI),
+		ActionChan:     make(chan PlayerAction, 10),
+		BroadcastChan:  make(chan []byte, 100),
 	}
+
+	// Initialize player status tracking
+	for i := 1; i <= numPlayers; i++ {
+		session.PlayerStatus[i] = &PlayerConnectionTracker{
+			PlayerID:    i,
+			IsConnected: false,
+			LastSeen:    now,
+		}
+	}
+
+	return session
 }
 
 // AddPlayer adds a player to the session
@@ -76,10 +96,24 @@ func (gs *GameSession) AddPlayer(playerID int, name string, avatar string, conn 
 	}
 	gs.PlayerAvatars[playerID] = avatar
 	gs.LastActivity = time.Now() // Update activity time
+
+	// Update connection status
+	if tracker, exists := gs.PlayerStatus[playerID]; exists {
+		tracker.IsConnected = true
+		tracker.LastSeen = time.Now()
+		tracker.DisconnectedSince = nil
+	}
+
 	// Player IDs are 1-indexed, array is 0-indexed
 	if playerID >= 1 && playerID <= len(gs.GameState.Players) {
 		gs.GameState.Players[playerID-1].Name = name
 		// All players are human (no AI)
+	}
+
+	// Record connection event
+	ctx := context.Background()
+	if err := gs.EventManager.RecordPlayerConnect(ctx, playerID); err != nil {
+		log.Printf("Failed to record player connect event: %v", err)
 	}
 }
 
@@ -87,9 +121,24 @@ func (gs *GameSession) AddPlayer(playerID int, name string, avatar string, conn 
 func (gs *GameSession) RemovePlayer(playerID int) {
 	gs.mu.Lock()
 	defer gs.mu.Unlock()
+
 	delete(gs.Connections, playerID)
 	delete(gs.PlayerNames, playerID)
 	delete(gs.PlayerAvatars, playerID)
+
+	// Update connection status
+	if tracker, exists := gs.PlayerStatus[playerID]; exists {
+		tracker.IsConnected = false
+		now := time.Now()
+		tracker.DisconnectedSince = &now
+		tracker.LastSeen = now
+	}
+
+	// Record disconnection event
+	ctx := context.Background()
+	if err := gs.EventManager.RecordPlayerDisconnect(ctx, playerID); err != nil {
+		log.Printf("Failed to record player disconnect event: %v", err)
+	}
 }
 
 // Broadcast sends a message to all connected players
@@ -121,14 +170,27 @@ func (gs *GameSession) SendToPlayer(playerID int, message []byte) error {
 
 // GameServer manages multiple game sessions
 type GameServer struct {
-	Sessions map[string]*GameSession
-	mu       sync.RWMutex
+	Sessions            map[string]*GameSession
+	Database            database.Database
+	EventStore          redis.EventStore
+	NotificationService redis.NotificationService
+	mu                  sync.RWMutex
 }
 
-// NewGameServer creates a new game server
+// NewGameServer creates a new game server (backwards compatible)
 func NewGameServer() *GameServer {
 	return &GameServer{
 		Sessions: make(map[string]*GameSession),
+	}
+}
+
+// NewGameServerWithDeps creates a new game server with dependencies
+func NewGameServerWithDeps(db database.Database, eventStore redis.EventStore, notification redis.NotificationService) *GameServer {
+	return &GameServer{
+		Sessions:            make(map[string]*GameSession),
+		Database:            db,
+		EventStore:          eventStore,
+		NotificationService: notification,
 	}
 }
 
@@ -137,8 +199,24 @@ func (gs *GameServer) CreateSession(sessionID string, numPlayers int, seed int64
 	gs.mu.Lock()
 	defer gs.mu.Unlock()
 
-	session := NewGameSession(sessionID, numPlayers, seed)
+	session := NewGameSession(sessionID, numPlayers, seed, gs.EventStore, gs.NotificationService)
 	gs.Sessions[sessionID] = session
+
+	// Persist session to database
+	if gs.Database != nil {
+		ctx := context.Background()
+		dbSession := &database.GameSession{
+			ID:         sessionID,
+			NumPlayers: numPlayers,
+			Seed:       seed,
+			Status:     "active",
+			CreatedAt:  session.CreatedAt,
+			UpdatedAt:  session.CreatedAt,
+		}
+		if err := gs.Database.GameRepository().CreateSession(ctx, dbSession); err != nil {
+			log.Printf("Failed to persist session to database: %v", err)
+		}
+	}
 
 	// Start game loop
 	go session.RunGameLoop()
@@ -200,12 +278,22 @@ func (gs *GameSession) RunGameLoop() {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
+	offlineCheckTicker := time.NewTicker(2 * time.Second)
+	defer offlineCheckTicker.Stop()
+
+	ctx := context.Background()
+
 	for !gs.GameState.GameOver {
 		select {
 		case action := <-gs.ActionChan:
 			// Process player action
 			currentPlayer := gs.GameState.GetCurrentPlayer()
 			if action.PlayerID == currentPlayer.ID {
+				// Record action event
+				if err := gs.EventManager.RecordPlayerAction(ctx, action.PlayerID, action.Action); err != nil {
+					log.Printf("Failed to record action: %v", err)
+				}
+
 				if err := gs.GameState.ExecuteAction(action.Action); err == nil {
 					// DepositCrystals and CollectCrystals don't end the turn
 					// They are intermediate actions before acquiring a card
@@ -215,7 +303,13 @@ func (gs *GameSession) RunGameLoop() {
 							gs.GameState.NextTurn()
 						}
 					}
+
+					// Broadcast state and record state change
 					gs.BroadcastState()
+					state := gs.SerializeState()
+					if err := gs.EventManager.RecordStateChange(ctx, state); err != nil {
+						log.Printf("Failed to record state change: %v", err)
+					}
 				} else {
 					// Send error to player
 					errorMsg := map[string]interface{}{
@@ -228,13 +322,48 @@ func (gs *GameSession) RunGameLoop() {
 				}
 			}
 
-		case <-ticker.C:
-			// No AI processing - all players are human
+		case <-offlineCheckTicker.C:
+			// Check if current player is offline and handle with AI
+			currentPlayer := gs.GameState.GetCurrentPlayer()
+			gs.mu.RLock()
+			tracker := gs.PlayerStatus[currentPlayer.ID]
+			isOffline := tracker != nil && !tracker.IsConnected
+			gs.mu.RUnlock()
+
+			if isOffline && currentPlayer.PendingDiscard == 0 {
+				// Player is offline, use AI to make decision
+				aiAction := gs.OfflineHandler.MakeDecisionForOfflinePlayer(currentPlayer, gs.GameState)
+
+				// Record AI action
+				if err := gs.EventManager.RecordPlayerAction(ctx, currentPlayer.ID, aiAction); err != nil {
+					log.Printf("Failed to record AI action: %v", err)
+				}
+
+				// Execute AI action
+				if err := gs.GameState.ExecuteAction(aiAction); err == nil {
+					if aiAction.Type != game.DepositCrystals && aiAction.Type != game.CollectCrystals && aiAction.Type != game.CollectAllCrystals {
+						gs.GameState.CheckGameOver()
+						if !gs.GameState.GameOver {
+							gs.GameState.NextTurn()
+						}
+					}
+
+					// Broadcast state
+					gs.BroadcastState()
+					state := gs.SerializeState()
+					if err := gs.EventManager.RecordStateChange(ctx, state); err != nil {
+						log.Printf("Failed to record state change: %v", err)
+					}
+				}
+			}
 		}
 	}
 
-	// Game over - send final state
+	// Game over - send final state and update database
 	gs.BroadcastState()
+
+	// Mark session as completed in database
+	// This would be done in a real implementation
 }
 
 // BroadcastState broadcasts the current game state to all players

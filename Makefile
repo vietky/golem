@@ -103,6 +103,47 @@ test: ## Run tests (if any)
 	@echo "Running tests..."
 	go test ./...
 
+test-coverage: ## Run tests with coverage
+	@echo "Running tests with coverage..."
+	go test ./... -coverprofile=coverage.out
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+test-redis: ## Run Redis-specific tests
+	@echo "Running Redis tests..."
+	go test ./internal/redis/... -v
+
+test-server: ## Run server integration tests
+	@echo "Running server tests..."
+	go test ./internal/server/... -v
+
+migrate-db: ## Run database migrations
+	@echo "Running database migrations..."
+	./scripts/migrate-db.sh
+
+setup-local: ## Setup local development environment
+	@echo "Setting up local development environment..."
+	@if [ ! -f .env ]; then cp .env.example .env; echo "Created .env file from .env.example"; fi
+	docker-compose up -d redis postgres
+	@echo "Waiting for services to be ready..."
+	sleep 10
+	$(MAKE) migrate-db
+	@echo "Local environment ready!"
+
+dev: setup-local ## Start development server
+	@echo "Starting development server..."
+	go run cmd/server/main.go
+
+docker-up: ## Start all services with Docker Compose
+	docker-compose up -d
+	@echo "All services started. Access at http://localhost:3001"
+
+docker-logs: logs ## Alias for logs
+
+health-check: ## Check service health
+	@echo "Checking service health..."
+	@curl -s http://localhost:8080/api/health | jq . || echo "Service not running"
+
 validate-ansible: generate-inventory ## Validate Ansible playbook syntax
 	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK) --syntax-check
 
