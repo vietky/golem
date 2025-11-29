@@ -63,8 +63,25 @@ func NewGameState(numPlayers int, seed int64) *GameState {
 	for i := 0; i < numPlayers; i++ {
 		name := fmt.Sprintf("Player %d", i+1)
 		players[i] = NewPlayer(i+1, name, false)
-		// Give each player starting resources
-		players[i].Resources.Yellow = 2
+		// Give each player starting resources based on player position
+		// Player 1: 3 yellow
+		// Player 2: 4 yellow
+		// Player 3: 4 yellow
+		// Player 4: 3 yellow + 1 green
+		// Player 5: 3 yellow + 1 green
+		playerIndex := i + 1 // 1-based player index
+		switch playerIndex {
+		case 1:
+			players[i].Resources.Yellow = 3
+		case 2, 3:
+			players[i].Resources.Yellow = 4
+		case 4, 5:
+			players[i].Resources.Yellow = 3
+			players[i].Resources.Green = 1
+		default:
+			// For games with more than 5 players, default to 3 yellow
+			players[i].Resources.Yellow = 3
+		}
 		players[i].Hand = append(players[i].Hand, CreateInitialActionCards(i)...)
 	}
 
