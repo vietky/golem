@@ -7,10 +7,13 @@ import ResourcePanel from './components/ResourcePanel'
 import ActionLog from './components/ActionLog'
 import DiscardModal from './components/DiscardModal'
 import useGameStore from './store/gameStore'
+import useOrientation from './hooks/useOrientation'
+import { MobileLayoutProvider } from './contexts/MobileLayoutContext'
 
 function App() {
   const [inGame, setInGame] = useState(false)
   const { connectWebSocket, gameState, connected } = useGameStore()
+  const { isPortrait, isLandscape, isMobile, isTablet } = useOrientation()
 
   const handleJoinGame = (sessionId, playerName, playerAvatar) => {
     connectWebSocket(sessionId, playerName, playerAvatar)
@@ -46,52 +49,57 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen relative" style={{
-      backgroundImage: 'url(/images/background.jpg)',
-      backgroundSize: 'cover',
-      backgroundPosition: 'center center',
-      backgroundRepeat: 'no-repeat',
-      backgroundAttachment: 'fixed'
-    }}>
-      {/* Opponent Area (Top) */}
-      <OpponentArea />
+    <MobileLayoutProvider>
+      <div className={`min-h-screen relative ${
+        isMobile ? (isPortrait ? 'mobile-portrait' : 'mobile-landscape') : ''
+      } ${isTablet ? 'tablet' : ''}`} 
+      style={{
+        backgroundImage: 'url(/images/background.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: isMobile ? 'scroll' : 'fixed'
+      }}>
+        {/* Opponent Area (Top) */}
+        <OpponentArea />
 
-      {/* Central Market Area */}
-      <MarketArea />
+        {/* Central Market Area */}
+        <MarketArea />
 
-      {/* Player Hand (Bottom) */}
-      <PlayerHand />
+        {/* Player Hand (Bottom) */}
+        <PlayerHand />
 
-      {/* Resource Panel (Bottom Right) */}
-      <ResourcePanel />
+        {/* Resource Panel (Bottom Right) */}
+        <ResourcePanel />
 
-      {/* Action Log (Top Right) */}
-      <ActionLog />
+        {/* Action Log (Top Right) */}
+        {!isMobile && <ActionLog />}
 
-      {/* Discard Modal (when crystals exceed max) */}
-      <DiscardModal />
+        {/* Discard Modal (when crystals exceed max) */}
+        <DiscardModal />
 
-      {/* Game Over Modal */}
-      {gameState?.gameOver && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 max-w-md text-center">
-            <h2 className="text-3xl font-bold mb-4">Game Over!</h2>
-            <p className="text-xl mb-6">
-              Winner: {gameState.winner?.name || 'Unknown'}
-            </p>
-            <button
-              onClick={() => {
-                setInGame(false)
-                window.location.reload()
-              }}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-3 px-6 rounded-lg hover:from-purple-600 hover:to-pink-600"
-            >
-              New Game
-            </button>
+        {/* Game Over Modal */}
+        {gameState?.gameOver && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-8 max-w-md text-center mx-4">
+              <h2 className="text-3xl font-bold mb-4">Game Over!</h2>
+              <p className="text-xl mb-6">
+                Winner: {gameState.winner?.name || 'Unknown'}
+              </p>
+              <button
+                onClick={() => {
+                  setInGame(false)
+                  window.location.reload()
+                }}
+                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-3 px-6 rounded-lg hover:from-purple-600 hover:to-pink-600 touch-target"
+              >
+                New Game
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </MobileLayoutProvider>
   )
 }
 

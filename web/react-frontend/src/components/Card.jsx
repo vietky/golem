@@ -141,16 +141,15 @@ const Card = ({
       onHoverEnd={() => setIsHovered(false)}
       onClick={handleClick}
       animate={controls}
-      // Hover animation: scale up 1.05x with glow
+      // Hover animation: simplified
       whileHover={{
-        scale: 1.05,
         y: -8,
-        transition: { duration: 0.2, ease: "easeOut" }
+        transition: { duration: 0.15, ease: "easeOut" }
       }}
       // Click animation: scale down 0.95x
       whileTap={{ 
         scale: 0.95,
-        transition: { duration: 0.2 }
+        transition: { duration: 0.1 }
       }}
       // Drag & drop support (only if drag handlers provided)
       drag={onDragStart ? true : false}
@@ -159,16 +158,14 @@ const Card = ({
       onDragEnd={onDragEnd}
       dragElastic={0.2}
       whileDrag={{
-        scale: 1.1,
+        scale: 1.05,
         y: -10,
-        z: 50,
         boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-        transition: { duration: 0.2 }
+        transition: { duration: 0.15 }
       }}
-      layout
       style={{ 
-        perspective: 1000,
-        cursor: isDragging ? 'grabbing' : 'pointer'
+        cursor: isDragging ? 'grabbing' : 'pointer',
+        willChange: 'transform'
       }}
     >
       {/* Deposits Tooltip - Show on top of card */}
@@ -268,24 +265,12 @@ const Card = ({
               filter: "brightness(1.1) saturate(1.2)",
               transition: { duration: 0.2 }
             }}
-            animate={{
-              filter: [
-                "brightness(1) saturate(1)",
-                "brightness(1.3) saturate(1.3)",
-                "brightness(1) saturate(1)"
-              ],
-              transition: {
-                duration: 1,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }
-            }}
           />
         )}
       </motion.div>
 
       {/* Card Info */}
-      <div className="p-2 space-y-1 bg-white/95">
+      <div className="p-2 space-y-1 bg-white/95 rounded-b-xl">
         <h3 className="font-bold text-xs text-gray-800 text-center leading-tight">
           {getVietnameseCardName(card?.name)}
         </h3>

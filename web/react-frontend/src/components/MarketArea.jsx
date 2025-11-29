@@ -3,9 +3,11 @@ import { motion } from 'framer-motion'
 import Card from './Card'
 import DepositModal from './DepositModal'
 import useGameStore from '../store/gameStore'
+import useOrientation from '../hooks/useOrientation'
 
 const MarketArea = () => {
   const { gameState, myPlayer, currentPlayer, acquireCard, claimPointCard, collectAllCrystals } = useGameStore()
+  const { isMobile, isPortrait } = useOrientation()
   const [dragOverIndex, setDragOverIndex] = useState(null)
   const [depositModal, setDepositModal] = useState({ show: false, card: null, index: null })
 
@@ -44,16 +46,26 @@ const MarketArea = () => {
 
   return (
     <div
-      className="fixed top-24 sm:top-28 md:top-32 left-0 right-0 bottom-4 sm:bottom-6 md:bottom-8 overflow-y-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 z-0"
+      className={`fixed left-0 right-0 overflow-y-auto px-2 sm:px-4 md:px-6 py-3 sm:py-4 md:py-8 z-0 ${
+        isMobile && isPortrait
+          ? 'top-14 bottom-36'
+          : 'top-24 sm:top-28 md:top-32 bottom-4 sm:bottom-6 md:bottom-8'
+      }`}
       data-drop-zone="market"
     >
-      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 md:space-y-8 pb-8 sm:pb-12 md:pb-16">
+      <div className={`mx-auto space-y-3 sm:space-y-4 md:space-y-8 pb-4 sm:pb-8 md:pb-16 ${
+        isMobile && isPortrait ? 'max-w-full' : 'max-w-7xl'
+      }`}>
         {/* Action Cards Market */}
         <div>
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4 px-2">
+          <h2 className="text-sm sm:text-lg md:text-xl lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4 px-2">
             Market - Action Cards
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4 lg:gap-6">
+          <div className={`${
+            isMobile && isPortrait
+              ? 'flex gap-3 overflow-x-auto snap-x pb-2 px-2'
+              : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4 lg:gap-6'
+          }`}>
             {actionCards.map((cardData, index) => {
               const cost = cardData.cost || {};
               const isAffordable = canAfford(cost);
@@ -80,7 +92,9 @@ const MarketArea = () => {
                   whileHover={{ y: -5 }}
                   onDragOver={() => handleDragOver(index, "action")}
                   onDragLeave={handleDragLeave}
-                  className={isDragOver ? "rounded-xl" : ""}
+                  className={`${isDragOver ? "rounded-xl" : ""} ${
+                    isMobile && isPortrait ? 'flex-shrink-0 w-[240px] snap-center' : ''
+                  }`}
                 >
                   <Card
                     card={cardData}
@@ -126,9 +140,13 @@ const MarketArea = () => {
         </div>
 
         {/* Point Cards Market */}
-        <div className="pr-0 sm:pr-[200px] md:pr-0">
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4 px-2">Point Cards</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4 lg:gap-6">
+        <div className={isMobile && isPortrait ? '' : 'pr-0 sm:pr-[200px] md:pr-0'}>
+          <h2 className="text-sm sm:text-lg md:text-xl lg:text-2xl font-bold text-white mb-2 sm:mb-3 md:mb-4 px-2">Point Cards</h2>
+          <div className={`${
+            isMobile && isPortrait
+              ? 'flex gap-3 overflow-x-auto snap-x pb-2 px-2'
+              : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4 lg:gap-6'
+          }`}>
             {pointCards.map((cardData, index) => {
               const canClaim =
                 myPlayer?.resources && cardData.requirement
@@ -160,7 +178,9 @@ const MarketArea = () => {
                   whileHover={{ y: -5 }}
                   onDragOver={() => handleDragOver(index, "point")}
                   onDragLeave={handleDragLeave}
-                  className={isDragOver ? "rounded-xl" : ""}
+                  className={`${isDragOver ? "rounded-xl" : ""} ${
+                    isMobile && isPortrait ? 'flex-shrink-0 w-[240px] snap-center' : ''
+                  }`}
                 >
                   <Card
                     card={cardData}

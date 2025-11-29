@@ -145,43 +145,53 @@ const UpgradeModal = ({ card, playerResources, onConfirm, onCancel, maxTurnUpgra
           transition={{ type: "spring", duration: 0.5 }}
           className="bg-white rounded-2xl shadow-2xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto"
         >
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Upgrade Crystals - {card?.name || "Upgrade Card"}</h2>
-          <p className="text-sm text-gray-600 mb-6">
-            Select crystals you want to upgrade and crystals you want to receive (max {maxTurnUpgrade} levels)
-          </p>
+          <div className="mb-6 pb-4 border-b border-gray-200">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">💎 Upgrade Crystals</h2>
+            <p className="text-sm text-gray-600">
+              Select crystals to upgrade and receive (max {maxTurnUpgrade} levels per turn)
+            </p>
+          </div>
 
           {/* Input Section */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-700 mb-3">Input Crystals (Crystals you have)</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 auto-rows-fr">
               {crystalColors.map(({ key, name, level }) => (
-                <div key={key} className="bg-gray-50 rounded-lg p-3 border-2 border-gray-200">
-                  <div className="flex items-center gap-2 mb-2">
+                <div key={key} className="bg-gray-50 rounded-xl p-4 border-2 border-gray-200 flex flex-col">
+                  {/* Header - Fixed height */}
+                  <div className="flex items-center gap-2 mb-3 h-10">
                     <CrystalIcon color={key} count={0} size="md" />
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-700 text-sm">{name}</div>
-                      <div className="text-xs text-gray-500">Level {level}</div>
+                      <div className="font-semibold text-gray-800 text-sm leading-tight truncate">{name}</div>
+                      <div className="text-xs text-gray-500 leading-tight">Level {level}</div>
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <div className="text-xs text-gray-600">Have: {availableResources[key] + inputResources[key]}</div>
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => adjustInput(key, -1)}
-                        disabled={inputResources[key] <= 0}
-                        className="w-8 h-8 rounded-full bg-red-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-red-600 transition flex items-center justify-center"
-                      >
-                        -
-                      </button>
-                      <span className="w-10 text-center font-bold text-gray-800 text-lg">{inputResources[key]}</span>
-                      <button
-                        onClick={() => adjustInput(key, 1)}
-                        disabled={availableResources[key] <= 0}
-                        className="w-8 h-8 rounded-full bg-green-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-green-600 transition flex items-center justify-center"
-                      >
-                        +
-                      </button>
-                    </div>
+                  
+                  {/* Spacer */}
+                  <div className="flex-1" />
+                  
+                  {/* Info - Fixed height */}
+                  <div className="text-xs text-gray-600 mb-3 text-center h-4 leading-4">
+                    Have: <span className="font-semibold">{availableResources[key] + inputResources[key]}</span>
+                  </div>
+                  
+                  {/* Controls - Fixed height */}
+                  <div className="flex items-center justify-center gap-2 h-8">
+                    <button
+                      onClick={() => adjustInput(key, -1)}
+                      disabled={inputResources[key] <= 0}
+                      className="w-8 h-8 rounded-full bg-red-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-red-600 transition-all flex items-center justify-center text-lg shrink-0"
+                    >
+                      −
+                    </button>
+                    <span className="w-10 text-center font-bold text-gray-800 text-xl leading-none">{inputResources[key]}</span>
+                    <button
+                      onClick={() => adjustInput(key, 1)}
+                      disabled={availableResources[key] <= 0}
+                      className="w-8 h-8 rounded-full bg-green-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-green-600 transition-all flex items-center justify-center text-lg shrink-0"
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
               ))}
@@ -203,29 +213,40 @@ const UpgradeModal = ({ card, playerResources, onConfirm, onCancel, maxTurnUpgra
           {/* Output Section */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-700 mb-3">Output Crystals (Crystals you want to receive)</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 auto-rows-fr">
               {crystalColors.map(({ key, name, level }) => (
-                <div key={key} className="bg-blue-50 rounded-lg p-3 border-2 border-blue-200">
-                  <div className="flex items-center gap-2 mb-2">
+                <div key={key} className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200 flex flex-col">
+                  {/* Header - Fixed height (same as Input) */}
+                  <div className="flex items-center gap-2 mb-3 h-10">
                     <CrystalIcon color={key} count={0} size="md" />
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-700 text-sm">{name}</div>
-                      <div className="text-xs text-gray-500">Level {level}</div>
+                      <div className="font-semibold text-gray-800 text-sm leading-tight truncate">{name}</div>
+                      <div className="text-xs text-gray-500 leading-tight">Level {level}</div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-center gap-2 mt-2">
+                  
+                  {/* Spacer */}
+                  <div className="flex-1" />
+                  
+                  {/* Info - placeholder to match input height */}
+                  <div className="text-xs text-gray-600 mb-3 text-center h-4 leading-4 opacity-0 pointer-events-none select-none" aria-hidden="true">
+                    Placeholder
+                  </div>
+                  
+                  {/* Controls - Fixed height (same as Input) */}
+                  <div className="flex items-center justify-center gap-2 h-8">
                     <button
                       onClick={() => adjustOutput(key, -1)}
                       disabled={outputResources[key] <= 0}
-                      className="w-8 h-8 rounded-full bg-red-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-red-600 transition flex items-center justify-center"
+                      className="w-8 h-8 rounded-full bg-red-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-red-600 transition-all flex items-center justify-center text-lg shrink-0"
                     >
-                      -
+                      −
                     </button>
-                    <span className="w-10 text-center font-bold text-gray-800 text-lg">{outputResources[key]}</span>
+                    <span className="w-10 text-center font-bold text-gray-800 text-xl leading-none">{outputResources[key]}</span>
                     <button
                       onClick={() => adjustOutput(key, 1)}
                       disabled={totalOutput >= totalInput || totalInput === 0}
-                      className="w-8 h-8 rounded-full bg-green-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-green-600 transition flex items-center justify-center"
+                      className="w-8 h-8 rounded-full bg-green-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-green-600 transition-all flex items-center justify-center text-lg shrink-0"
                     >
                       +
                     </button>
