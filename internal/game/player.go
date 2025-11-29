@@ -4,16 +4,17 @@ import "fmt"
 
 // Player represents a game player
 type Player struct {
-	ID          int
-	Name        string
-	Resources   *Resources
-	Hand        []*Card // Action cards in hand
-	PlayedCards []*Card // Cards played this turn (will be returned on rest)
-	PointCards  []*Card // Claimed point cards
-	Coins       []*Card // Claimed coins
-	Points      int
-	IsAI        bool
-	HasRested   bool // Whether player has rested this round
+	ID            int
+	Name          string
+	Resources     *Resources
+	Hand          []*Card // Action cards in hand
+	PlayedCards   []*Card // Cards played this turn (will be returned on rest)
+	PointCards    []*Card // Claimed point cards
+	Coins         []*Card // Claimed coins
+	Points        int
+	IsAI          bool
+	HasRested     bool // Whether player has rested this round
+	PendingDiscard int // Number of crystals that must be discarded (0 = no discard needed)
 }
 
 // NewPlayer creates a new player

@@ -5,6 +5,7 @@ import MarketArea from './components/MarketArea'
 import PlayerHand from './components/PlayerHand'
 import ResourcePanel from './components/ResourcePanel'
 import ActionLog from './components/ActionLog'
+import DiscardModal from './components/DiscardModal'
 import useGameStore from './store/gameStore'
 
 function App() {
@@ -66,6 +67,9 @@ function App() {
 
       {/* Action Log (Top Right) */}
       <ActionLog />
+
+      {/* Discard Modal (when crystals exceed max) */}
+      <DiscardModal />
 
       {/* Game Over Modal */}
       {gameState?.gameOver && (

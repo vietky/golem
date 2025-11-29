@@ -23,6 +23,9 @@ var CrystalTypeNames = map[CrystalType]string{
 	Pink:   "Pink",
 }
 
+// MaxCrystals is the maximum number of crystals a player can hold
+const MaxCrystals = 10
+
 // Resources represents a collection of crystals
 type Resources struct {
 	Yellow int
@@ -122,10 +125,10 @@ func (r *Resources) SubtractAll(required *Resources, multiplier int) bool {
 	if !r.HasAll(required, multiplier) {
 		return false
 	}
-	r.Yellow -= required.Yellow*multiplier
-	r.Green -= required.Green*multiplier
-	r.Blue -= required.Blue*multiplier
-	r.Pink -= required.Pink*multiplier
+	r.Yellow -= required.Yellow * multiplier
+	r.Green -= required.Green * multiplier
+	r.Blue -= required.Blue * multiplier
+	r.Pink -= required.Pink * multiplier
 	return true
 }
 

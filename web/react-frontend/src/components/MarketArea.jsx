@@ -1,11 +1,13 @@
-import React, { useState } from "react";
-import { motion } from "framer-motion";
-import Card from "./Card";
-import useGameStore from "../store/gameStore";
+import React, { useState } from 'react'
+import { motion } from 'framer-motion'
+import Card from './Card'
+import DepositModal from './DepositModal'
+import useGameStore from '../store/gameStore'
 
 const MarketArea = () => {
-  const { gameState, myPlayer, currentPlayer, acquireCard, claimPointCard } = useGameStore();
-  const [dragOverIndex, setDragOverIndex] = useState(null);
+  const { gameState, myPlayer, currentPlayer, acquireCard, claimPointCard, collectAllCrystals } = useGameStore()
+  const [dragOverIndex, setDragOverIndex] = useState(null)
+  const [depositModal, setDepositModal] = useState({ show: false, card: null, index: null })
 
   // Show loading state if market data not ready
   if (!gameState?.market) {
@@ -87,7 +89,35 @@ const MarketArea = () => {
                     cost={cost}
                     isAffordable={isAffordable}
                     isPlaying={isAffordable && myPlayer?.id === currentPlayer?.id}
-                    onClick={() => isAffordable && acquireCard(index)}
+                    onClick={() => {
+                      // Debug: log card data
+                      console.log(`[DEBUG MarketArea] Clicked card index ${index}:`, {
+                        name: cardData.name,
+                        deposits: cardData.deposits,
+                        depositsCount: cardData.deposits ? Object.keys(cardData.deposits).length : 0
+                      });
+                      // If my turn, handle deposit/collect, otherwise acquire card
+                      if (myPlayer?.id === currentPlayer?.id) {
+                        const hasDeposits = cardData.deposits && Object.keys(cardData.deposits).length > 0
+                        console.log(`[DEBUG MarketArea] Card index ${index}: hasDeposits=${hasDeposits}, will handle...`)
+                        // Card position 1 (index 0) doesn't need deposit, acquire directly
+                        if (index === 0) {
+                          // Position 1 card: acquire directly (FREE, no deposit needed)
+                          console.log(`[DEBUG MarketArea] Card index 0: acquiring directly (FREE)`)
+                          acquireCard(index)
+                        } else {
+                          // For cards index > 0, always open deposit modal first
+                          // User can deposit into previous cards to acquire this card for FREE
+                          // If card has deposits, they will be collected when acquiring (backend handles this)
+                          console.log(`[DEBUG MarketArea] Card index ${index}: opening deposit modal (hasDeposits=${hasDeposits})`)
+                          setDepositModal({ show: true, card: cardData, index: index })
+                        }
+                      } else if (isAffordable) {
+                        // Not my turn but can afford, just acquire (deposits will be auto-collected on acquire)
+                        console.log(`[DEBUG MarketArea] Not my turn, acquiring card index ${index}`)
+                        acquireCard(index)
+                      }
+                    }}
                   />
                 </motion.div>
               );
@@ -146,6 +176,16 @@ const MarketArea = () => {
           </div>
         </div>
       </div>
+
+      {/* Deposit Modal */}
+      {depositModal.show && (
+        <DepositModal
+          card={depositModal.card}
+          cardIndex={depositModal.index}
+          onClose={() => setDepositModal({ show: false, card: null, index: null })}
+        />
+      )}
+
     </div>
   );
 };

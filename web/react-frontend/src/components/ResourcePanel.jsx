@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import CrystalStack from './CrystalStack'
 import useGameStore from '../store/gameStore'
@@ -42,7 +42,7 @@ const FlyingCrystal = ({ type, startPos, endPos, onComplete }) => {
 const ResourcePanel = () => {
   const { myPlayer, rest, collectAnimations } = useGameStore()
   const [flyingCrystals, setFlyingCrystals] = useState([])
-  const [previousResources, setPreviousResources] = useState(null)
+  const previousResourcesRef = useRef(null)
 
   // Don't show resource panel until player data is loaded
   if (!myPlayer) {
@@ -54,18 +54,20 @@ const ResourcePanel = () => {
     // Early return if player or resources don't exist
     if (!myPlayer || !myPlayer.resources) {
       if (myPlayer?.resources && typeof myPlayer.resources === 'object') {
-        setPreviousResources({ ...myPlayer.resources })
+        previousResourcesRef.current = { ...myPlayer.resources }
       } else {
-        setPreviousResources(null)
+        previousResourcesRef.current = null
       }
       return
     }
 
     // Ensure resources is an object
     if (typeof myPlayer.resources !== 'object' || myPlayer.resources === null) {
-      setPreviousResources(null)
+      previousResourcesRef.current = null
       return
     }
+
+    const previousResources = previousResourcesRef.current
 
     // Only compare if we have previous resources (must be an object)
     if (previousResources && typeof previousResources === 'object' && !Array.isArray(previousResources) && myPlayer.resources) {
@@ -108,7 +110,7 @@ const ResourcePanel = () => {
       } catch (error) {
         console.error('Error in resource comparison:', error)
         // Reset previous resources on error
-        setPreviousResources(null)
+        previousResourcesRef.current = null
       }
       
       if (newCrystals.length > 0) {
@@ -119,13 +121,13 @@ const ResourcePanel = () => {
     // Only update previous resources if current resources exist and is an object (not array, not null)
     if (myPlayer.resources && typeof myPlayer.resources === 'object' && !Array.isArray(myPlayer.resources) && myPlayer.resources !== null) {
       try {
-        setPreviousResources({ ...myPlayer.resources })
+        previousResourcesRef.current = { ...myPlayer.resources }
       } catch (error) {
         console.error('Error setting previous resources:', error)
-        setPreviousResources(null)
+        previousResourcesRef.current = null
       }
     }
-  }, [myPlayer, myPlayer?.resources, previousResources])
+  }, [myPlayer, myPlayer?.resources])
 
   // Handle collect animations from store
   useEffect(() => {

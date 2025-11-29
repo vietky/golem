@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import Card from "./Card";
 import UpgradeModal from "./UpgradeModal";
 import TradeModal from "./TradeModal";
+import DepositModal from "./DepositModal";
 import useGameStore from "../store/gameStore";
 
 const PlayerHand = () => {
@@ -26,6 +27,7 @@ const PlayerHand = () => {
   const [draggedCardIndex, setDraggedCardIndex] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const dragControls = useDragControls();
+  const [depositModal, setDepositModal] = useState({ show: false, card: null, index: null });
 
   // Show empty state if player data not ready yet
   if (!myPlayer) {
@@ -230,6 +232,16 @@ const PlayerHand = () => {
           playerResources={myPlayer?.resources}
           onConfirm={handleTradeConfirm}
           onCancel={hideTradeModal}
+        />
+      )}
+
+      {/* Deposit Modal */}
+      {depositModal.show && (
+        <DepositModal
+          card={depositModal.card}
+          cardIndex={depositModal.index}
+          isHandCard={true}
+          onClose={() => setDepositModal({ show: false, card: null, index: null })}
         />
       )}
     </>

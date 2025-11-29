@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"golem_century/internal/game"
@@ -135,7 +136,7 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			// Parse input and output resources if present
 			var inputResources *game.Resources
 			var outputResources *game.Resources
-			
+
 			if inputRes, ok := actionMsg["inputResources"].(map[string]interface{}); ok {
 				getInt := func(m map[string]interface{}, key string) int {
 					if val, exists := m[key]; exists {
@@ -152,7 +153,7 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 					Pink:   getInt(inputRes, "pink"),
 				}
 			}
-			
+
 			if outputRes, ok := actionMsg["outputResources"].(map[string]interface{}); ok {
 				getInt := func(m map[string]interface{}, key string) int {
 					if val, exists := m[key]; exists {
@@ -185,7 +186,7 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 				gameAction = game.Action{
 					Type:            game.PlayCard,
 					CardIndex:       int(cardIndex),
-					Multiplier:       multiplier,
+					Multiplier:      multiplier,
 					InputResources:  inputResources,
 					OutputResources: outputResources,
 				}
@@ -202,6 +203,73 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			case "rest":
 				gameAction = game.Action{
 					Type: game.Rest,
+				}
+			case "discardCrystals":
+				discardMap, _ := actionMsg["discard"].(map[string]interface{})
+				getInt := func(m map[string]interface{}, key string) int {
+					if val, exists := m[key]; exists {
+						if f, ok := val.(float64); ok {
+							return int(f)
+						}
+					}
+					return 0
+				}
+				discard := &game.Resources{
+					Yellow: getInt(discardMap, "yellow"),
+					Green:  getInt(discardMap, "green"),
+					Blue:   getInt(discardMap, "blue"),
+					Pink:   getInt(discardMap, "pink"),
+				}
+				gameAction = game.Action{
+					Type:    game.DiscardCrystals,
+					Discard: discard,
+				}
+			case "depositCrystals":
+				depositsMap, _ := actionMsg["deposits"].(map[string]interface{})
+				targetPos, _ := actionMsg["targetPosition"].(float64)
+				deposits := make(map[int][]game.CrystalType)
+				for posStr, crystalStr := range depositsMap {
+					pos, _ := strconv.Atoi(posStr)
+					crystalName, _ := crystalStr.(string)
+					var crystalType game.CrystalType
+					switch crystalName {
+					case "yellow":
+						crystalType = game.Yellow
+					case "green":
+						crystalType = game.Green
+					case "blue":
+						crystalType = game.Blue
+					case "pink":
+						crystalType = game.Pink
+					default:
+						continue
+					}
+					// Wrap single crystal in array to support stacking
+					deposits[pos] = []game.CrystalType{crystalType}
+				}
+				gameAction = game.Action{
+					Type:           game.DepositCrystals,
+					CardIndex:      int(cardIndex),
+					Deposits:       deposits,
+					TargetPosition: int(targetPos),
+				}
+			case "collectCrystals":
+				positionsArr, _ := actionMsg["positions"].([]interface{})
+				positions := make([]int, 0, len(positionsArr))
+				for _, pos := range positionsArr {
+					if f, ok := pos.(float64); ok {
+						positions = append(positions, int(f))
+					}
+				}
+				gameAction = game.Action{
+					Type:             game.CollectCrystals,
+					CardIndex:        int(cardIndex),
+					CollectPositions: positions,
+				}
+			case "collectAllCrystals":
+				gameAction = game.Action{
+					Type:      game.CollectAllCrystals,
+					CardIndex: int(cardIndex),
 				}
 			default:
 				continue
@@ -305,7 +373,7 @@ func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request)
 		maxPlayers := len(session.GameState.Players)
 		isFull := connectedPlayers >= maxPlayers
 		isGameOver := session.GameState.GameOver
-		
+
 		// Get player names
 		playerNames := make([]string, 0)
 		for i := 1; i <= maxPlayers; i++ {
@@ -313,16 +381,16 @@ func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request)
 				playerNames = append(playerNames, name)
 			}
 		}
-		
+
 		timeSinceActivity := time.Since(session.LastActivity)
 		timeUntilDelete := 5*time.Minute - timeSinceActivity
 		var timeUntilDeleteSeconds int64
 		if timeUntilDelete > 0 && connectedPlayers == 0 {
 			timeUntilDeleteSeconds = int64(timeUntilDelete.Seconds())
 		}
-		
+
 		session.mu.RUnlock()
-		
+
 		// Only show active, non-full, non-game-over sessions
 		if !isFull && !isGameOver {
 			sessions = append(sessions, map[string]interface{}{
