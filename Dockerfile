@@ -29,11 +29,22 @@ COPY web/react-frontend/package*.json ./
 # Install dependencies (will fail gracefully if files don't exist)
 RUN npm ci || (echo "No React frontend found, creating empty dist..." && mkdir -p dist)
 
-# Copy React frontend source
+# Copy React frontend source first
 COPY web/react-frontend/ ./
 
-# Build React app (will create empty dist if build fails)
-RUN npm run build || (echo "React build failed, creating empty dist..." && mkdir -p dist)
+# Copy static images to public/images (Vite expects public directory for assets)
+# Images are referenced in CSS and need to be available during build
+COPY web/static/images ./public/images/
+
+# Build React app
+RUN if [ -f package.json ]; then \
+      echo "Building React app..." && \
+      npm run build || (echo "React build failed, but continuing..." && mkdir -p dist); \
+      echo "React build process completed"; \
+    else \
+      echo "No package.json found, creating empty dist..." && \
+      mkdir -p dist; \
+    fi
 
 # Runtime stage
 FROM alpine:latest
@@ -51,6 +62,8 @@ COPY --from=go-builder /app/web/static ./web/static
 
 # Copy React build output (if build succeeded)
 # Note: COPY doesn't support conditional logic, so we copy if it exists
+# Create web/react directory first, then copy dist contents
+RUN mkdir -p ./web/react
 COPY --from=react-builder /app/dist ./web/react/
 
 # Expose port

@@ -236,7 +236,7 @@ function getCardImage(cardName, className = 'card-image') {
 }
 
 /**
- * Legacy function for backward compatibility
+ * Legacy function for backward compatibilitys
  * Now returns image instead of SVG
  * 
  * @param {string} cardName - Card name

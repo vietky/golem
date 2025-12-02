@@ -6,6 +6,11 @@ export default {
   ],
   theme: {
     extend: {
+      screens: {
+        'xs': '475px',
+        'portrait': { 'raw': '(orientation: portrait)' },
+        'landscape': { 'raw': '(orientation: landscape)' },
+      },
       colors: {
         'golem-yellow': '#FFD966',
         'golem-green': '#6AA84F',

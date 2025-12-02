@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -35,9 +36,14 @@ type Card struct {
 	Cost        *Resources // Cost to acquire (for ActionCard)
 	Requirement *Resources // Required crystals (for PointCard)
 	Points      int        // Victory points (for PointCard)
+	Amount      int        // Amount of coins (for CoinCard)
+	TurnUpgrade int        // Turn upgrade (for UpgradeCard)
 	// For ActionCard: what it produces/upgrades/trades
 	Input  *Resources // Input crystals (for Upgrade/Trade)
 	Output *Resources // Output crystals
+	// Crystal deposits on card positions (position -> array of crystal types)
+	// Position 1, 2, 3 can each hold multiple crystals (stacking)
+	Deposits map[int][]CrystalType // Position -> Array of Crystal types
 }
 
 // ActionCard represents a merchant/action card interface
@@ -56,20 +62,40 @@ type PointCardInterface interface {
 }
 
 // CanPlay checks if a player can play this action card
-func (c *Card) CanPlay(player *Player) bool {
+func (c *Card) CanPlay(player *Player, action Action) bool {
 	if c.Type != ActionCard {
 		return false
 	}
-	// Check if player has required input resources
-	if c.Input != nil && !player.Resources.HasAll(c.Input) {
-		return false
+	if c.ActionType == Upgrade {
+		if c.TurnUpgrade == 0 {
+			return false
+		}
+
+		if action.InputResources == nil || action.OutputResources == nil {
+			return false
+		}
+
+		if !player.Resources.HasAll(action.InputResources, action.Multiplier) {
+			return false
+		}
+
+		if !action.InputResources.CanUpgraded(action.OutputResources, c.TurnUpgrade) {
+			return false
+		}
+
+	} else {
+		// Check if player has required input resources
+		if c.Input != nil && !player.Resources.HasAll(c.Input, action.Multiplier) {
+			return false
+		}
 	}
+
 	return true
 }
 
 // Play executes the card's action
-func (c *Card) Play(player *Player) bool {
-	if !c.CanPlay(player) {
+func (c *Card) Play(player *Player, action Action) bool {
+	if !c.CanPlay(player, action) {
 		return false
 	}
 
@@ -77,23 +103,23 @@ func (c *Card) Play(player *Player) bool {
 	case Produce:
 		// Simply add output resources
 		if c.Output != nil {
-			player.Resources.AddAll(c.Output)
+			player.Resources.AddAll(c.Output, 1)
 		}
 	case Upgrade:
 		// Subtract input, add output
-		if c.Input != nil && !player.Resources.SubtractAll(c.Input) {
+		if action.InputResources != nil && !player.Resources.SubtractAll(action.InputResources, 1) {
 			return false
 		}
-		if c.Output != nil {
-			player.Resources.AddAll(c.Output)
+		if action.OutputResources != nil {
+			player.Resources.AddAll(action.OutputResources, 1)
 		}
 	case Trade:
 		// Subtract input, add output
-		if c.Input != nil && !player.Resources.SubtractAll(c.Input) {
+		if c.Input != nil && !player.Resources.SubtractAll(c.Input, action.Multiplier) {
 			return false
 		}
 		if c.Output != nil {
-			player.Resources.AddAll(c.Output)
+			player.Resources.AddAll(c.Output, action.Multiplier)
 		}
 	}
 
@@ -102,17 +128,13 @@ func (c *Card) Play(player *Player) bool {
 
 // CanClaim checks if a player can claim this point card
 func (c *Card) CanClaim(player *Player) bool {
-	// Coin cards can always be claimed (no resource requirement)
-	if c.Type == CoinCard {
-		return true
-	}
 	if c.Type != PointCard {
 		return false
 	}
 	if c.Requirement == nil {
 		return false
 	}
-	return player.Resources.HasAll(c.Requirement)
+	return player.Resources.HasAll(c.Requirement, 1)
 }
 
 // Claim claims the point card and subtracts required resources
@@ -120,19 +142,168 @@ func (c *Card) Claim(player *Player) bool {
 	if !c.CanClaim(player) {
 		return false
 	}
-	// Coin cards don't require resources
-	if c.Type == CoinCard {
-		player.Points += c.Points
-		return true
-	}
 	// Point cards require resources
 	if c.Requirement != nil && c.Requirement.Total() > 0 {
-		if !player.Resources.SubtractAll(c.Requirement) {
+		if !player.Resources.SubtractAll(c.Requirement, 1) {
 			return false
 		}
 	}
 	player.Points += c.Points
 	return true
+}
+
+// DepositCrystals deposits crystals on card positions
+// Must deposit to all positions from 1 to (targetPosition - 1)
+// Example: targetPosition 2 → deposit to position 1
+// Example: targetPosition 3 → deposit to positions 1, 2
+// Returns true if successful
+func (c *Card) DepositCrystals(player *Player, deposits map[int]CrystalType, targetPosition int) bool {
+	if c.Deposits == nil {
+		c.Deposits = make(map[int][]CrystalType)
+	}
+
+	// Validate target position (1-5 for market cards, 1-3 for hand cards)
+	if targetPosition < 1 || targetPosition > 5 {
+		return false
+	}
+
+	// Required positions: from 1 to (targetPosition - 1)
+	// If targetPosition is 1, no deposits needed
+	if targetPosition == 1 {
+		return true
+	}
+
+	// Must deposit to all required positions
+	for pos := 1; pos < targetPosition; pos++ {
+		crystalType, exists := deposits[pos]
+		if !exists {
+			return false // Missing deposit for required position
+		}
+		// Check if player has the crystal
+		if !player.Resources.Has(crystalType, 1) {
+			return false
+		}
+	}
+
+	// Deduct crystals from player and add to card (stack deposits)
+	for pos := 1; pos < targetPosition; pos++ {
+		crystalType := deposits[pos]
+		if !player.Resources.Subtract(crystalType, 1) {
+			return false
+		}
+		// Stack: append to existing array or create new array
+		if c.Deposits[pos] == nil {
+			c.Deposits[pos] = make([]CrystalType, 0)
+		}
+		c.Deposits[pos] = append(c.Deposits[pos], crystalType)
+	}
+
+	return true
+}
+
+// CollectCrystals collects crystals from specified position
+// Can collect from any position, but must leave at least one deposit behind
+// If collecting from position N, all positions < N must remain
+// Returns collected crystals and true if successful
+func (c *Card) CollectCrystals(player *Player, positions []int) (*Resources, bool) {
+	if c.Deposits == nil || len(c.Deposits) == 0 {
+		return nil, false
+	}
+
+	// Must collect exactly one position
+	if len(positions) != 1 {
+		return nil, false
+	}
+
+	collectPosition := positions[0]
+
+	// Check if position exists and has deposits
+	depositArray, exists := c.Deposits[collectPosition]
+	if !exists || len(depositArray) == 0 {
+		return nil, false
+	}
+
+	// Count total deposits across all positions
+	totalDeposits := 0
+	for _, arr := range c.Deposits {
+		totalDeposits += len(arr)
+	}
+
+	// Must leave at least one deposit behind
+	if totalDeposits <= 1 {
+		return nil, false // Cannot collect if it's the only deposit
+	}
+
+	// Collect one crystal from selected position (take first one)
+	collected := NewResources()
+	crystalType := depositArray[0]
+	collected.Add(crystalType, 1)
+
+	// Remove collected crystal from array
+	if len(depositArray) > 1 {
+		c.Deposits[collectPosition] = depositArray[1:]
+	} else {
+		// If this was the last crystal at this position, remove the position
+		delete(c.Deposits, collectPosition)
+	}
+
+	// Add collected crystals to player
+	player.Resources.AddAll(collected, 1)
+
+	return collected, true
+}
+
+// CollectAllCrystals collects all crystals from card, leaving only one deposit behind
+// Returns collected crystals and true if successful
+func (c *Card) CollectAllCrystals(player *Player) (*Resources, bool) {
+	if c.Deposits == nil || len(c.Deposits) == 0 {
+		return nil, false
+	}
+
+	// Count total deposits
+	totalDeposits := 0
+	for _, arr := range c.Deposits {
+		totalDeposits += len(arr)
+	}
+
+	// Must leave at least one deposit
+	if totalDeposits <= 1 {
+		return nil, false // Cannot collect if only one deposit exists
+	}
+
+	collected := NewResources()
+
+	// Find the position with the minimum position number (keep this one)
+	minPos := 999
+	for pos := range c.Deposits {
+		if pos < minPos {
+			minPos = pos
+		}
+	}
+
+	// Collect all deposits except keep one from the minimum position
+	for pos, depositArray := range c.Deposits {
+		if pos == minPos {
+			// Keep one deposit at minimum position, collect the rest
+			if len(depositArray) > 1 {
+				for i := 1; i < len(depositArray); i++ {
+					collected.Add(depositArray[i], 1)
+				}
+				c.Deposits[pos] = depositArray[:1] // Keep only first one
+			}
+		} else {
+			// Collect all deposits from other positions
+			for _, crystalType := range depositArray {
+				collected.Add(crystalType, 1)
+			}
+			delete(c.Deposits, pos)
+		}
+	}
+
+	// Add collected crystals to player
+	player.Resources.AddAll(collected, 1)
+
+	return collected, true
 }
 
 // GetCost returns the cost to acquire this card
@@ -218,10 +389,10 @@ func parseResourceString(s string) *Resources {
 // - upgrade_2 (upgrade 2 crystals: 2 lower -> 1 higher)
 // - upgrade_3 (upgrade 3 crystals: 3 lower -> 1 higher)
 // - trade_0002_0100 (trade 2 Yellow for 1 Blue)
-func parseActionCardName(name string) (ActionType, *Resources, *Resources, *Resources) {
+func parseActionCardName(name string) (ActionType, *Resources, *Resources, *Resources, int) {
 	parts := strings.Split(name, "_")
 	if len(parts) < 2 {
-		return Produce, nil, nil, nil
+		return Produce, nil, nil, nil, 0
 	}
 
 	actionType := parts[0]
@@ -240,17 +411,17 @@ func parseActionCardName(name string) (ActionType, *Resources, *Resources, *Reso
 				if cost.Yellow == 0 {
 					cost.Yellow = 1
 				}
-				return Produce, nil, output, cost
+				return Produce, nil, output, cost, 0
 			} else if input.Total() > output.Total() && output.Total() > 0 {
 				// More input than output = Upgrade
 				cost := NewResources()
 				cost.Yellow = input.Total()
-				return Upgrade, input, output, cost
+				return Upgrade, input, output, cost, 0
 			} else {
 				// Trade
 				cost := NewResources()
 				cost.Yellow = input.Total()
-				return Trade, input, output, cost
+				return Trade, input, output, cost, 0
 			}
 		}
 	case "mint":
@@ -263,24 +434,21 @@ func parseActionCardName(name string) (ActionType, *Resources, *Resources, *Reso
 			if cost.Yellow == 0 {
 				cost.Yellow = 1
 			}
-			return Produce, nil, output, cost
+			return Produce, nil, output, cost, 0
 		}
 	case "upgrade":
-		// upgrade_2 or upgrade_3 format: upgrade N crystals
-		// Upgrade converts N lower crystals to 1 higher crystal
-		// upgrade_2: 2 yellow -> 1 green
-		// upgrade_3: 3 yellow -> 1 green
+		// upgrade_x format: upgrade maximum x turn upgrade for some total upgradeable crystals
+		// example: upgrade_2 means upgrade maximum 2 grade for some total upgradeable crystals,
+		// eg: 1 yellow -> 1 blue (2 turn upgrade) or 2 yellow -> 2 green (2 turn upgrade), or 1 blue -> 1 pink (1 turn upgrade)
 		if len(parts) >= 2 {
-			count, _ := strconv.Atoi(parts[1])
-			if count <= 0 {
-				count = 2 // Default
+			turnUpgrade, _ := strconv.Atoi(parts[1])
+			if turnUpgrade < 2 || turnUpgrade > 3 {
+				turnUpgrade = 2
 			}
-			// Default upgrade: N lower -> 1 higher
-			input := &Resources{Yellow: count}
-			output := &Resources{Green: 1}
+			input := NewResources()
+			output := NewResources()
 			cost := NewResources()
-			cost.Yellow = count + 1
-			return Upgrade, input, output, cost
+			return Upgrade, input, output, cost, turnUpgrade
 		}
 	case "trade":
 		// trade_0002_0100 format: input and output
@@ -290,11 +458,11 @@ func parseActionCardName(name string) (ActionType, *Resources, *Resources, *Reso
 			// Cost based on input value
 			cost := NewResources()
 			cost.Yellow = input.Total()
-			return Trade, input, output, cost
+			return Trade, input, output, cost, 0
 		}
 	}
 
-	return Produce, nil, nil, nil
+	return Produce, nil, nil, nil, 0
 }
 
 // parseGolemCardName parses a golem card name in the format:
@@ -306,9 +474,38 @@ func parseGolemCardName(name string) (*Resources, int) {
 	if len(parts) >= 2 {
 		requirement := parseResourceString(parts[1])
 		points := requirement.Pink*4 + requirement.Blue*3 + requirement.Green*2 + requirement.Yellow*1
+		points += getBonusPoints(requirement)
 		return requirement, points
 	}
 	return NewResources(), 0
+}
+
+func getBonusPoints(requirement *Resources) int {
+	bonusPoints := 0
+	// if have at least 3 different colors, +2 bonus points
+	differentColors := 0
+	if requirement.Pink > 0 {
+		differentColors++
+	}
+	if requirement.Blue > 0 {
+		differentColors++
+	}
+	if requirement.Green > 0 {
+		differentColors++
+	}
+	if requirement.Yellow > 0 {
+		differentColors++
+	}
+	if differentColors >= 3 {
+		bonusPoints += 1
+	}
+	if differentColors >= 4 {
+		bonusPoints += 1
+	}
+	if requirement.Pink+requirement.Blue+requirement.Green+requirement.Yellow == 6 {
+		bonusPoints += 1
+	}
+	return int(math.Max(float64(bonusPoints), 2))
 }
 
 // CreateCardFromName creates a card from a name string using the new naming convention
@@ -319,10 +516,11 @@ func CreateCardFromName(name string, id int) *Card {
 		if len(parts) >= 2 {
 			points, _ := strconv.Atoi(parts[1])
 			return &Card{
-				ID:     id,
-				Name:   name,
-				Type:   CoinCard,
-				Points: points,
+				ID:       id,
+				Name:     name,
+				Type:     CoinCard,
+				Points:   points,
+				Deposits: make(map[int][]CrystalType),
 			}
 		}
 	}
@@ -330,18 +528,20 @@ func CreateCardFromName(name string, id int) *Card {
 	// Check for stone cards
 	if strings.HasPrefix(name, "stone_") {
 		return &Card{
-			ID:   id,
-			Name: name,
-			Type: StoneCard,
+			ID:       id,
+			Name:     name,
+			Type:     StoneCard,
+			Deposits: make(map[int][]CrystalType),
 		}
 	}
 
 	// Check for background cards
 	if strings.HasSuffix(name, "_bg") {
 		return &Card{
-			ID:   id,
-			Name: name,
-			Type: BackgroundCard,
+			ID:       id,
+			Name:     name,
+			Type:     BackgroundCard,
+			Deposits: make(map[int][]CrystalType),
 		}
 	}
 
@@ -354,40 +554,46 @@ func CreateCardFromName(name string, id int) *Card {
 			Type:        PointCard,
 			Requirement: requirement,
 			Points:      points,
+			Deposits:    make(map[int][]CrystalType),
 		}
 	}
 
 	// Check for action cards (check action_ first, then others)
 	if strings.HasPrefix(name, "action_") {
-		actionType, input, output, cost := parseActionCardName(name)
+		actionType, input, output, cost, turnUpgrade := parseActionCardName(name)
 		return &Card{
-			ID:         id,
-			Name:       name,
-			Type:       ActionCard,
-			ActionType: actionType,
-			Input:      input,
-			Output:     output,
-			Cost:       cost,
+			ID:          id,
+			Name:        name,
+			Type:        ActionCard,
+			ActionType:  actionType,
+			Input:       input,
+			Output:      output,
+			Cost:        cost,
+			TurnUpgrade: turnUpgrade,
+			Deposits:    make(map[int][]CrystalType),
 		}
 	}
 	if strings.HasPrefix(name, "mint_") || strings.HasPrefix(name, "upgrade_") || strings.HasPrefix(name, "trade_") {
-		actionType, input, output, cost := parseActionCardName(name)
+		actionType, input, output, cost, turnUpgrade := parseActionCardName(name)
 		return &Card{
-			ID:         id,
-			Name:       name,
-			Type:       ActionCard,
-			ActionType: actionType,
-			Input:      input,
-			Output:     output,
-			Cost:       cost,
+			ID:          id,
+			Name:        name,
+			Type:        ActionCard,
+			ActionType:  actionType,
+			Input:       input,
+			Output:      output,
+			Cost:        cost,
+			TurnUpgrade: turnUpgrade,
+			Deposits:    make(map[int][]CrystalType),
 		}
 	}
 
 	// Default: return empty card
 	return &Card{
-		ID:   id,
-		Name: name,
-		Type: ActionCard,
+		ID:       id,
+		Name:     name,
+		Type:     ActionCard,
+		Deposits: make(map[int][]CrystalType),
 	}
 }
 
@@ -397,7 +603,7 @@ func CreateDefaultActionCards() []*Card {
 	// Only include card names that have corresponding image files
 	cardNames := []string{
 		// Mint cards (produce) - only cards with images
-		"mint_0002", // Get 2 Yellow
+		// "mint_0002", // Get 2 Yellow
 		"mint_0003", // Get 3 Yellow
 		"mint_0004", // Get 4 Yellow
 		"mint_0011", // Get 1 Green, 1 Yellow
@@ -407,7 +613,7 @@ func CreateDefaultActionCards() []*Card {
 		"mint_0101", // Get 1 Blue, 1 Yellow
 		"mint_1000", // Get 1 Pink
 		// Upgrade cards - images exist
-		"upgrade_2", // Upgrade 2 crystals
+		// "upgrade_2", // Upgrade 2 crystals
 		"upgrade_3", // Upgrade 3 crystals
 		// Trade cards - only cards with images
 		"trade_0002_0020", // Trade 2 Yellow for 2 Green
@@ -497,6 +703,7 @@ func CreateDefaultPointCards() []*Card {
 		"golem_3111", // 3 Pink, 1 Blue, 1 Green, 1 Yellow = 18 points
 		"golem_3200", // 3 Pink, 2 Blue = 18 points
 		"golem_4000", // 4 Pink = 16 points
+		"golem_5000", // 5 Pink = 20 points
 	}
 
 	cards := make([]*Card, 0, len(golemNames))
@@ -531,5 +738,13 @@ func CreateBackgroundCards() []*Card {
 	return []*Card{
 		CreateCardFromName("golem_bg", 400),
 		CreateCardFromName("merchant_bg", 401),
+	}
+}
+
+func CreateInitialActionCards(playerIndex int) []*Card {
+	// Each player starts with 2 cards
+	return []*Card{
+		CreateCardFromName("mint_0002", 501+playerIndex*2),
+		CreateCardFromName("upgrade_2", 502+playerIndex*2),
 	}
 }

@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import CrystalStack from './CrystalStack'
 import useGameStore from '../store/gameStore'
+import useOrientation from '../hooks/useOrientation'
 
 // Flying crystal icon component for collect animation
 const FlyingCrystal = ({ type, startPos, endPos, onComplete }) => {
@@ -41,8 +42,10 @@ const FlyingCrystal = ({ type, startPos, endPos, onComplete }) => {
 
 const ResourcePanel = () => {
   const { myPlayer, rest, collectAnimations } = useGameStore()
+  const { isMobile, isPortrait } = useOrientation()
   const [flyingCrystals, setFlyingCrystals] = useState([])
-  const [previousResources, setPreviousResources] = useState(null)
+  const [isCollapsed, setIsCollapsed] = useState(isMobile && isPortrait)
+  const previousResourcesRef = useRef(null)
 
   // Don't show resource panel until player data is loaded
   if (!myPlayer) {
@@ -54,18 +57,20 @@ const ResourcePanel = () => {
     // Early return if player or resources don't exist
     if (!myPlayer || !myPlayer.resources) {
       if (myPlayer?.resources && typeof myPlayer.resources === 'object') {
-        setPreviousResources({ ...myPlayer.resources })
+        previousResourcesRef.current = { ...myPlayer.resources }
       } else {
-        setPreviousResources(null)
+        previousResourcesRef.current = null
       }
       return
     }
 
     // Ensure resources is an object
     if (typeof myPlayer.resources !== 'object' || myPlayer.resources === null) {
-      setPreviousResources(null)
+      previousResourcesRef.current = null
       return
     }
+
+    const previousResources = previousResourcesRef.current
 
     // Only compare if we have previous resources (must be an object)
     if (previousResources && typeof previousResources === 'object' && !Array.isArray(previousResources) && myPlayer.resources) {
@@ -108,7 +113,7 @@ const ResourcePanel = () => {
       } catch (error) {
         console.error('Error in resource comparison:', error)
         // Reset previous resources on error
-        setPreviousResources(null)
+        previousResourcesRef.current = null
       }
       
       if (newCrystals.length > 0) {
@@ -119,13 +124,13 @@ const ResourcePanel = () => {
     // Only update previous resources if current resources exist and is an object (not array, not null)
     if (myPlayer.resources && typeof myPlayer.resources === 'object' && !Array.isArray(myPlayer.resources) && myPlayer.resources !== null) {
       try {
-        setPreviousResources({ ...myPlayer.resources })
+        previousResourcesRef.current = { ...myPlayer.resources }
       } catch (error) {
         console.error('Error setting previous resources:', error)
-        setPreviousResources(null)
+        previousResourcesRef.current = null
       }
     }
-  }, [myPlayer, myPlayer?.resources, previousResources])
+  }, [myPlayer, myPlayer?.resources])
 
   // Handle collect animations from store
   useEffect(() => {
@@ -170,85 +175,119 @@ const ResourcePanel = () => {
       </AnimatePresence>
 
       <div 
-        className="fixed bottom-24 right-6 z-30"
+        className={`fixed z-30 ${
+          isMobile && isPortrait 
+            ? 'bottom-20 right-2' 
+            : 'bottom-24 sm:bottom-28 md:bottom-32 right-2 sm:right-4 md:right-6'
+        }`}
         data-resource-panel
       >
-        <motion.div
-          className="bg-white/95 backdrop-blur-md rounded-xl p-6 shadow-2xl border-2 border-gray-300"
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-        >
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Your Resources</h3>
-          
-          <div className="space-y-4">
-            {/* Crystals */}
-            <div>
-              <label className="text-sm text-gray-600 mb-2 block">Crystals</label>
-              <CrystalStack resources={myPlayer.resources} size="md" />
+        {isCollapsed && isMobile ? (
+          /* Collapsed mobile view - compact button */
+          <motion.button
+            onClick={() => setIsCollapsed(false)}
+            className="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold px-4 py-3 rounded-xl shadow-2xl border-2 border-white/20 touch-target"
+            whileTap={{ scale: 0.95 }}
+          >
+            <div className="flex flex-col items-center gap-1">
+              <div className="text-2xl font-bold">{myPlayer.points || 0}</div>
+              <div className="text-[10px] opacity-90">Points</div>
             </div>
-
-            {/* Points */}
-            <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-4 text-center">
-              <div className="text-sm text-white/80 mb-1">Victory Points</div>
-              <motion.div
-                className="text-3xl font-bold text-white"
-                key={myPlayer.points || 0}
-                initial={{ scale: 0.8 }}
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{
-                  duration: 0.5,
-                  ease: "easeOut"
-                }}
-              >
-                {myPlayer.points || 0}
-              </motion.div>
+          </motion.button>
+        ) : (
+          /* Expanded view - full panel */
+          <motion.div
+            className={`bg-white/95 backdrop-blur-md rounded-xl p-3 sm:p-4 md:p-6 shadow-2xl border-2 border-gray-300 ${
+              isMobile && isPortrait ? 'w-[280px]' : 'w-[180px] sm:w-[200px] md:w-auto'
+            }`}
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            {/* Header with close button on mobile */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base sm:text-lg font-bold text-gray-800">Your Resources</h3>
+              {isMobile && (
+                <button
+                  onClick={() => setIsCollapsed(true)}
+                  className="text-gray-500 hover:text-gray-700 p-1"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
             </div>
-
-            {/* Point Cards Collected */}
-            <div>
-              <label className="text-sm text-gray-600 mb-2 block">
-                Point Cards: {myPlayer.pointCards?.length || 0}
-              </label>
-              <div className="flex gap-2 flex-wrap">
-                {Array.isArray(myPlayer.pointCards) && myPlayer.pointCards.length > 0 ? (
-                  <>
-                    {myPlayer.pointCards.slice(0, 5).map((card, idx) => (
-                      <motion.div
-                        key={idx}
-                        className="w-12 h-16 bg-golem-yellow rounded border-2 border-yellow-600"
-                        title={card?.name || `Card ${idx + 1}`}
-                        initial={{ scale: 0, rotate: -180 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        transition={{
-                          delay: idx * 0.1,
-                          type: "spring",
-                          stiffness: 200
-                        }}
-                      />
-                    ))}
-                    {myPlayer.pointCards.length > 5 && (
-                      <div className="w-12 h-16 bg-gray-300 rounded border-2 border-gray-400 flex items-center justify-center text-xs font-bold">
-                        +{myPlayer.pointCards.length - 5}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-xs text-gray-400">No point cards yet</div>
-                )}
+            
+            <div className="space-y-3 sm:space-y-4">
+              {/* Crystals */}
+              <div>
+                <label className="text-xs sm:text-sm text-gray-600 mb-2 block">Crystals</label>
+                <CrystalStack resources={myPlayer.resources} size={isMobile ? "sm" : "md"} />
               </div>
-            </div>
 
-            {/* Rest Button */}
-            <motion.button
-              onClick={rest}
-              className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold py-3 px-6 rounded-lg hover:from-orange-600 hover:to-red-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Rest
-            </motion.button>
-          </div>
-        </motion.div>
+              {/* Points */}
+              <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-3 sm:p-4 text-center">
+                <div className="text-xs sm:text-sm text-white/80 mb-1">Victory Points</div>
+                <motion.div
+                  className="text-2xl sm:text-3xl font-bold text-white"
+                  key={myPlayer.points || 0}
+                  initial={{ scale: 0.8 }}
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{
+                    duration: 0.5,
+                    ease: "easeOut"
+                  }}
+                >
+                  {myPlayer.points || 0}
+                </motion.div>
+              </div>
+
+              {/* Point Cards Collected */}
+              <div>
+                <label className="text-xs sm:text-sm text-gray-600 mb-2 block">
+                  Point Cards: {myPlayer.pointCards?.length || 0}
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {Array.isArray(myPlayer.pointCards) && myPlayer.pointCards.length > 0 ? (
+                    <>
+                      {myPlayer.pointCards.slice(0, 5).map((card, idx) => (
+                        <motion.div
+                          key={idx}
+                          className="w-10 h-14 sm:w-12 sm:h-16 bg-golem-yellow rounded border-2 border-yellow-600"
+                          title={card?.name || `Card ${idx + 1}`}
+                          initial={{ scale: 0, rotate: -180 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          transition={{
+                            delay: idx * 0.1,
+                            type: "spring",
+                            stiffness: 200
+                          }}
+                        />
+                      ))}
+                      {myPlayer.pointCards.length > 5 && (
+                        <div className="w-10 h-14 sm:w-12 sm:h-16 bg-gray-300 rounded border-2 border-gray-400 flex items-center justify-center text-xs font-bold">
+                          +{myPlayer.pointCards.length - 5}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-xs text-gray-400">No point cards yet</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Rest Button */}
+              <motion.button
+                onClick={rest}
+                className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold py-3 px-4 sm:px-6 rounded-lg hover:from-orange-600 hover:to-red-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 touch-target"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Rest
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
       </div>
     </>
   )

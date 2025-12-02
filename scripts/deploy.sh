@@ -10,7 +10,7 @@ set -e
 # Default values
 APP_NAME="${APP_NAME:-golem-century}"
 APP_DIR="${APP_DIR:-/opt/jenkins/repos/golem}"
-APP_PORT="${APP_PORT:-8081}"
+APP_PORT="${APP_PORT:-3001}"
 GIT_REPO="${GIT_REPO:-https://github.com/vietky/golem.git}"
 GIT_BRANCH="${GIT_BRANCH:-main}"
 
