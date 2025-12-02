@@ -136,21 +136,20 @@ const Card = ({
         isPlayable ? 'border-green-500 ring-2 ring-green-300' : ''
       } ${isAffordable ? 'border-blue-500 ring-2 ring-blue-300' : ''} ${
         isSelected ? 'ring-4 ring-yellow-400' : ''
-      } min-w-[200px]`}
+      } w-full min-w-0 sm:min-w-[160px] md:min-w-[200px]`}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       onClick={handleClick}
       animate={controls}
-      // Hover animation: scale up 1.05x with glow
+      // Hover animation: simplified
       whileHover={{
-        scale: 1.05,
         y: -8,
-        transition: { duration: 0.2, ease: "easeOut" }
+        transition: { duration: 0.15, ease: "easeOut" }
       }}
       // Click animation: scale down 0.95x
       whileTap={{ 
         scale: 0.95,
-        transition: { duration: 0.2 }
+        transition: { duration: 0.1 }
       }}
       // Drag & drop support (only if drag handlers provided)
       drag={onDragStart ? true : false}
@@ -159,20 +158,80 @@ const Card = ({
       onDragEnd={onDragEnd}
       dragElastic={0.2}
       whileDrag={{
-        scale: 1.1,
+        scale: 1.05,
         y: -10,
-        z: 50,
         boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-        transition: { duration: 0.2 }
+        transition: { duration: 0.15 }
       }}
-      layout
       style={{ 
-        perspective: 1000,
-        cursor: isDragging ? 'grabbing' : 'pointer'
+        cursor: isDragging ? 'grabbing' : 'pointer',
+        willChange: 'transform'
       }}
     >
+      {/* Deposits Tooltip - Show on top of card */}
+      {(() => {
+        const hasDeposits = card?.deposits && Object.keys(card.deposits).length > 0;
+        if (hasDeposits) {
+          console.log(`[DEBUG Card] Card ${card?.name} (index ${index}) HAS deposits:`, card.deposits);
+        }
+        return null;
+      })()}
+      {card?.deposits && Object.keys(card.deposits).length > 0 && (() => {
+        // Count crystals by type (now supports stacking: comma-separated values)
+        const crystalCounts = {}
+        let totalDeposits = 0
+        Object.values(card.deposits).forEach(depositValue => {
+          // Deposit value can be string (single) or comma-separated string (multiple)
+          const crystals = typeof depositValue === 'string' ? depositValue.split(',') : [depositValue]
+          crystals.forEach(crystalType => {
+            const trimmed = crystalType.trim()
+            if (trimmed) {
+              crystalCounts[trimmed] = (crystalCounts[trimmed] || 0) + 1
+              totalDeposits++
+            }
+          })
+        })
+        
+        const crystalImages = {
+          yellow: '/images/stone_yellow.JPG',
+          green: '/images/stone_green.JPG',
+          blue: '/images/stone_blue.JPG',
+          pink: '/images/stone_pink.JPG'
+        }
+        
+        return (
+          <motion.div
+            className="absolute top-0 left-0 right-0 bg-purple-600/95 backdrop-blur-sm rounded-t-xl p-2 z-30"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="text-[10px] font-bold text-white mb-1 text-center">💎 Deposits ({totalDeposits})</div>
+            <div className="flex gap-1 justify-center flex-wrap">
+              {Object.entries(crystalCounts).map(([crystalType, count]) => (
+                <div key={crystalType} className="relative">
+                  <img
+                    src={crystalImages[crystalType] || '/images/stone_yellow.JPG'}
+                    alt={crystalType}
+                    className="w-5 h-5 rounded-full object-cover border border-white"
+                    onError={(e) => {
+                      e.target.src = '/images/stone_yellow.JPG'
+                    }}
+                  />
+                  {count > 1 && (
+                    <span className="absolute -bottom-0.5 -right-0.5 bg-purple-800 text-white text-[8px] w-3 h-3 rounded-full flex items-center justify-center font-bold">
+                      {count}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )
+      })()}
+
       {/* Card Type Badge */}
-      <div className={`absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white z-20 shadow-lg ${
+      <div className={`absolute ${card?.deposits && Object.keys(card.deposits).length > 0 ? 'top-16' : 'top-1'} left-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white z-20 shadow-lg ${
         actionType === 'produce' ? 'bg-golem-green' :
         actionType === 'upgrade' ? 'bg-golem-blue' :
         actionType === 'trade' ? 'bg-golem-pink' :
@@ -198,32 +257,20 @@ const Card = ({
           <motion.img
             src={getCardImagePath(card.name)}
             alt={getVietnameseCardName(card.name)}
-            className="w-full h-auto max-h-[320px] object-contain"
+            className="w-full h-auto max-h-[320px]"
             onError={(e) => {
               e.target.src = '/images/golem_bg.JPG'
             }}
             whileHover={{ 
               filter: "brightness(1.1) saturate(1.2)",
-              transition: { duration: 0.3 }
+              transition: { duration: 0.2 }
             }}
-            animate={isPlaying ? {
-              filter: [
-                "brightness(1) saturate(1)",
-                "brightness(1.2) saturate(1.3)",
-                "brightness(1) saturate(1)"
-              ],
-              transition: {
-                duration: 1,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }
-            } : {}}
           />
         )}
       </motion.div>
 
       {/* Card Info */}
-      <div className="p-2 space-y-1 bg-white/95">
+      <div className="p-2 space-y-1 bg-white/95 rounded-b-xl">
         <h3 className="font-bold text-xs text-gray-800 text-center leading-tight">
           {getVietnameseCardName(card?.name)}
         </h3>
@@ -241,6 +288,56 @@ const Card = ({
             </span>
           </div>
         )}
+
+        {/* Display Deposits */}
+        {card?.deposits && Object.keys(card.deposits).length > 0 && (() => {
+          // Count crystals by type (now supports stacking: comma-separated values)
+          const crystalCounts = {}
+          let totalDeposits = 0
+          Object.values(card.deposits).forEach(depositValue => {
+            // Deposit value can be string (single) or comma-separated string (multiple)
+            const crystals = typeof depositValue === 'string' ? depositValue.split(',') : [depositValue]
+            crystals.forEach(crystalType => {
+              const trimmed = crystalType.trim()
+              if (trimmed) {
+                crystalCounts[trimmed] = (crystalCounts[trimmed] || 0) + 1
+                totalDeposits++
+              }
+            })
+          })
+          
+          const crystalImages = {
+            yellow: '/images/stone_yellow.JPG',
+            green: '/images/stone_green.JPG',
+            blue: '/images/stone_blue.JPG',
+            pink: '/images/stone_pink.JPG'
+          }
+          
+          return (
+            <div className="mt-2 pt-2 border-t border-gray-300">
+              <div className="text-[9px] text-gray-600 mb-1 font-semibold">Deposits ({totalDeposits}):</div>
+              <div className="flex gap-1 justify-center flex-wrap">
+                {Object.entries(crystalCounts).map(([crystalType, count]) => (
+                  <div key={crystalType} className="relative">
+                    <img
+                      src={crystalImages[crystalType] || '/images/stone_yellow.JPG'}
+                      alt={crystalType}
+                      className="w-6 h-6 rounded-full object-cover border border-gray-400"
+                      onError={(e) => {
+                        e.target.src = '/images/stone_yellow.JPG'
+                      }}
+                    />
+                    {count > 1 && (
+                      <span className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                        {count}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* Hover Glow Effect - Type-specific colors with smooth transition */}

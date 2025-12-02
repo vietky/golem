@@ -4,7 +4,7 @@ import useGameStore from '../store/gameStore'
 
 const Lobby = ({ onJoinGame }) => {
   const [playerName, setPlayerName] = useState('Player 1')
-  const [numPlayers, setNumPlayers] = useState(3)
+  const [numPlayers, setNumPlayers] = useState(2)
   const [customSessionId, setCustomSessionId] = useState('')
   const [selectedAvatar, setSelectedAvatar] = useState('4')
   const [sessionInfo, setSessionInfo] = useState(null)

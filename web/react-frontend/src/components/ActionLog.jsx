@@ -6,7 +6,7 @@ const ActionLog = () => {
   const { actionLog } = useGameStore()
 
   return (
-    <div className="fixed top-24 right-6 z-30 w-64">
+    <div className="fixed top-24 sm:top-28 md:top-32 right-2 sm:right-4 md:right-6 z-30 w-48 sm:w-56 md:w-64">
       <div className="bg-black/80 backdrop-blur-md rounded-lg p-4 border border-gray-700">
         <h4 className="text-white text-sm font-bold mb-2">Action Log</h4>
         <div className="space-y-2">

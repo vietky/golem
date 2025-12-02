@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -206,9 +207,13 @@ func (gs *GameSession) RunGameLoop() {
 			currentPlayer := gs.GameState.GetCurrentPlayer()
 			if action.PlayerID == currentPlayer.ID {
 				if err := gs.GameState.ExecuteAction(action.Action); err == nil {
-					gs.GameState.CheckGameOver()
-					if !gs.GameState.GameOver {
-						gs.GameState.NextTurn()
+					// DepositCrystals and CollectCrystals don't end the turn
+					// They are intermediate actions before acquiring a card
+					if action.Action.Type != game.DepositCrystals && action.Action.Type != game.CollectCrystals && action.Action.Type != game.CollectAllCrystals {
+						gs.GameState.CheckGameOver()
+						if !gs.GameState.GameOver {
+							gs.GameState.NextTurn()
+						}
 					}
 					gs.BroadcastState()
 				} else {
@@ -264,10 +269,12 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 				"blue":   p.Resources.Blue,
 				"pink":   p.Resources.Pink,
 			},
-			"points":      p.Points,
+			"points":      p.GetPoints(),
 			"hand":        serializeCards(p.Hand),
 			"playedCards": serializeCards(p.PlayedCards),
 			"pointCards":  serializeCards(p.PointCards),
+			"coins":       serializeCards(p.Coins),
+			"hasRested":   p.HasRested,
 			"isAI":        p.IsAI,
 		}
 	}
@@ -275,7 +282,28 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 	marketActionCards := make([]map[string]interface{}, len(gs.GameState.Market.ActionCards))
 	for i, card := range gs.GameState.Market.ActionCards {
 		cost := gs.GameState.Market.GetActionCardCost(i)
-		marketActionCards[i] = serializeCardWithCost(card, cost)
+		serialized := serializeCardWithCost(card, cost)
+		// Debug: log deposits when serializing - check if field exists
+		deposits, hasDeposits := serialized["deposits"]
+		if hasDeposits {
+			if depositsMap, ok := deposits.(map[string]string); ok {
+				if len(depositsMap) > 0 {
+					fmt.Printf("[DEBUG Serialize] Market card index %d (position %d) HAS deposits: %+v\n", i, i+1, depositsMap)
+				} else {
+					fmt.Printf("[DEBUG Serialize] Market card index %d (position %d) has EMPTY deposits map\n", i, i+1)
+				}
+			} else {
+				fmt.Printf("[DEBUG Serialize] Market card index %d (position %d) deposits field has wrong type: %T\n", i, i+1, deposits)
+			}
+		} else {
+			fmt.Printf("[DEBUG Serialize] WARNING: Market card index %d (position %d) MISSING deposits field!\n", i, i+1)
+		}
+		// Ensure deposits field exists
+		if _, exists := serialized["deposits"]; !exists {
+			fmt.Printf("[DEBUG Serialize] FIXING: Adding missing deposits field to card %s\n", card.Name)
+			serialized["deposits"] = make(map[string]string)
+		}
+		marketActionCards[i] = serialized
 	}
 
 	marketPointCards := make([]map[string]interface{}, len(gs.GameState.Market.PointCards))
@@ -283,12 +311,15 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 		marketPointCards[i] = serializeCard(card)
 	}
 
+	marketCoins := serializeCards(gs.GameState.Market.Coins)
+
 	return map[string]interface{}{
 		"type":          "state",
 		"currentTurn":   gs.GameState.CurrentTurn,
 		"currentPlayer": gs.GameState.GetCurrentPlayer().ID,
 		"round":         gs.GameState.Round,
 		"gameOver":      gs.GameState.GameOver,
+		"lastRound":     gs.GameState.LastRound,
 		"winner":        gs.getWinnerInfo(),
 		"players":       players,
 		"market": map[string]interface{}{
@@ -296,6 +327,7 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 			"pointCards":  marketPointCards,
 			"actionDeck":  len(gs.GameState.Market.ActionDeck),
 			"pointDeck":   len(gs.GameState.Market.PointDeck),
+			"coins":       marketCoins,
 		},
 	}
 }
@@ -307,7 +339,7 @@ func (gs *GameSession) getWinnerInfo() map[string]interface{} {
 	return map[string]interface{}{
 		"id":     gs.GameState.Winner.ID,
 		"name":   gs.GameState.Winner.Name,
-		"points": gs.GameState.Winner.Points,
+		"points": gs.GameState.Winner.GetFinalPoints(),
 	}
 }
 
@@ -344,6 +376,9 @@ func serializeCard(card *game.Card) map[string]interface{} {
 				"pink":   card.Output.Pink,
 			}
 		}
+		if card.ActionType == game.Upgrade {
+			result["turnUpgrade"] = card.TurnUpgrade
+		}
 	} else if card.Type == game.PointCard {
 		result["points"] = card.Points
 		if card.Requirement != nil {
@@ -354,6 +389,60 @@ func serializeCard(card *game.Card) map[string]interface{} {
 				"pink":   card.Requirement.Pink,
 			}
 		}
+	} else if card.Type == game.CoinCard {
+		result["points"] = card.Points
+		result["amount"] = card.Amount
+	}
+
+	// Serialize deposits - ALWAYS include deposits field, even if empty
+	// Now supports stacking: each position can have multiple crystals
+	if card.Deposits != nil && len(card.Deposits) > 0 {
+		depositsMap := make(map[string]string)
+		for pos, depositArray := range card.Deposits {
+			if len(depositArray) == 0 {
+				continue
+			}
+			posStr := fmt.Sprintf("%d", pos)
+			// For each crystal in the array, add to map
+			// Since map can only have one value per key, we'll count and store as "crystalType:count"
+			// Or we can serialize as array - but frontend expects map[string]string
+			// Let's count crystals by type at this position
+			crystalCounts := make(map[game.CrystalType]int)
+			for _, crystalType := range depositArray {
+				crystalCounts[crystalType]++
+			}
+			// For now, serialize as "crystalType" (frontend will count)
+			// Or better: serialize all crystals as comma-separated or array
+			// Actually, let's change to map[string][]string to support multiple
+			// But that requires frontend changes too. For now, let's use a simple approach:
+			// Store as "crystalType1,crystalType2,..." or just the first one with count
+			// Convert all crystals in array to comma-separated string
+			var crystalNames []string
+			for _, crystalType := range depositArray {
+				var crystalName string
+				switch crystalType {
+				case game.Yellow:
+					crystalName = "yellow"
+				case game.Green:
+					crystalName = "green"
+				case game.Blue:
+					crystalName = "blue"
+				case game.Pink:
+					crystalName = "pink"
+				default:
+					continue
+				}
+				crystalNames = append(crystalNames, crystalName)
+			}
+			// Store as comma-separated string (frontend will split and count)
+			depositsMap[posStr] = strings.Join(crystalNames, ",")
+		}
+		result["deposits"] = depositsMap
+		fmt.Printf("[DEBUG Serialize] Card %s has deposits: %+v\n", card.Name, depositsMap)
+	} else {
+		// Always include deposits field, even if empty
+		result["deposits"] = make(map[string]string)
+		fmt.Printf("[DEBUG Serialize] Card %s has NO deposits (empty map)\n", card.Name)
 	}
 
 	return result
