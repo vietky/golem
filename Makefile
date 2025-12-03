@@ -1,4 +1,4 @@
-.PHONY: help build up down logs restart deploy update status clean test
+.PHONY: help build up down logs restart deploy update status clean test test-unit test-integration run dev
 
 # Variables
 ANSIBLE_PLAYBOOK = ansible-playbook
@@ -7,6 +7,7 @@ PLAYBOOK = $(ANSIBLE_DIR)/playbook.yml
 INVENTORY = $(ANSIBLE_DIR)/inventory.yml
 APP_NAME = golem-century
 ENV_FILE = .env
+MAIN_FILE = cmd/server/main_new.go
 
 # Load .env file if it exists
 ifneq (,$(wildcard $(ENV_FILE)))
@@ -20,24 +21,74 @@ help: ## Show this help message
 	@echo 'Available targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-# Local Docker commands
-build: ## Build the Docker image locally
+# Development commands
+dev: ## Run the server locally with hot reload (requires air)
+	@which air > /dev/null || (echo "air not found. Install with: go install github.com/air-verse/air@latest" && exit 1)
+	air
+
+run: ## Run the server locally
+	go run $(MAIN_FILE)
+
+# Testing commands
+test: ## Run all tests
+	go test -v ./...
+
+test-unit: ## Run unit tests only
+	@echo "Running unit tests..."
+	go test -v ./internal/game/... -run "TestGameRulesValidation|TestBasicGameFlow|TestEdgeCases"
+
+test-integration: ## Run integration tests with Docker containers
+	@echo "Starting Docker containers (MongoDB and Redis)..."
+	@sudo docker compose up -d mongodb redis
+	@echo "Waiting for containers to be healthy..."
+	@sleep 5
+	@echo "Running integration tests..."
+	@INTEGRATION_TEST=true go test -v ./internal/integration/... -timeout 30s || (echo "Tests failed"; sudo docker compose logs mongodb redis; exit 1)
+	@echo "Integration tests completed successfully"
+
+test-integration-cleanup: ## Run integration tests and cleanup containers
+	@$(MAKE) test-integration
+	@echo "Stopping Docker containers..."
+	@sudo docker compose down
+
+test-all: test-unit test-integration ## Run all unit and integration tests
+	@echo "All tests completed successfully!"
+
+# Build commands
+build: ## Build the Go binary
+	go build -o bin/server $(MAIN_FILE)
+
+# Docker commands
+docker-build: ## Build the Docker image locally
 	docker-compose build
 
-up: ## Start the containers locally
+up: ## Start all services (MongoDB, Redis, Server)
 	docker-compose up -d
 
-down: ## Stop the containers locally
+down: ## Stop all containers
 	docker-compose down
 
 logs: ## View container logs
 	docker-compose logs -f
 
-restart: ## Restart the containers locally
+restart: ## Restart all containers
 	docker-compose restart
 
 status: ## Show container status
 	docker-compose ps
+
+# Database commands
+mongo-shell: ## Open MongoDB shell
+	docker-compose exec mongodb mongosh golem_game
+
+redis-cli: ## Open Redis CLI
+	docker-compose exec redis redis-cli
+
+# Event replay commands
+replay: ## Replay events for a game (usage: make replay GAME_ID=game-123)
+	@if [ -z "$(GAME_ID)" ]; then echo "GAME_ID is required. Usage: make replay GAME_ID=game-123"; exit 1; fi
+	@echo "Replaying events for game $(GAME_ID)..."
+	@go run scripts/replay_events.go $(GAME_ID)
 
 # Ansible deployment commands
 generate-inventory: ## Generate inventory.yml from .env file
@@ -98,10 +149,6 @@ create-archive: ## Create deployment archive (required before deploy)
 	@$(ANSIBLE_DIR)/create-deploy-archive.sh
 	@echo ""
 	@echo "Archive created successfully. You can now run 'make deploy-only' to deploy."
-
-test: ## Run tests (if any)
-	@echo "Running tests..."
-	go test ./...
 
 validate-ansible: generate-inventory ## Validate Ansible playbook syntax
 	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK) --syntax-check

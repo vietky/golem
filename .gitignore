@@ -1,4 +1,6 @@
+bin/
 vendor/
+*.log
 
 # Environment files with sensitive information
 .env

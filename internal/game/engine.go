@@ -3,6 +3,9 @@ package game
 import (
 	"fmt"
 	"strings"
+
+	"golem_century/internal/logger"
+	"go.uber.org/zap"
 )
 
 // Engine manages the game flow and turn execution
@@ -41,10 +44,10 @@ func (e *Engine) Run() {
 
 		// Execute action
 		actionStr := e.getActionString(action, player)
-		fmt.Printf("\n>>> Action: %s\n", actionStr)
+		logger.GetLogger().Info("Action", zap.String("action", actionStr))
 
 		if err := e.GameState.ExecuteAction(action); err != nil {
-			fmt.Printf("ERROR: %v\n", err)
+			logger.GetLogger().Error("Action failed", zap.Error(err))
 			// If action fails, force rest
 			player.Rest()
 		}

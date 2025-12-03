@@ -3,7 +3,9 @@ package game
 import (
 	"fmt"
 	"math/rand"
-	"strings"
+
+	"golem_century/internal/logger"
+	"go.uber.org/zap"
 )
 
 // PlayerActionType represents the type of action a player can take
@@ -154,14 +156,18 @@ func (gs *GameState) ExecuteAction(action Action) error {
 				requiredPosition := i + 1
 				if prevCard.Deposits == nil {
 					hasAllRequiredDeposits = false
-					fmt.Printf("[DEBUG] Card index %d (position %d) has no deposits map\n", i, requiredPosition)
+					logger.GetLogger().Debug("Card has no deposits map",
+						zap.Int("cardIndex", i),
+						zap.Int("position", requiredPosition))
 					break
 				}
 				// Check if this card has deposits at position i+1 (array must have at least one element)
 				depositArray, exists := prevCard.Deposits[requiredPosition]
 				if !exists || len(depositArray) == 0 {
 					hasAllRequiredDeposits = false
-					fmt.Printf("[DEBUG] Card index %d (position %d) missing required deposit at position %d\n", i, requiredPosition, requiredPosition)
+					logger.GetLogger().Debug("Card missing required deposit",
+						zap.Int("cardIndex", i),
+						zap.Int("position", requiredPosition))
 					break
 				}
 			}
@@ -183,8 +189,9 @@ func (gs *GameState) ExecuteAction(action Action) error {
 			}
 			// Clear all deposits from target card
 			targetCard.Deposits = make(map[int][]CrystalType)
-			fmt.Printf("[DEBUG] Collected deposits from target card index %d: %d crystals\n",
-				action.CardIndex, collectedFromTarget.Total())
+			logger.GetLogger().Debug("Collected deposits from target card",
+				zap.Int("cardIndex", action.CardIndex),
+				zap.Int("crystals", collectedFromTarget.Total()))
 		}
 
 		// Now remove the card from market
@@ -196,22 +203,25 @@ func (gs *GameState) ExecuteAction(action Action) error {
 		// Add collected crystals from target card to player
 		if collectedFromTarget.Total() > 0 {
 			player.Resources.AddAll(collectedFromTarget, 1)
-			fmt.Printf("[DEBUG] Added %d crystals from target card deposits to player\n", collectedFromTarget.Total())
+			logger.GetLogger().Debug("Added crystals to player",
+				zap.Int("crystals", collectedFromTarget.Total()))
 		}
 
 		// If card index is 0 (position 1) OR player has deposited on ALL previous cards, acquire is FREE (no cost)
 		// Otherwise, player must pay the normal cost
 		if action.CardIndex == 0 || hasAllRequiredDeposits {
 			if action.CardIndex == 0 {
-				fmt.Printf("[DEBUG] Card index 0 (position 1) is always FREE\n")
+				logger.GetLogger().Debug("Card index 0 is always FREE")
 			} else {
-				fmt.Printf("[DEBUG] Player has deposited on all previous cards, acquiring card index %d for FREE\n", action.CardIndex)
+				logger.GetLogger().Debug("Acquiring card for FREE",
+					zap.Int("cardIndex", action.CardIndex))
 			}
 			// No cost, just add card
 			player.AddCard(card)
 		} else {
 			// Missing required deposits, must pay the normal card cost
-			fmt.Printf("[DEBUG] Missing required deposits on previous cards, must pay cost %s\n", cost.String())
+			logger.GetLogger().Debug("Must pay cost for card",
+				zap.String("cost", cost.String()))
 			if !player.Resources.HasAll(cost, 1) {
 				// Put card back if acquisition failed
 				gs.Market.ActionCards = append(gs.Market.ActionCards, card)
@@ -328,10 +338,15 @@ func (gs *GameState) ExecuteAction(action Action) error {
 				card.Deposits[position] = make([]CrystalType, 0)
 			}
 			card.Deposits[position] = append(card.Deposits[position], crystalType)
-			fmt.Printf("[DEBUG] Deposited %s to card index %d (position %d): %s (total at position: %d)\n",
-				crystalType, i, position, card.Name, len(card.Deposits[position]))
+			logger.GetLogger().Debug("Deposited crystal to card",
+				zap.String("crystalType", fmt.Sprintf("%v", crystalType)),
+				zap.Int("cardIndex", i),
+				zap.Int("position", position),
+				zap.String("cardName", card.Name),
+				zap.Int("totalAtPosition", len(card.Deposits[position])))
 		}
-		fmt.Printf("[DEBUG] Deposit complete: deposited to %d cards (positions 1 to %d), crystals deducted\n", marketIndex, marketIndex)
+		logger.GetLogger().Debug("Deposit complete",
+			zap.Int("marketIndex", marketIndex))
 
 	case CollectCrystals:
 		// Collect crystals from a card (from hand or market)
@@ -417,36 +432,34 @@ func (gs *GameState) CheckGameOver() {
 
 // PrintState prints the current game state
 func (gs *GameState) PrintState() {
-	fmt.Println("\n" + "=" + strings.Repeat("=", 78))
-	fmt.Printf("Round %d, Turn %d - %s\n", gs.Round, gs.CurrentTurn+1, gs.GetCurrentPlayer().Name)
-	fmt.Println(strings.Repeat("=", 80))
+	logger.GetLogger().Info("Game State",
+		zap.Int("round", gs.Round),
+		zap.Int("turn", gs.CurrentTurn+1),
+		zap.String("currentPlayer", gs.GetCurrentPlayer().Name))
 
 	// Print current player state
 	currentPlayer := gs.GetCurrentPlayer()
-	fmt.Printf("\nCurrent Player: %s\n", currentPlayer.String())
-	fmt.Printf("Hand: %s\n", currentPlayer.GetHandString())
+	logger.GetLogger().Info("Current Player",
+		zap.String("info", currentPlayer.String()),
+		zap.String("hand", currentPlayer.GetHandString()))
 
 	// Print all players
-	fmt.Println("\nAll Players:")
 	for _, player := range gs.Players {
-		marker := " "
-		if player.ID == currentPlayer.ID {
-			marker = ">"
-		}
-		fmt.Printf("  %s %s\n", marker, player.String())
+		isCurrent := player.ID == currentPlayer.ID
+		logger.GetLogger().Info("Player",
+			zap.Bool("current", isCurrent),
+			zap.String("info", player.String()))
 	}
 
 	// Print market
-	fmt.Println("\n" + gs.Market.String())
-	fmt.Printf("Action Deck: %d cards remaining\n", len(gs.Market.ActionDeck))
-	fmt.Printf("Point Deck: %d cards remaining\n", len(gs.Market.PointDeck))
+	logger.GetLogger().Info("Market",
+		zap.Int("actionDeckSize", len(gs.Market.ActionDeck)),
+		zap.Int("pointDeckSize", len(gs.Market.PointDeck)))
 }
 
 // PrintFinalResults prints the final game results
 func (gs *GameState) PrintFinalResults() {
-	fmt.Println("\n" + strings.Repeat("=", 80))
-	fmt.Println("GAME OVER - FINAL RESULTS")
-	fmt.Println(strings.Repeat("=", 80))
+	logger.GetLogger().Info("GAME OVER - FINAL RESULTS")
 
 	// Sort players by points (simple bubble sort)
 	players := make([]*Player, len(gs.Players))
@@ -461,14 +474,14 @@ func (gs *GameState) PrintFinalResults() {
 
 	for i, player := range players {
 		rank := i + 1
-		winnerMark := ""
-		if player.ID == gs.Winner.ID {
-			winnerMark = " 🏆 WINNER"
-		}
-		fmt.Printf("\n%d. %s - %d Points (%d Point Cards)%s\n",
-			rank, player.Name, player.Points, len(player.PointCards), winnerMark)
-		fmt.Printf("   Resources: %s\n", player.Resources.String())
-		fmt.Printf("   Hand: %d cards\n", len(player.Hand))
+		isWinner := gs.Winner != nil && player.ID == gs.Winner.ID
+		logger.GetLogger().Info("Final Ranking",
+			zap.Int("rank", rank),
+			zap.String("name", player.Name),
+			zap.Int("points", player.Points),
+			zap.Int("pointCards", len(player.PointCards)),
+			zap.Bool("winner", isWinner),
+			zap.String("resources", player.Resources.String()),
+			zap.Int("handSize", len(player.Hand)))
 	}
-	fmt.Println()
 }

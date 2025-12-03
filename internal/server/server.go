@@ -288,19 +288,30 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 		if hasDeposits {
 			if depositsMap, ok := deposits.(map[string]string); ok {
 				if len(depositsMap) > 0 {
-					fmt.Printf("[DEBUG Serialize] Market card index %d (position %d) HAS deposits: %+v\n", i, i+1, depositsMap)
+					logger.GetLogger().Debug("Market card has deposits",
+						zap.Int("cardIndex", i),
+						zap.Int("position", i+1),
+						zap.Any("deposits", depositsMap))
 				} else {
-					fmt.Printf("[DEBUG Serialize] Market card index %d (position %d) has EMPTY deposits map\n", i, i+1)
+					logger.GetLogger().Debug("Market card has empty deposits",
+						zap.Int("cardIndex", i),
+						zap.Int("position", i+1))
 				}
 			} else {
-				fmt.Printf("[DEBUG Serialize] Market card index %d (position %d) deposits field has wrong type: %T\n", i, i+1, deposits)
+				logger.GetLogger().Warn("Market card deposits field has wrong type",
+					zap.Int("cardIndex", i),
+					zap.Int("position", i+1),
+					zap.String("type", fmt.Sprintf("%T", deposits)))
 			}
 		} else {
-			fmt.Printf("[DEBUG Serialize] WARNING: Market card index %d (position %d) MISSING deposits field!\n", i, i+1)
+			logger.GetLogger().Warn("Market card missing deposits field",
+				zap.Int("cardIndex", i),
+				zap.Int("position", i+1))
 		}
 		// Ensure deposits field exists
 		if _, exists := serialized["deposits"]; !exists {
-			fmt.Printf("[DEBUG Serialize] FIXING: Adding missing deposits field to card %s\n", card.Name)
+			logger.GetLogger().Debug("Adding missing deposits field",
+				zap.String("cardName", card.Name))
 			serialized["deposits"] = make(map[string]string)
 		}
 		marketActionCards[i] = serialized
@@ -438,11 +449,14 @@ func serializeCard(card *game.Card) map[string]interface{} {
 			depositsMap[posStr] = strings.Join(crystalNames, ",")
 		}
 		result["deposits"] = depositsMap
-		fmt.Printf("[DEBUG Serialize] Card %s has deposits: %+v\n", card.Name, depositsMap)
+		logger.GetLogger().Debug("Card has deposits",
+			zap.String("cardName", card.Name),
+			zap.Any("deposits", depositsMap))
 	} else {
 		// Always include deposits field, even if empty
 		result["deposits"] = make(map[string]string)
-		fmt.Printf("[DEBUG Serialize] Card %s has NO deposits (empty map)\n", card.Name)
+		logger.GetLogger().Debug("Card has no deposits",
+			zap.String(\"cardName\", card.Name))
 	}
 
 	return result

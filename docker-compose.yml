@@ -1,17 +1,63 @@
 services:
+  mongodb:
+    image: mongo:7
+    container_name: golem-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=golem_game
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: golem-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   golem-century:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: golem-century-server
     ports:
-      - "3001:8080"  # Host port 3001 maps to container port 8080
+      - "3001:8080"
     restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
-      - PORT=8080
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB=golem_game
+      - REDIS_ADDR=redis:6379
+      - REDIS_DB=0
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
+volumes:
+  mongodb_data:
+  redis_data:
+
