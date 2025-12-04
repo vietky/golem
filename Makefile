@@ -165,4 +165,4 @@ setup-jenkins:
 	ansible-playbook -i ansible/inventory.ini ansible/setup-jenkins-job.yml
 
 dev:
-	docker-compose -d -f docker-compose.dev.yml up --build
+	docker-compose -f docker-compose.dev.yml up -d

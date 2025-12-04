@@ -42,8 +42,8 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./:/golem
-    working_dir: /golem
+      - ./:/app
+    working_dir: /app
     environment:
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
