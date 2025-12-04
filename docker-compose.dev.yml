@@ -42,9 +42,8 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./:/app
-      - /app/vendor
-    working_dir: /app
+      - ./:/golem
+    working_dir: /golem
     environment:
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
@@ -56,7 +55,7 @@ services:
       - LOG_FORMAT=json
     stdin_open: true
     tty: true
-    command: go run ./cmd/server/main.go
+    command: ["tail", "-f", "/dev/null"]
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s

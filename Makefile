@@ -163,3 +163,6 @@ deploy-to: ## Deploy to a specific host (usage: make deploy-to HOST=user@hostnam
 
 setup-jenkins:
 	ansible-playbook -i ansible/inventory.ini ansible/setup-jenkins-job.yml
+
+dev:
+	docker-compose -d -f docker-compose.dev.yml up --build
