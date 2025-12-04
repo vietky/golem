@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -207,13 +206,9 @@ func (gs *GameSession) RunGameLoop() {
 			currentPlayer := gs.GameState.GetCurrentPlayer()
 			if action.PlayerID == currentPlayer.ID {
 				if err := gs.GameState.ExecuteAction(action.Action); err == nil {
-					// DepositCrystals and CollectCrystals don't end the turn
-					// They are intermediate actions before acquiring a card
-					if action.Action.Type != game.DepositCrystals && action.Action.Type != game.CollectCrystals && action.Action.Type != game.CollectAllCrystals {
-						gs.GameState.CheckGameOver()
-						if !gs.GameState.GameOver {
-							gs.GameState.NextTurn()
-						}
+					gs.GameState.CheckGameOver()
+					if !gs.GameState.GameOver {
+						gs.GameState.NextTurn()
 					}
 					gs.BroadcastState()
 				} else {
@@ -396,49 +391,9 @@ func serializeCard(card *game.Card) map[string]interface{} {
 
 	// Serialize deposits - ALWAYS include deposits field, even if empty
 	// Now supports stacking: each position can have multiple crystals
-	if card.Deposits != nil && len(card.Deposits) > 0 {
-		depositsMap := make(map[string]string)
-		for pos, depositArray := range card.Deposits {
-			if len(depositArray) == 0 {
-				continue
-			}
-			posStr := fmt.Sprintf("%d", pos)
-			// For each crystal in the array, add to map
-			// Since map can only have one value per key, we'll count and store as "crystalType:count"
-			// Or we can serialize as array - but frontend expects map[string]string
-			// Let's count crystals by type at this position
-			crystalCounts := make(map[game.CrystalType]int)
-			for _, crystalType := range depositArray {
-				crystalCounts[crystalType]++
-			}
-			// For now, serialize as "crystalType" (frontend will count)
-			// Or better: serialize all crystals as comma-separated or array
-			// Actually, let's change to map[string][]string to support multiple
-			// But that requires frontend changes too. For now, let's use a simple approach:
-			// Store as "crystalType1,crystalType2,..." or just the first one with count
-			// Convert all crystals in array to comma-separated string
-			var crystalNames []string
-			for _, crystalType := range depositArray {
-				var crystalName string
-				switch crystalType {
-				case game.Yellow:
-					crystalName = "yellow"
-				case game.Green:
-					crystalName = "green"
-				case game.Blue:
-					crystalName = "blue"
-				case game.Pink:
-					crystalName = "pink"
-				default:
-					continue
-				}
-				crystalNames = append(crystalNames, crystalName)
-			}
-			// Store as comma-separated string (frontend will split and count)
-			depositsMap[posStr] = strings.Join(crystalNames, ",")
-		}
-		result["deposits"] = depositsMap
-		fmt.Printf("[DEBUG Serialize] Card %s has deposits: %+v\n", card.Name, depositsMap)
+	if card.Deposits != nil {
+		result["deposits"] = card.Deposits.ToMap()
+		fmt.Printf("[DEBUG Serialize] Card %s has deposits: %+v\n", card.Name, result["deposits"])
 	} else {
 		// Always include deposits field, even if empty
 		result["deposits"] = make(map[string]string)

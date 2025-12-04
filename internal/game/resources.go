@@ -39,6 +39,15 @@ func NewResources() *Resources {
 	return &Resources{}
 }
 
+func (c *Resources) ToMap() map[string]string {
+	return map[string]string{
+		"yellow": fmt.Sprintf("%d", c.Yellow),
+		"green":  fmt.Sprintf("%d", c.Green),
+		"blue":   fmt.Sprintf("%d", c.Blue),
+		"pink":   fmt.Sprintf("%d", c.Pink),
+	}
+}
+
 // Get returns the count of a specific crystal type
 func (r *Resources) Get(crystal CrystalType) int {
 	switch crystal {

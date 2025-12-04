@@ -39,11 +39,9 @@ type Card struct {
 	Amount      int        // Amount of coins (for CoinCard)
 	TurnUpgrade int        // Turn upgrade (for UpgradeCard)
 	// For ActionCard: what it produces/upgrades/trades
-	Input  *Resources // Input crystals (for Upgrade/Trade)
-	Output *Resources // Output crystals
-	// Crystal deposits on card positions (position -> array of crystal types)
-	// Position 1, 2, 3 can each hold multiple crystals (stacking)
-	Deposits map[int][]CrystalType // Position -> Array of Crystal types
+	Input    *Resources // Input crystals (for Upgrade/Trade)
+	Output   *Resources // Output crystals
+	Deposits *Resources // number of deposits per crystal type (for cards that hold deposits)
 }
 
 // ActionCard represents a merchant/action card interface
@@ -159,7 +157,7 @@ func (c *Card) Claim(player *Player) bool {
 // Returns true if successful
 func (c *Card) DepositCrystals(player *Player, deposits map[int]CrystalType, targetPosition int) bool {
 	if c.Deposits == nil {
-		c.Deposits = make(map[int][]CrystalType)
+		c.Deposits = NewResources()
 	}
 
 	// Validate target position (1-5 for market cards, 1-3 for hand cards)
@@ -191,119 +189,11 @@ func (c *Card) DepositCrystals(player *Player, deposits map[int]CrystalType, tar
 		if !player.Resources.Subtract(crystalType, 1) {
 			return false
 		}
-		// Stack: append to existing array or create new array
-		if c.Deposits[pos] == nil {
-			c.Deposits[pos] = make([]CrystalType, 0)
-		}
-		c.Deposits[pos] = append(c.Deposits[pos], crystalType)
+		// Add to card deposits
+		c.Deposits.Add(crystalType, 1)
 	}
 
 	return true
-}
-
-// CollectCrystals collects crystals from specified position
-// Can collect from any position, but must leave at least one deposit behind
-// If collecting from position N, all positions < N must remain
-// Returns collected crystals and true if successful
-func (c *Card) CollectCrystals(player *Player, positions []int) (*Resources, bool) {
-	if c.Deposits == nil || len(c.Deposits) == 0 {
-		return nil, false
-	}
-
-	// Must collect exactly one position
-	if len(positions) != 1 {
-		return nil, false
-	}
-
-	collectPosition := positions[0]
-
-	// Check if position exists and has deposits
-	depositArray, exists := c.Deposits[collectPosition]
-	if !exists || len(depositArray) == 0 {
-		return nil, false
-	}
-
-	// Count total deposits across all positions
-	totalDeposits := 0
-	for _, arr := range c.Deposits {
-		totalDeposits += len(arr)
-	}
-
-	// Must leave at least one deposit behind
-	if totalDeposits <= 1 {
-		return nil, false // Cannot collect if it's the only deposit
-	}
-
-	// Collect one crystal from selected position (take first one)
-	collected := NewResources()
-	crystalType := depositArray[0]
-	collected.Add(crystalType, 1)
-
-	// Remove collected crystal from array
-	if len(depositArray) > 1 {
-		c.Deposits[collectPosition] = depositArray[1:]
-	} else {
-		// If this was the last crystal at this position, remove the position
-		delete(c.Deposits, collectPosition)
-	}
-
-	// Add collected crystals to player
-	player.Resources.AddAll(collected, 1)
-
-	return collected, true
-}
-
-// CollectAllCrystals collects all crystals from card, leaving only one deposit behind
-// Returns collected crystals and true if successful
-func (c *Card) CollectAllCrystals(player *Player) (*Resources, bool) {
-	if c.Deposits == nil || len(c.Deposits) == 0 {
-		return nil, false
-	}
-
-	// Count total deposits
-	totalDeposits := 0
-	for _, arr := range c.Deposits {
-		totalDeposits += len(arr)
-	}
-
-	// Must leave at least one deposit
-	if totalDeposits <= 1 {
-		return nil, false // Cannot collect if only one deposit exists
-	}
-
-	collected := NewResources()
-
-	// Find the position with the minimum position number (keep this one)
-	minPos := 999
-	for pos := range c.Deposits {
-		if pos < minPos {
-			minPos = pos
-		}
-	}
-
-	// Collect all deposits except keep one from the minimum position
-	for pos, depositArray := range c.Deposits {
-		if pos == minPos {
-			// Keep one deposit at minimum position, collect the rest
-			if len(depositArray) > 1 {
-				for i := 1; i < len(depositArray); i++ {
-					collected.Add(depositArray[i], 1)
-				}
-				c.Deposits[pos] = depositArray[:1] // Keep only first one
-			}
-		} else {
-			// Collect all deposits from other positions
-			for _, crystalType := range depositArray {
-				collected.Add(crystalType, 1)
-			}
-			delete(c.Deposits, pos)
-		}
-	}
-
-	// Add collected crystals to player
-	player.Resources.AddAll(collected, 1)
-
-	return collected, true
 }
 
 // GetCost returns the cost to acquire this card
@@ -520,7 +410,7 @@ func CreateCardFromName(name string, id int) *Card {
 				Name:     name,
 				Type:     CoinCard,
 				Points:   points,
-				Deposits: make(map[int][]CrystalType),
+				Deposits: NewResources(),
 			}
 		}
 	}
@@ -531,7 +421,7 @@ func CreateCardFromName(name string, id int) *Card {
 			ID:       id,
 			Name:     name,
 			Type:     StoneCard,
-			Deposits: make(map[int][]CrystalType),
+			Deposits: NewResources(),
 		}
 	}
 
@@ -541,7 +431,7 @@ func CreateCardFromName(name string, id int) *Card {
 			ID:       id,
 			Name:     name,
 			Type:     BackgroundCard,
-			Deposits: make(map[int][]CrystalType),
+			Deposits: NewResources(),
 		}
 	}
 
@@ -554,7 +444,7 @@ func CreateCardFromName(name string, id int) *Card {
 			Type:        PointCard,
 			Requirement: requirement,
 			Points:      points,
-			Deposits:    make(map[int][]CrystalType),
+			Deposits:    NewResources(),
 		}
 	}
 
@@ -570,7 +460,7 @@ func CreateCardFromName(name string, id int) *Card {
 			Output:      output,
 			Cost:        cost,
 			TurnUpgrade: turnUpgrade,
-			Deposits:    make(map[int][]CrystalType),
+			Deposits:    NewResources(),
 		}
 	}
 	if strings.HasPrefix(name, "mint_") || strings.HasPrefix(name, "upgrade_") || strings.HasPrefix(name, "trade_") {
@@ -584,7 +474,7 @@ func CreateCardFromName(name string, id int) *Card {
 			Output:      output,
 			Cost:        cost,
 			TurnUpgrade: turnUpgrade,
-			Deposits:    make(map[int][]CrystalType),
+			Deposits:    NewResources(),
 		}
 	}
 
@@ -593,7 +483,7 @@ func CreateCardFromName(name string, id int) *Card {
 		ID:       id,
 		Name:     name,
 		Type:     ActionCard,
-		Deposits: make(map[int][]CrystalType),
+		Deposits: NewResources(),
 	}
 }
 
