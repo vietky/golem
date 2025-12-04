@@ -1,0 +1,23 @@
+# Development Dockerfile - Running Go directly
+FROM golang:1.24-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install necessary tools
+RUN apk add --no-cache git ca-certificates wget
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code (will be overridden by volume mount)
+COPY . .
+
+# Expose port
+EXPOSE 8080
+
+# Keep container running - will execute go run command from docker-compose
+CMD ["tail", "-f", "/dev/null"]

@@ -1,4 +1,4 @@
-.PHONY: help build up down logs restart deploy update status clean test
+.PHONY: help build up down logs restart deploy update status clean test test-unit test-integration run dev
 
 # Variables
 ANSIBLE_PLAYBOOK = ansible-playbook
@@ -20,24 +20,31 @@ help: ## Show this help message
 	@echo 'Available targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-# Local Docker commands
-build: ## Build the Docker image locally
+# Docker commands
+docker-build: ## Build the Docker image locally
 	docker-compose build
 
-up: ## Start the containers locally
+up: ## Start all services (MongoDB, Redis, Server)
 	docker-compose up -d
 
-down: ## Stop the containers locally
+down: ## Stop all containers
 	docker-compose down
 
 logs: ## View container logs
 	docker-compose logs -f
 
-restart: ## Restart the containers locally
+restart: ## Restart all containers
 	docker-compose restart
 
 status: ## Show container status
 	docker-compose ps
+
+# Database commands
+mongo-shell: ## Open MongoDB shell
+	docker-compose exec mongodb mongosh golem_game
+
+redis-cli: ## Open Redis CLI
+	docker-compose exec redis redis-cli
 
 # Ansible deployment commands
 generate-inventory: ## Generate inventory.yml from .env file
@@ -99,10 +106,6 @@ create-archive: ## Create deployment archive (required before deploy)
 	@echo ""
 	@echo "Archive created successfully. You can now run 'make deploy-only' to deploy."
 
-test: ## Run tests (if any)
-	@echo "Running tests..."
-	go test ./...
-
 validate-ansible: generate-inventory ## Validate Ansible playbook syntax
 	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK) --syntax-check
 
@@ -116,3 +119,15 @@ deploy-to: ## Deploy to a specific host (usage: make deploy-to HOST=user@hostnam
 
 setup-jenkins:
 	ansible-playbook -i ansible/inventory.ini ansible/setup-jenkins-job.yml
+
+dev:
+	sudo docker compose -f docker-compose.dev.yml up -d
+	sudo docker exec -it golem-century-server sh
+
+check-data:
+	mkdir -p data/
+	sudo docker exec -it golem-mongodb mongoexport \
+		--db=golem_game_test \
+		--collection=events \
+		--out=/data/events.json
+	sudo docker cp golem-mongodb:/data/events.json ./data/events.json
