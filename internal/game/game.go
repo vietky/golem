@@ -74,11 +74,17 @@ func NewGameState(numPlayers int, seed int64) *GameState {
 		players[i].Hand = append(players[i].Hand, CreateInitialActionCards(i)...)
 	}
 
+	// Randomize player order using Fisher-Yates shuffle
+	for i := len(players) - 1; i > 0; i-- {
+		j := rng.Intn(i + 1)
+		players[i], players[j] = players[j], players[i]
+	}
+
 	// Create market
 	actionCards := CreateDefaultActionCards()
 	pointCards := CreateDefaultPointCards()
 	coins := CreateCoinCards()
-	market := NewMarket(actionCards, pointCards, coins, 5, 5, rng)
+	market := NewMarket(actionCards, pointCards, coins, 6, 5, rng)
 
 	return &GameState{
 		Players:     players,

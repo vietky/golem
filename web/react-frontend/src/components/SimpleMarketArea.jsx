@@ -59,12 +59,12 @@ const SimpleMarketArea = () => {
   };
 
   return (
-    <div className={`fixed left-4 right-4 overflow-y-auto z-10 ${
-      isMobile && isPortrait ? 'top-32 bottom-44' : 'top-24 bottom-32'
+    <div className={`w-full max-w-6xl mx-auto px-4 overflow-y-auto z-10 ${
+      isMobile && isPortrait ? 'py-4' : 'py-6'
     }`}>
-      <div className="mx-auto space-y-4 pb-4 max-w-6xl">
+      <div className="space-y-4 pb-4">
         {/* Action Cards Market - Grid Layout */}
-        <div className="bg-black/10 backdrop-blur-sm rounded-lg border border-white/10 p-4">
+        <div className="bg-black/10 backdrop-blur-sm rounded-lg border border-white/10 p-4 mx-auto">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-white font-bold text-sm">
               Market - Action Cards
@@ -73,7 +73,7 @@ const SimpleMarketArea = () => {
               {gameState.market.actionDeck || 0} remaining
             </span>
           </div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 justify-items-center">
             {actionCards.map((cardData, index) => {
               const cost = cardData.cost || {};
               const isAffordable = isMyTurn && canAfford(cost);
@@ -112,7 +112,7 @@ const SimpleMarketArea = () => {
         </div>
 
         {/* Point Cards Market - Grid Layout */}
-        <div className="bg-black/10 backdrop-blur-sm rounded-lg border border-white/10 p-4">
+        <div className="bg-black/10 backdrop-blur-sm rounded-lg border border-white/10 p-4 mx-auto">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-white font-bold text-sm">
               Point Cards
@@ -121,7 +121,7 @@ const SimpleMarketArea = () => {
               {gameState.market.pointDeck || 0} remaining
             </span>
           </div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 justify-items-center">
             {pointCards.map((cardData, index) => {
               const canClaim = isMyTurn && canClaimPointCard(cardData);
               const coinBonus = index <= 1 && coins && coins[index] && coins[index].amount > 0;
@@ -135,7 +135,7 @@ const SimpleMarketArea = () => {
                   
                   {/* Coin Bonus Badge */}
                   {coinBonus && (
-                    <div className="absolute -top-2 -right-2 bg-amber-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10 shadow-lg" title={index === 0 ? "Copper Token" : "Silver Token"}>
+                    <div className="absolute -top-2 -right-2 bg-amber-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10 shadow-lg" title={index === 0 ? "Silver Token (1 pt)" : "Copper Token (3 pts)"}>
                       🪙
                     </div>
                   )}

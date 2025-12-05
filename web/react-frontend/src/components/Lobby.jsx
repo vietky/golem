@@ -190,6 +190,7 @@ const Lobby = ({ onJoinGame }) => {
                     <option value={2}>2 Players</option>
                     <option value={3}>3 Players</option>
                     <option value={4}>4 Players</option>
+                    <option value={5}>5 Players</option>
                   </select>
                 </div>
 

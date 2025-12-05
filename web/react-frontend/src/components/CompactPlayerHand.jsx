@@ -47,7 +47,7 @@ const CompactPlayerHand = () => {
         </div>
 
         {/* Hand Cards - Horizontal Scroll */}
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent hover:scrollbar-thumb-white/50">
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent hover:scrollbar-thumb-white/50 justify-center md:justify-start">
           {hand.map((card, index) => {
             const isPlayable = isMyTurn
 

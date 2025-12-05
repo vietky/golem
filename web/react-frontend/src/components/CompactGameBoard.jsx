@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import useGameStore from '../store/gameStore'
 import CompactCard from './CompactCard'
 import DepositModal from './DepositModal'
@@ -6,11 +6,29 @@ import DepositModal from './DepositModal'
 const CompactGameBoard = () => {
   const { gameState, myPlayer, currentPlayer, acquireCard, claimPointCard } = useGameStore()
   const [depositModal, setDepositModal] = useState({ show: false, card: null, index: null })
+  const [turnTimeRemaining, setTurnTimeRemaining] = useState(60)
 
   if (!gameState?.market) return null
 
   const { actionCards, pointCards, coins } = gameState.market
   const isMyTurn = currentPlayer?.id === myPlayer?.id
+  const turnTimeLimit = 60 // seconds
+
+  // Timer effect - reset when current player changes
+  useEffect(() => {
+    setTurnTimeRemaining(turnTimeLimit)
+    
+    const timer = setInterval(() => {
+      setTurnTimeRemaining((prev) => {
+        if (prev <= 0) return 0
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [gameState?.currentPlayer])
+
+  const turnProgress = Math.max(0, Math.min(100, (turnTimeRemaining / turnTimeLimit) * 100))
 
   const canAfford = (cost) => {
     if (!cost || !myPlayer?.caravan) return false
@@ -50,10 +68,6 @@ const CompactGameBoard = () => {
     claimPointCard(index)
   }
 
-  // Calculate time remaining (mock for now - should come from backend)
-  const turnTimeLimit = 60 // seconds
-  const turnProgress = 75 // percentage (should come from backend)
-
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-6 space-y-4">
       {/* Turn Info and Timer */}
@@ -63,13 +77,13 @@ const CompactGameBoard = () => {
             Turn {gameState.turnNumber || 1} - <span className="text-yellow-300">{currentPlayer?.name || 'Waiting...'}</span>
           </div>
           <div className="text-white/90 text-base font-semibold">
-            Time: {Math.floor((turnTimeLimit * turnProgress) / 100)}s
+            Time: {turnTimeRemaining}s
           </div>
         </div>
         {/* Progress Bar */}
         <div className="w-full bg-white/20 rounded-full h-3 overflow-hidden shadow-inner">
           <div 
-            className="bg-gradient-to-r from-green-400 via-yellow-400 to-yellow-500 h-full transition-all duration-1000 shadow-lg"
+            className="bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 h-full transition-all duration-1000 shadow-lg"
             style={{ width: `${turnProgress}%` }}
           />
         </div>
@@ -146,7 +160,7 @@ const CompactGameBoard = () => {
                 
                 {/* Coin Bonus Badge */}
                 {coinBonus && (
-                  <div className="absolute -top-2 -right-2 bg-amber-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs z-20 shadow-lg border border-white" title={index === 0 ? "Copper Token" : "Silver Token"}>
+                  <div className="absolute -top-2 -right-2 bg-amber-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs z-20 shadow-lg border border-white" title={index === 0 ? "Silver Token (1 pt)" : "Copper Token (3 pts)"}>
                     🪙
                   </div>
                 )}

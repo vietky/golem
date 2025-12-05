@@ -20,8 +20,8 @@ const PlayersInfoBar = () => {
   }
 
   return (
-    <div className="w-full bg-gradient-to-b from-black/40 to-transparent backdrop-blur-sm border-b border-white/10 py-3 px-4">
-      <div className="max-w-7xl mx-auto flex items-center justify-center gap-4">
+    <div className="w-full bg-gradient-to-b from-black/40 to-transparent backdrop-blur-sm border-b border-white/10 py-3 px-4 overflow-x-auto">
+      <div className="max-w-7xl mx-auto flex items-center justify-center gap-4 min-w-max">
         {allPlayers.map((player) => {
           const isCurrentPlayer = currentPlayer?.id === player.id
           const isMe = myPlayer?.id === player.id

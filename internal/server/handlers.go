@@ -179,6 +179,31 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
+			// Parse deposit list if present (for acquireCard action)
+			var depositList []game.DepositData
+			if deposits, ok := actionMsg["deposits"].([]interface{}); ok {
+				for _, dep := range deposits {
+					if depMap, ok := dep.(map[string]interface{}); ok {
+						if crystalStr, ok := depMap["crystal"].(string); ok {
+							var crystal game.CrystalType
+							switch crystalStr {
+							case "yellow":
+								crystal = game.Yellow
+							case "green":
+								crystal = game.Green
+							case "blue":
+								crystal = game.Blue
+							case "pink":
+								crystal = game.Pink
+							default:
+								continue
+							}
+							depositList = append(depositList, game.DepositData{Crystal: crystal})
+						}
+					}
+				}
+			}
+
 			var gameAction game.Action
 			switch actionTypeStr {
 			case "playCard":
@@ -191,8 +216,9 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 				}
 			case "acquireCard":
 				gameAction = game.Action{
-					Type:      game.AcquireCard,
-					CardIndex: int(cardIndex),
+					Type:        game.AcquireCard,
+					CardIndex:   int(cardIndex),
+					DepositList: depositList,
 				}
 			case "claimPointCard":
 				gameAction = game.Action{

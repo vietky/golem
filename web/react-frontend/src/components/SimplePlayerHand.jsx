@@ -34,7 +34,7 @@ const SimplePlayerHand = ({ showDetailed = false }) => {
 
   return (
     <>
-      <div className="fixed bottom-4 left-4 right-64 z-20">
+      <div className="w-full max-w-6xl mx-auto px-4 py-3">
         <div className="bg-black/20 backdrop-blur-sm rounded-lg border border-white/20 p-3">
           {/* Header */}
           <div className="flex justify-between items-center mb-2">
@@ -49,7 +49,7 @@ const SimplePlayerHand = ({ showDetailed = false }) => {
           </div>
 
           {/* Cards Grid */}
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 justify-items-center">
             {myPlayer.hand.map((card, index) => (
               <div key={`hand-${index}`} className="relative">
                 <SimpleCard

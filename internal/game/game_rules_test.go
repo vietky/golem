@@ -54,6 +54,24 @@ func TestGameRules_Setup(t *testing.T) {
 				3: 1,
 			},
 		},
+		{
+			name:       "5 Players Setup",
+			numPlayers: 5,
+			expectedYellow: map[int]int{
+				0: 3, // Player 1: 3 yellow
+				1: 4, // Player 2: 4 yellow
+				2: 4, // Player 3: 4 yellow
+				3: 3, // Player 4: 3 yellow + 1 green
+				4: 3, // Player 5: 3 yellow + 1 green
+			},
+			expectedGreen: map[int]int{
+				0: 0,
+				1: 0,
+				2: 0,
+				3: 1,
+				4: 1,
+			},
+		},
 	}
 
 	for _, tt := range tests {
