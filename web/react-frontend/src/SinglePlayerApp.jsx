@@ -1,12 +1,10 @@
 import React, { useState } from 'react'
 import SinglePlayerLobby from './components/SinglePlayerLobby'
 import Lobby from './components/Lobby'
-import OpponentArea from './components/OpponentArea'
-import SimpleMarketArea from './components/SimpleMarketArea'
-import PlayerHand from './components/PlayerHand'
-import ResourcePanel from './components/ResourcePanel'
-import RoomDisplay from './components/RoomDisplay'
-import ActionLog from './components/ActionLog'
+import PlayersInfoBar from './components/PlayersInfoBar'
+import CompactGameBoard from './components/CompactGameBoard'
+import CompactPlayerHand from './components/CompactPlayerHand'
+import CollapsibleInfo from './components/CollapsibleInfo'
 import DiscardModal from './components/DiscardModal'
 import useGameStore from './store/gameStore'
 import useOrientation from './hooks/useOrientation'
@@ -138,35 +136,33 @@ function SinglePlayerApp() {
 
   return (
     <MobileLayoutProvider>
-      <div className={`min-h-screen relative ${
+      {/* Blurred Background Layer */}
+      <div className="fixed inset-0 z-0"
+        style={{
+          backgroundImage: 'url(/images/background.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center center',
+          backgroundRepeat: 'no-repeat',
+          filter: 'blur(8px) brightness(0.7)',
+        }}
+      />
+      
+      <div className={`min-h-screen flex flex-col relative z-10 ${
         isMobile ? (isPortrait ? 'mobile-portrait' : 'mobile-landscape') : ''
-      } ${isTablet ? 'tablet' : ''}`} 
-      style={{
-        backgroundImage: 'url(/images/background.jpg)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center center',
-        backgroundRepeat: 'no-repeat',
-        backgroundAttachment: isMobile ? 'scroll' : 'fixed'
-      }}>
-        {/* Room ID Display - Top Left */}
-        <div className="absolute top-4 left-4 z-40">
-          <RoomDisplay sessionId={sessionId} />
+      } ${isTablet ? 'tablet' : ''}`}>
+        {/* Players Info Bar - Top */}
+        <PlayersInfoBar />
+
+        {/* Central Game Board - Scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          <CompactGameBoard />
         </div>
 
-        {/* Opponent Area (Top) */}
-        <OpponentArea />
+        {/* Player Hand - Bottom (Fixed) */}
+        <CompactPlayerHand />
 
-        {/* Central Market Area */}
-        <SimpleMarketArea />
-
-        {/* Player Hand (Bottom) */}
-        <PlayerHand />
-
-        {/* Resource Panel (Bottom Right) */}
-        <ResourcePanel />
-
-        {/* Action Log (Top Right) */}
-        {!isMobile && <ActionLog />}
+        {/* Collapsible Info (Room ID + Action Log) - Bottom Right */}
+        <CollapsibleInfo sessionId={sessionId} />
 
         {/* Discard Modal (when crystals exceed max) */}
         <DiscardModal />

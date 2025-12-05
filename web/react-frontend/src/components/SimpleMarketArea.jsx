@@ -20,7 +20,7 @@ const SimpleMarketArea = () => {
     );
   }
 
-  const { actionCards, pointCards } = gameState.market;
+  const { actionCards, pointCards, coins } = gameState.market;
   const isMyTurn = currentPlayer?.id === myPlayer?.id;
 
   const canAfford = (cost) => {
@@ -59,26 +59,42 @@ const SimpleMarketArea = () => {
   };
 
   return (
-    <div className={`fixed left-0 right-0 overflow-y-auto px-4 py-4 z-0 ${
-      isMobile && isPortrait ? 'top-14 bottom-36' : 'top-28 bottom-8'
+    <div className={`fixed left-4 right-4 overflow-y-auto z-10 ${
+      isMobile && isPortrait ? 'top-32 bottom-44' : 'top-24 bottom-32'
     }`}>
-      <div className="mx-auto space-y-6 pb-8 max-w-6xl">
-        {/* Action Cards Market */}
-        <div>
-          <h2 className="text-lg font-bold text-white mb-3 px-2">
-            Market - Action Cards
-          </h2>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+      <div className="mx-auto space-y-4 pb-4 max-w-6xl">
+        {/* Action Cards Market - Grid Layout */}
+        <div className="bg-black/10 backdrop-blur-sm rounded-lg border border-white/10 p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-white font-bold text-sm">
+              Market - Action Cards
+            </h2>
+            <span className="text-white/60 text-xs">
+              {gameState.market.actionDeck || 0} remaining
+            </span>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
             {actionCards.map((cardData, index) => {
               const cost = cardData.cost || {};
               const isAffordable = isMyTurn && canAfford(cost);
+              const deposits = cardData.deposits || {};
+              const depositCount = Object.values(deposits).reduce((a, b) => 
+                parseInt(a || 0) + parseInt(b || 0), 0
+              );
 
               return (
                 <div key={`action-${index}`} className="relative">
-                  {/* Position number */}
-                  <div className="absolute -top-2 -left-2 bg-purple-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10">
+                  {/* Position Badge */}
+                  <div className="absolute -top-2 -left-2 bg-purple-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10 shadow-lg">
                     {index + 1}
                   </div>
+                  
+                  {/* Deposit Count Badge */}
+                  {depositCount > 0 && (
+                    <div className="absolute -top-2 -right-2 bg-green-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10 shadow-lg">
+                      +{depositCount}
+                    </div>
+                  )}
                   
                   <SimpleCard
                     card={cardData}
@@ -95,21 +111,34 @@ const SimpleMarketArea = () => {
           </div>
         </div>
 
-        {/* Point Cards Market */}
-        <div>
-          <h2 className="text-lg font-bold text-white mb-3 px-2">
-            Point Cards
-          </h2>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+        {/* Point Cards Market - Grid Layout */}
+        <div className="bg-black/10 backdrop-blur-sm rounded-lg border border-white/10 p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-white font-bold text-sm">
+              Point Cards
+            </h2>
+            <span className="text-white/60 text-xs">
+              {gameState.market.pointDeck || 0} remaining
+            </span>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
             {pointCards.map((cardData, index) => {
               const canClaim = isMyTurn && canClaimPointCard(cardData);
+              const coinBonus = index <= 1 && coins && coins[index] && coins[index].amount > 0;
 
               return (
                 <div key={`point-${index}`} className="relative">
-                  {/* Position number */}
-                  <div className="absolute -top-2 -left-2 bg-yellow-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10">
+                  {/* Position Badge */}
+                  <div className="absolute -top-2 -left-2 bg-yellow-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10 shadow-lg">
                     {index + 1}
                   </div>
+                  
+                  {/* Coin Bonus Badge */}
+                  {coinBonus && (
+                    <div className="absolute -top-2 -right-2 bg-amber-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10 shadow-lg" title={index === 0 ? "Copper Token" : "Silver Token"}>
+                      🪙
+                    </div>
+                  )}
                   
                   <SimpleCard
                     card={cardData}
