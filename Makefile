@@ -46,6 +46,41 @@ mongo-shell: ## Open MongoDB shell
 redis-cli: ## Open Redis CLI
 	docker-compose exec redis redis-cli
 
+# Testing commands
+test: ## Run all tests
+	go test -v ./...
+
+test-unit: ## Run unit tests
+	go test -v -short ./...
+
+test-integration: ## Run integration tests
+	go test -v -run Integration ./...
+
+# Admin interface commands
+admin-install: ## Install admin interface dependencies
+	cd web/admin-interface && npm install
+
+admin-dev: ## Run admin interface in development mode
+	cd web/admin-interface && npm run dev
+
+admin-build: ## Build admin interface for production
+	cd web/admin-interface && npm run build
+
+# Event store commands
+events-list: ## List events for a game (requires GAME_ID)
+	@if [ -z "$(GAME_ID)" ]; then \
+		echo "Error: GAME_ID not set. Usage: make events-list GAME_ID=session-123"; \
+		exit 1; \
+	fi
+	@curl -s "http://localhost:8080/api/events?gameId=$(GAME_ID)" | jq .
+
+events-snapshot: ## Get latest snapshot for a game (requires GAME_ID)
+	@if [ -z "$(GAME_ID)" ]; then \
+		echo "Error: GAME_ID not set. Usage: make events-snapshot GAME_ID=session-123"; \
+		exit 1; \
+	fi
+	@curl -s "http://localhost:8080/api/snapshot?gameId=$(GAME_ID)" | jq .
+
 # Ansible deployment commands
 generate-inventory: ## Generate inventory.yml from .env file
 	@echo "Generating inventory from .env file..."

@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"golem_century/internal/config"
+	"golem_century/internal/eventstore"
 	"golem_century/internal/server"
 )
 
@@ -15,14 +17,48 @@ func main() {
 	port := flag.Int("port", 8080, "Port to run the server on")
 	flag.Parse()
 
-	gameServer := server.NewGameServer()
+	// Load configuration
+	cfg := config.LoadConfig()
+
+	// Initialize event store
+	eventStoreConfig := eventstore.EventStoreConfig{
+		MongoURI:      cfg.MongoURI,
+		Database:      cfg.MongoDB,
+		EventsColl:    cfg.MongoEventsColl,
+		SnapshotsColl: cfg.MongoSnapshotsColl,
+	}
+
+	storeResp := eventstore.NewMongoEventStore(eventstore.NewMongoEventStoreRequest{
+		Config: eventStoreConfig,
+	})
+
+	var store eventstore.EventStore
+	if storeResp.Error != nil {
+		log.Printf("Warning: failed to initialize event store: %v", storeResp.Error)
+		log.Printf("Continuing without event store - events will not be recorded")
+		store = nil
+	} else {
+		store = storeResp.Store
+		log.Printf("Event store initialized successfully")
+		defer store.Close()
+	}
+
+	// Create game server with event store
+	gameServer := server.NewGameServer(server.NewGameServerRequest{
+		EventStore: store,
+	})
 
 	// Setup routes
 	http.HandleFunc("/ws", gameServer.HandleWebSocket)
 	http.HandleFunc("/api/create", gameServer.HandleCreateSession)
 	http.HandleFunc("/api/join", gameServer.HandleJoinSession)
 	http.HandleFunc("/api/list", gameServer.HandleListSessions)
-	
+
+	// Admin API endpoints for event store
+	http.HandleFunc("/api/events", gameServer.HandleGetEvents)
+	http.HandleFunc("/api/snapshot", gameServer.HandleGetSnapshot)
+	http.HandleFunc("/api/games", gameServer.HandleListGames)
+
 	// Always serve images from static directory (both React and vanilla JS need this)
 	staticDir := filepath.Join(".", "web", "static")
 	imagesDir := filepath.Join(staticDir, "images")
@@ -30,11 +66,11 @@ func main() {
 		http.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(imagesDir))))
 		log.Printf("Serving images from ./web/static/images")
 	}
-	
+
 	// Serve static files - try React build first, fallback to vanilla JS
 	reactDir := filepath.Join(".", "web", "react")
 	reactIndexPath := filepath.Join(reactDir, "index.html")
-	
+
 	// Check if React build exists and has content (index.html exists), otherwise serve vanilla JS
 	if _, err := os.Stat(reactIndexPath); err == nil {
 		// Serve React build
@@ -53,7 +89,6 @@ func main() {
 	fmt.Printf("Century: Golem Edition - Web Server\n")
 	fmt.Printf("Server starting on http://localhost%s\n", addr)
 	fmt.Printf("Open http://localhost%s in your browser to play\n", addr)
-	
+
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
-

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"golem_century/internal/eventstore"
 	"golem_century/internal/game"
 
 	"github.com/gorilla/websocket"
@@ -29,6 +30,7 @@ type GameSession struct {
 	PlayerAvatars map[int]string          // Player ID -> Avatar number
 	CreatedAt     time.Time               // When session was created
 	LastActivity  time.Time               // Last time someone was in the room
+	EventStore    eventstore.EventStore   // Event store for recording actions
 	mu            sync.RWMutex
 	ActionChan    chan PlayerAction
 	BroadcastChan chan []byte
@@ -58,6 +60,7 @@ func NewGameSession(sessionID string, numPlayers int, seed int64) *GameSession {
 		PlayerAvatars: make(map[int]string),
 		CreatedAt:     now,
 		LastActivity:  now,
+		EventStore:    nil, // Will be set by GameServer
 		ActionChan:    make(chan PlayerAction, 10),
 		BroadcastChan: make(chan []byte, 100),
 	}
@@ -120,14 +123,21 @@ func (gs *GameSession) SendToPlayer(playerID int, message []byte) error {
 
 // GameServer manages multiple game sessions
 type GameServer struct {
-	Sessions map[string]*GameSession
-	mu       sync.RWMutex
+	Sessions   map[string]*GameSession
+	EventStore eventstore.EventStore
+	mu         sync.RWMutex
+}
+
+// NewGameServerRequest represents request to create a new game server
+type NewGameServerRequest struct {
+	EventStore eventstore.EventStore
 }
 
 // NewGameServer creates a new game server
-func NewGameServer() *GameServer {
+func NewGameServer(req NewGameServerRequest) *GameServer {
 	return &GameServer{
-		Sessions: make(map[string]*GameSession),
+		Sessions:   make(map[string]*GameSession),
+		EventStore: req.EventStore,
 	}
 }
 
@@ -137,7 +147,22 @@ func (gs *GameServer) CreateSession(sessionID string, numPlayers int, seed int64
 	defer gs.mu.Unlock()
 
 	session := NewGameSession(sessionID, numPlayers, seed)
+	session.EventStore = gs.EventStore // Set event store
 	gs.Sessions[sessionID] = session
+
+	// Store initial game state as first event if event store is available
+	if session.EventStore != nil {
+		req := eventstore.StoreEventRequest{
+			GameID:    sessionID,
+			PlayerID:  0,                     // System event
+			Action:    game.Action{Type: -1}, // Special marker for initial state
+			GameState: session.GameState,
+		}
+		resp := session.EventStore.StoreEvent(req)
+		if resp.Error != nil {
+			log.Printf("Warning: failed to store initial game state: %v", resp.Error)
+		}
+	}
 
 	// Start game loop
 	go session.RunGameLoop()
@@ -206,6 +231,20 @@ func (gs *GameSession) RunGameLoop() {
 			currentPlayer := gs.GameState.GetCurrentPlayer()
 			if action.PlayerID == currentPlayer.ID {
 				if err := gs.GameState.ExecuteAction(action.Action); err == nil {
+					// Store event if event store is available
+					if gs.EventStore != nil {
+						req := eventstore.StoreEventRequest{
+							GameID:    gs.ID,
+							PlayerID:  action.PlayerID,
+							Action:    action.Action,
+							GameState: gs.GameState,
+						}
+						resp := gs.EventStore.StoreEvent(req)
+						if resp.Error != nil {
+							log.Printf("Warning: failed to store event: %v", resp.Error)
+						}
+					}
+
 					gs.GameState.CheckGameOver()
 					if !gs.GameState.GameOver {
 						gs.GameState.NextTurn()

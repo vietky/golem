@@ -225,9 +225,5 @@ func (r *Resources) CanUpgraded(other *Resources, maxTurnUpgrade int) bool {
 	for aidx < len(after) && after[aidx] == 0 {
 		aidx++
 	}
-	if aidx < len(after) {
-		return false
-	}
-
-	return true
+	return aidx >= len(after)
 }

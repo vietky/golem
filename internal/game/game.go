@@ -177,7 +177,7 @@ func (gs *GameState) ExecuteAction(action Action) error {
 		// Process deposits on previous cards (0 to N-1)
 		for i, deposit := range action.DepositList {
 			gs.Market.ActionCards[i].Deposits.Add(deposit.Crystal, 1)
-			fmt.Printf("[DEBUG] Deposited 1 %s on card index %d\n", deposit.Crystal, i)
+			fmt.Printf("[DEBUG] Deposited 1 cyrstal on card index %d\n", i)
 		}
 
 		// Add collected crystals from target card to player
