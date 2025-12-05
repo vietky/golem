@@ -84,7 +84,7 @@ const CompactGameBoard = () => {
           </span>
         </div>
         
-        <div className="grid grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
           {actionCards.map((cardData, index) => {
             const cost = cardData.cost || {}
             const isAffordable = isMyTurn && canAfford(cost)
@@ -132,7 +132,7 @@ const CompactGameBoard = () => {
           </span>
         </div>
         
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
           {pointCards.map((cardData, index) => {
             const canClaim = isMyTurn && canClaimPointCard(cardData)
             const coinBonus = index <= 1 && coins && coins[index] && coins[index].amount > 0

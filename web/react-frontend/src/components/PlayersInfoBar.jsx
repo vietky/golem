@@ -50,7 +50,7 @@ const PlayersInfoBar = () => {
                   {player.name || 'Player'}
                   {isMe && <span className="text-yellow-300 ml-1">(You)</span>}
                 </div>
-                <div className="flex items-center gap-2 text-xs">
+                <div className="flex items-center gap-3 text-sm">
                   {/* Score */}
                   <span className="text-yellow-400 font-bold">
                     ★{player.points || 0}
@@ -62,30 +62,27 @@ const PlayersInfoBar = () => {
                   </span>
                   
                   {/* Crystals with color indicators */}
-                  <div className="flex items-center gap-1">
-                    {player.caravan?.yellow > 0 && (
-                      <span className="bg-yellow-400 text-black text-xs font-black px-2 py-0.5 rounded border border-yellow-600 shadow-md">
-                        {player.caravan.yellow}
-                      </span>
-                    )}
-                    {player.caravan?.green > 0 && (
-                      <span className="bg-green-500 text-black text-xs font-black px-2 py-0.5 rounded border border-green-700 shadow-md">
-                        {player.caravan.green}
-                      </span>
-                    )}
-                    {player.caravan?.blue > 0 && (
-                      <span className="bg-blue-500 text-white text-xs font-black px-2 py-0.5 rounded border border-blue-700 shadow-md">
-                        {player.caravan.blue}
-                      </span>
-                    )}
-                    {player.caravan?.pink > 0 && (
-                      <span className="bg-pink-400 text-black text-xs font-black px-2 py-0.5 rounded border border-pink-600 shadow-md">
-                        {player.caravan.pink}
-                      </span>
-                    )}
-                    {crystalCount === 0 && (
-                      <span className="text-white/50 text-xs">0💎</span>
-                    )}
+                  <div className="flex items-center gap-2">
+                    {/* Always show each color with a clear badge; title for tooltip */}
+                    <div title="Yellow crystals" className="flex items-center gap-1">
+                      <div className="w-6 h-6 rounded-full bg-yellow-400 border border-yellow-600 shadow-sm"/>
+                      <div className="text-white/90 font-semibold text-sm">{player.caravan?.yellow || 0}</div>
+                    </div>
+
+                    <div title="Green crystals" className="flex items-center gap-1">
+                      <div className="w-6 h-6 rounded-full bg-green-500 border border-green-700 shadow-sm"/>
+                      <div className="text-white/90 font-semibold text-sm">{player.caravan?.green || 0}</div>
+                    </div>
+
+                    <div title="Blue crystals" className="flex items-center gap-1">
+                      <div className="w-6 h-6 rounded-full bg-blue-500 border border-blue-700 shadow-sm"/>
+                      <div className="text-white/90 font-semibold text-sm">{player.caravan?.blue || 0}</div>
+                    </div>
+
+                    <div title="Pink crystals" className="flex items-center gap-1">
+                      <div className="w-6 h-6 rounded-full bg-pink-400 border border-pink-600 shadow-sm"/>
+                      <div className="text-white/90 font-semibold text-sm">{player.caravan?.pink || 0}</div>
+                    </div>
                   </div>
                 </div>
               </div>

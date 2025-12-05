@@ -32,7 +32,7 @@ const CompactCard = ({
   
   const sizeClasses = {
     small: 'w-16 h-24',
-    normal: 'w-24 h-36'
+    normal: 'w-28 h-44'
   }
 
   const handleClick = () => {
@@ -70,6 +70,10 @@ const CompactCard = ({
         backgroundColor: '#222' // fallback background to ensure visibility
       }}
     >
+      {/* Provide a real image element with alt text for accessibility and to satisfy "alt" requirement */}
+      {imagePath && (
+        <img src={imagePath} alt={`card #${card.id || index}`} className="sr-only" />
+      )}
       {/* Upgrade Icon - Center */}
       {upgradeLevel !== null && (
         <div className="card-upgrade z-10">
