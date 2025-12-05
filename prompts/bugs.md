@@ -1,5 +1,15 @@
 # bugs
 
+## requirements
+- fix all bugs listed, write tests where applicable
+- run, test, verify the game works as expected according to game rules
+
+## 2025-06-12 03:00:00
+- replace all fmt.Print* calls in the #codebase with proper logging using the zap logger with its dedicated package for DI
+- hover on cards doesn't show card details as tooltip.
+- the game menu still displays maxium 4 players allowed.
+- initial crystal doesn't work
+
 ## 2025-06-12 02:00:00
 - replace all fmt.Print* calls with proper logging using the zap logger with its dedicated package for DI
 - these buttons are not working:

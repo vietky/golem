@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import CrystalStack from './CrystalStack'
 import { getVietnameseCardName } from '../utils/cardNames'
 
@@ -12,6 +12,8 @@ const SimpleCard = ({
   onClick,
   size = 'normal' // 'small', 'normal', 'large'
 }) => {
+  const [showTooltip, setShowTooltip] = useState(false)
+  
   if (!card) return null
 
   const cardTypeColors = {
@@ -43,10 +45,68 @@ const SimpleCard = ({
   return (
     <div
       onClick={handleClick}
-      className={`${sizeClasses[size]} ${borderColor} border-2 rounded-lg p-2 flex flex-col justify-between cursor-pointer hover:scale-105 transition-transform ${
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+      className={`${sizeClasses[size]} ${borderColor} border-2 rounded-lg p-2 flex flex-col justify-between cursor-pointer hover:scale-105 transition-transform relative ${
         canInteract ? 'opacity-100' : 'opacity-70'
       } ${canInteract ? 'ring-2 ring-white' : ''}`}
     >
+      {/* Tooltip */}
+      {showTooltip && (
+        <div className="absolute -top-28 left-1/2 transform -translate-x-1/2 bg-black/95 backdrop-blur-md text-white p-3 rounded-lg text-xs whitespace-nowrap z-50 border border-white/30 shadow-xl min-w-[200px]">
+          <div className="font-bold mb-2">{card.name}</div>
+          <div className="text-gray-400 text-[10px] mb-2">ID: #{card.id || index}</div>
+          
+          {/* Card Type */}
+          {actionType === 'produce' && <div className="text-green-400 font-semibold">Type: Produce Card</div>}
+          {actionType === 'upgrade' && <div className="text-blue-400 font-semibold">Type: Upgrade Card (Lv.{card.upgradeLevel || card.turnUpgrade || 2})</div>}
+          {actionType === 'trade' && <div className="text-pink-400 font-semibold">Type: Trade Card</div>}
+          {actionType === 'points' && (
+            <>
+              <div className="text-yellow-400 font-semibold">Type: Point Card</div>
+              <div className="text-yellow-300 mt-1">Point Value: {card.points}</div>
+            </>
+          )}
+          
+          {/* Crystal Cost (for market cards) */}
+          {cost && (cost.yellow + cost.green + cost.blue + cost.pink > 0) && (
+            <div className="mt-1 text-red-400">
+              Crystal Cost: 🟡{cost.yellow || 0} 🟢{cost.green || 0} 🔵{cost.blue || 0} 🟣{cost.pink || 0}
+            </div>
+          )}
+
+          {/* Crystal Requirement (for point cards) */}
+          {card.requirement && (card.requirement.yellow + card.requirement.green + card.requirement.blue + card.requirement.pink > 0) && (
+            <div className="mt-1 text-orange-400">
+              Crystal Cost: 🟡{card.requirement.yellow || 0} 🟢{card.requirement.green || 0} 🔵{card.requirement.blue || 0} 🟣{card.requirement.pink || 0}
+            </div>
+          )}
+
+          {/* Crystal Produced (for produce cards) */}
+          {actionType === 'produce' && card.output && (card.output.yellow + card.output.green + card.output.blue + card.output.pink > 0) && (
+            <div className="mt-1 text-green-300">
+              Crystal Produced: 🟡{card.output.yellow || 0} 🟢{card.output.green || 0} 🔵{card.output.blue || 0} 🟣{card.output.pink || 0}
+            </div>
+          )}
+          
+          {/* Input → Output (for trade/upgrade cards) */}
+          {(actionType === 'upgrade' || actionType === 'trade') && card.input && card.output && (
+            <div className="mt-1">
+              <div className="text-red-300">Input: 🟡{card.input.yellow || 0} 🟢{card.input.green || 0} 🔵{card.input.blue || 0} 🟣{card.input.pink || 0}</div>
+              <div className="text-white">↓</div>
+              <div className="text-green-300">Output: 🟡{card.output.yellow || 0} 🟢{card.output.green || 0} 🔵{card.output.blue || 0} 🟣{card.output.pink || 0}</div>
+            </div>
+          )}
+
+          {/* Upgrade Level */}
+          {actionType === 'upgrade' && (
+            <div className="mt-1 text-blue-300">
+              Upgrade Level: {card.upgradeLevel || card.turnUpgrade || 2}
+            </div>
+          )}
+        </div>
+      )}
+      
       {/* Card Name */}
       <div className="font-bold text-white text-center leading-tight mb-1">
         {getVietnameseCardName(card.name)}

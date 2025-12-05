@@ -608,8 +608,8 @@ func CreateDefaultPointCards() []*Card {
 // CreateCoinCards creates coin cards
 func CreateCoinCards() []*Card {
 	return []*Card{
-		CreateCardFromName("coin_1", 200), // Silver coin = 1 point
-		CreateCardFromName("coin_3", 201), // Bronze coin = 3 points
+		CreateCardFromName("coin_3", 200), // Copper coin = 3 points (first position)
+		CreateCardFromName("coin_1", 201), // Silver coin = 1 point (second position)
 	}
 }
 

@@ -3,15 +3,16 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 	"time"
 
 	"golem_century/internal/eventstore"
 	"golem_century/internal/game"
+	"golem_century/internal/logger"
 
 	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 )
 
 var upgrader = websocket.Upgrader{
@@ -125,19 +126,26 @@ func (gs *GameSession) SendToPlayer(playerID int, message []byte) error {
 type GameServer struct {
 	Sessions   map[string]*GameSession
 	EventStore eventstore.EventStore
+	Logger     *logger.Logger
 	mu         sync.RWMutex
 }
 
 // NewGameServerRequest represents request to create a new game server
 type NewGameServerRequest struct {
 	EventStore eventstore.EventStore
+	Logger     *logger.Logger
 }
 
 // NewGameServer creates a new game server
 func NewGameServer(req NewGameServerRequest) *GameServer {
+	log := req.Logger
+	if log == nil {
+		log = logger.NewNopLogger()
+	}
 	return &GameServer{
 		Sessions:   make(map[string]*GameSession),
 		EventStore: req.EventStore,
+		Logger:     log,
 	}
 }
 
@@ -160,7 +168,7 @@ func (gs *GameServer) CreateSession(sessionID string, numPlayers int, seed int64
 		}
 		resp := session.EventStore.StoreEvent(req)
 		if resp.Error != nil {
-			log.Printf("Warning: failed to store initial game state: %v", resp.Error)
+			gs.Logger.Warn("Failed to store initial game state", zap.Error(resp.Error))
 		}
 	}
 
@@ -195,7 +203,7 @@ func (gs *GameServer) startCleanupTimer(sessionID string) {
 			if !hasPlayers {
 				timeSinceActivity := time.Since(lastActivity)
 				if timeSinceActivity >= 5*time.Minute {
-					log.Printf("Deleting empty room %s (inactive for %v)", sessionID, timeSinceActivity)
+					gs.Logger.Info("Deleting empty room", zap.String("sessionID", sessionID))
 					gs.mu.Lock()
 					delete(gs.Sessions, sessionID)
 					gs.mu.Unlock()
@@ -241,7 +249,7 @@ func (gs *GameSession) RunGameLoop() {
 						}
 						resp := gs.EventStore.StoreEvent(req)
 						if resp.Error != nil {
-							log.Printf("Warning: failed to store event: %v", resp.Error)
+							// Don't fail the action if event store fails
 						}
 					}
 
@@ -281,7 +289,7 @@ func (gs *GameSession) RunGameLoop() {
 						}
 						resp := gs.EventStore.StoreEvent(req)
 						if resp.Error != nil {
-							log.Printf("Warning: failed to store event: %v", resp.Error)
+							// Don't fail the action if event store fails
 						}
 					}
 
@@ -291,7 +299,6 @@ func (gs *GameSession) RunGameLoop() {
 					}
 					gs.BroadcastState()
 				} else {
-					log.Printf("AI action error: %v", err)
 					// If AI action fails, try rest
 					gs.GameState.ExecuteAction(game.Action{Type: game.Rest})
 					gs.GameState.CheckGameOver()
@@ -313,7 +320,6 @@ func (gs *GameSession) BroadcastState() {
 	state := gs.SerializeState()
 	data, err := json.Marshal(state)
 	if err != nil {
-		log.Printf("Error marshaling state: %v", err)
 		return
 	}
 	gs.Broadcast(data)
@@ -354,24 +360,8 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 	for i, card := range gs.GameState.Market.ActionCards {
 		cost := gs.GameState.Market.GetActionCardCost(i)
 		serialized := serializeCardWithCost(card, cost)
-		// Debug: log deposits when serializing - check if field exists
-		deposits, hasDeposits := serialized["deposits"]
-		if hasDeposits {
-			if depositsMap, ok := deposits.(map[string]string); ok {
-				if len(depositsMap) > 0 {
-					fmt.Printf("[DEBUG Serialize] Market card index %d (position %d) HAS deposits: %+v\n", i, i+1, depositsMap)
-				} else {
-					fmt.Printf("[DEBUG Serialize] Market card index %d (position %d) has EMPTY deposits map\n", i, i+1)
-				}
-			} else {
-				fmt.Printf("[DEBUG Serialize] Market card index %d (position %d) deposits field has wrong type: %T\n", i, i+1, deposits)
-			}
-		} else {
-			fmt.Printf("[DEBUG Serialize] WARNING: Market card index %d (position %d) MISSING deposits field!\n", i, i+1)
-		}
 		// Ensure deposits field exists
 		if _, exists := serialized["deposits"]; !exists {
-			fmt.Printf("[DEBUG Serialize] FIXING: Adding missing deposits field to card %s\n", card.Name)
 			serialized["deposits"] = make(map[string]string)
 		}
 		marketActionCards[i] = serialized
@@ -469,11 +459,9 @@ func serializeCard(card *game.Card) map[string]interface{} {
 	// Now supports stacking: each position can have multiple crystals
 	if card.Deposits != nil {
 		result["deposits"] = card.Deposits.ToMap()
-		fmt.Printf("[DEBUG Serialize] Card %s has deposits: %+v\n", card.Name, result["deposits"])
 	} else {
 		// Always include deposits field, even if empty
 		result["deposits"] = make(map[string]string)
-		fmt.Printf("[DEBUG Serialize] Card %s has NO deposits (empty map)\n", card.Name)
 	}
 
 	return result

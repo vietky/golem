@@ -3,19 +3,28 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	"golem_century/internal/config"
 	"golem_century/internal/eventstore"
+	"golem_century/internal/logger"
 	"golem_century/internal/server"
+
+	"go.uber.org/zap"
 )
 
 func main() {
 	port := flag.Int("port", 8080, "Port to run the server on")
 	flag.Parse()
+
+	// Initialize logger
+	log, err := logger.NewLogger(true) // true for development mode
+	if err != nil {
+		panic(fmt.Sprintf("Failed to initialize logger: %v", err))
+	}
+	defer log.Sync()
 
 	// Load configuration
 	cfg := config.LoadConfig()
@@ -34,18 +43,19 @@ func main() {
 
 	var store eventstore.EventStore
 	if storeResp.Error != nil {
-		log.Printf("Warning: failed to initialize event store: %v", storeResp.Error)
-		log.Printf("Continuing without event store - events will not be recorded")
+		log.Warn("Failed to initialize event store - continuing without event store",
+			zap.Error(storeResp.Error))
 		store = nil
 	} else {
 		store = storeResp.Store
-		log.Printf("Event store initialized successfully")
+		log.Info("Event store initialized successfully")
 		defer store.Close()
 	}
 
 	// Create game server with event store
 	gameServer := server.NewGameServer(server.NewGameServerRequest{
 		EventStore: store,
+		Logger:     log,
 	})
 
 	// Setup routes
@@ -65,7 +75,7 @@ func main() {
 	imagesDir := filepath.Join(staticDir, "images")
 	if _, err := os.Stat(imagesDir); err == nil {
 		http.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(imagesDir))))
-		log.Printf("Serving images from ./web/static/images")
+		log.Info("Serving images from ./web/static/images")
 	}
 
 	// Serve static files - try React build first, fallback to vanilla JS
@@ -76,20 +86,21 @@ func main() {
 	if _, err := os.Stat(reactIndexPath); err == nil {
 		// Serve React build
 		http.Handle("/", http.FileServer(http.Dir("./web/react")))
-		log.Printf("Serving React frontend from ./web/react")
+		log.Info("Serving React frontend from ./web/react")
 	} else {
 		// Fallback to vanilla JS
 		if _, err := os.Stat(staticDir); os.IsNotExist(err) {
 			os.MkdirAll(staticDir, 0755)
 		}
 		http.Handle("/", http.FileServer(http.Dir("./web/static")))
-		log.Printf("Serving vanilla JS frontend from ./web/static")
+		log.Info("Serving vanilla JS frontend from ./web/static")
 	}
 
 	addr := fmt.Sprintf(":%d", *port)
-	fmt.Printf("Century: Golem Edition - Web Server\n")
-	fmt.Printf("Server starting on http://localhost%s\n", addr)
-	fmt.Printf("Open http://localhost%s in your browser to play\n", addr)
+	log.Info("Century: Golem Edition - Web Server")
+	log.Info("Server starting", zap.String("url", fmt.Sprintf("http://localhost%s", addr)))
 
-	log.Fatal(http.ListenAndServe(addr, nil))
+	if err := http.ListenAndServe(addr, nil); err != nil {
+		log.Fatal("Server failed to start", zap.Error(err))
+	}
 }

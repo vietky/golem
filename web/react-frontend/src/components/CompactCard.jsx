@@ -84,42 +84,30 @@ const CompactCard = ({
         </div>
       )}
 
-      {/* Card ID - Bottom Right */}
-      <div className="card-id z-10">#{card.id || index}</div>
+      {/* Card ID - Hidden but available via tooltip */}
+      {/* <div className="card-id z-10">#{card.id || index}</div> */}
 
-      {/* Hover Details */}
-      {showHover && showDetails && (
+      {/* Hover Details - Enhanced Tooltip */}
+      {showHover && (
         <div className="absolute -top-32 left-1/2 transform -translate-x-1/2 bg-black/95 backdrop-blur-md text-white p-3 rounded-lg text-xs whitespace-nowrap z-50 border border-white/30 shadow-xl min-w-[200px]">
           <div className="font-bold mb-2">{card.name}</div>
+          <div className="text-gray-400 text-[10px] mb-2">ID: #{card.id || index}</div>
           
-          {card.actionType === 0 && <div className="text-green-400">Produce Card</div>}
-          {card.actionType === 1 && <div className="text-blue-400">Upgrade Card (Lv.{upgradeLevel})</div>}
-          {card.actionType === 2 && <div className="text-pink-400">Trade Card</div>}
-          {type === 'point' && <div className="text-yellow-400">Point Card: {card.points} points</div>}
-          
-          {card.input && inputTotal > 0 && (
-            <div className="mt-1">
-              Input: 
-              {card.input.yellow > 0 && ` 🟡${card.input.yellow}`}
-              {card.input.green > 0 && ` 🟢${card.input.green}`}
-              {card.input.blue > 0 && ` 🔵${card.input.blue}`}
-              {card.input.pink > 0 && ` 🟣${card.input.pink}`}
-            </div>
+          {/* Card Type */}
+          {card.actionType === 0 && <div className="text-green-400 font-semibold">Type: Produce Card</div>}
+          {card.actionType === 1 && <div className="text-blue-400 font-semibold">Type: Upgrade Card (Lv.{upgradeLevel})</div>}
+          {card.actionType === 2 && <div className="text-pink-400 font-semibold">Type: Trade Card</div>}
+          {type === 'point' && (
+            <>
+              <div className="text-yellow-400 font-semibold">Type: Point Card</div>
+              <div className="text-yellow-300 mt-1">Point Value: {card.points}</div>
+            </>
           )}
           
-          {card.output && outputTotal > 0 && (
-            <div className="mt-1">
-              Output: 
-              {card.output.yellow > 0 && ` 🟡${card.output.yellow}`}
-              {card.output.green > 0 && ` 🟢${card.output.green}`}
-              {card.output.blue > 0 && ` 🔵${card.output.blue}`}
-              {card.output.pink > 0 && ` 🟣${card.output.pink}`}
-            </div>
-          )}
-
+          {/* Crystal Cost (for market cards) */}
           {cost && costTotal > 0 && (
             <div className="mt-1 text-red-400">
-              Cost: 
+              Crystal Cost: 
               {cost.yellow > 0 && ` 🟡${cost.yellow}`}
               {cost.green > 0 && ` 🟢${cost.green}`}
               {cost.blue > 0 && ` 🔵${cost.blue}`}
@@ -127,13 +115,49 @@ const CompactCard = ({
             </div>
           )}
 
-          {card.requirement && (
+          {/* Crystal Requirement (for point cards) */}
+          {card.requirement && getTotalCrystals(card.requirement) > 0 && (
             <div className="mt-1 text-orange-400">
-              Requires: 
+              Crystal Cost: 
               {card.requirement.yellow > 0 && ` 🟡${card.requirement.yellow}`}
               {card.requirement.green > 0 && ` 🟢${card.requirement.green}`}
               {card.requirement.blue > 0 && ` 🔵${card.requirement.blue}`}
               {card.requirement.pink > 0 && ` 🟣${card.requirement.pink}`}
+            </div>
+          )}
+
+          {/* Crystal Produced (for produce cards) */}
+          {card.actionType === 0 && card.output && outputTotal > 0 && (
+            <div className="mt-1 text-green-300">
+              Crystal Produced: 
+              {card.output.yellow > 0 && ` 🟡${card.output.yellow}`}
+              {card.output.green > 0 && ` 🟢${card.output.green}`}
+              {card.output.blue > 0 && ` 🔵${card.output.blue}`}
+              {card.output.pink > 0 && ` 🟣${card.output.pink}`}
+            </div>
+          )}
+          
+          {/* Input → Output (for trade/upgrade cards) */}
+          {(card.actionType === 1 || card.actionType === 2) && card.input && card.output && (
+            <div className="mt-1">
+              <span className="text-red-300">Input: </span>
+              {card.input.yellow > 0 && `🟡${card.input.yellow} `}
+              {card.input.green > 0 && `🟢${card.input.green} `}
+              {card.input.blue > 0 && `🔵${card.input.blue} `}
+              {card.input.pink > 0 && `🟣${card.input.pink} `}
+              <span className="text-white">→</span>
+              <span className="text-green-300"> Output: </span>
+              {card.output.yellow > 0 && `🟡${card.output.yellow} `}
+              {card.output.green > 0 && `🟢${card.output.green} `}
+              {card.output.blue > 0 && `🔵${card.output.blue} `}
+              {card.output.pink > 0 && `🟣${card.output.pink}`}
+            </div>
+          )}
+
+          {/* Upgrade Level */}
+          {card.actionType === 1 && upgradeLevel && (
+            <div className="mt-1 text-blue-300">
+              Upgrade Level: {upgradeLevel}
             </div>
           )}
         </div>

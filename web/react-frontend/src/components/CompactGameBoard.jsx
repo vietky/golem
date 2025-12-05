@@ -160,7 +160,7 @@ const CompactGameBoard = () => {
                 
                 {/* Coin Bonus Badge */}
                 {coinBonus && (
-                  <div className="absolute -top-2 -right-2 bg-amber-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs z-20 shadow-lg border border-white" title={index === 0 ? "Silver Token (1 pt)" : "Copper Token (3 pts)"}>
+                  <div className="absolute -top-2 -right-2 bg-amber-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs z-20 shadow-lg border border-white" title={index === 0 ? "Copper Token (3 pts)" : "Silver Token (1 pt)"}>
                     🪙
                   </div>
                 )}

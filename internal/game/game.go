@@ -3,7 +3,6 @@ package game
 import (
 	"fmt"
 	"math/rand"
-	"strings"
 )
 
 // PlayerActionType represents the type of action a player can take
@@ -52,14 +51,24 @@ func NewGameState(numPlayers int, seed int64) *GameState {
 	for i := 0; i < numPlayers; i++ {
 		name := fmt.Sprintf("Player %d", i+1)
 		players[i] = NewPlayer(i+1, name, false)
-		// Give each player starting resources based on player position
-		// Player 1: 3 yellow
-		// Player 2: 4 yellow
-		// Player 3: 4 yellow
-		// Player 4: 3 yellow + 1 green
-		// Player 5: 3 yellow + 1 green
-		playerIndex := i + 1 // 1-based player index
-		switch playerIndex {
+		players[i].Hand = append(players[i].Hand, CreateInitialActionCards(i)...)
+	}
+
+	// Randomize player order using Fisher-Yates shuffle
+	for i := len(players) - 1; i > 0; i-- {
+		j := rng.Intn(i + 1)
+		players[i], players[j] = players[j], players[i]
+	}
+
+	// Give each player starting resources based on turn order (after shuffle)
+	// Turn 1: 3 yellow
+	// Turn 2: 4 yellow
+	// Turn 3: 4 yellow
+	// Turn 4: 3 yellow + 1 green
+	// Turn 5: 3 yellow + 1 green
+	for i := 0; i < numPlayers; i++ {
+		turnOrder := i + 1 // 1-based turn order
+		switch turnOrder {
 		case 1:
 			players[i].Resources.Yellow = 3
 		case 2, 3:
@@ -71,13 +80,6 @@ func NewGameState(numPlayers int, seed int64) *GameState {
 			// For games with more than 5 players, default to 3 yellow
 			players[i].Resources.Yellow = 3
 		}
-		players[i].Hand = append(players[i].Hand, CreateInitialActionCards(i)...)
-	}
-
-	// Randomize player order using Fisher-Yates shuffle
-	for i := len(players) - 1; i > 0; i-- {
-		j := rng.Intn(i + 1)
-		players[i], players[j] = players[j], players[i]
 	}
 
 	// Create market
@@ -154,7 +156,6 @@ func (gs *GameState) ExecuteAction(action Action) error {
 
 		if hasAllDeposits {
 			// FREE: deposited on all previous cards
-			fmt.Printf("[DEBUG] FREE acquisition: deposited on %d previous cards\n", action.CardIndex)
 
 			// Verify player has crystals to deposit
 			for _, deposit := range action.DepositList {
@@ -164,7 +165,6 @@ func (gs *GameState) ExecuteAction(action Action) error {
 			}
 		} else {
 			// Must pay the cost
-			fmt.Printf("[DEBUG] Paying cost: %s\n", cost.String())
 			if !player.Resources.HasAll(cost, 1) {
 				return fmt.Errorf("cannot afford card: need %s but have %s", cost.String(), player.Resources.String())
 			}
@@ -189,7 +189,6 @@ func (gs *GameState) ExecuteAction(action Action) error {
 					return fmt.Errorf("failed to deposit crystal")
 				}
 				gs.Market.ActionCards[i].Deposits.Add(deposit.Crystal, 1)
-				fmt.Printf("[DEBUG] Deposited 1 %s crystal on card index %d\n", CrystalTypeNames[deposit.Crystal], i)
 			}
 		} else {
 			// Pay the cost
@@ -201,7 +200,6 @@ func (gs *GameState) ExecuteAction(action Action) error {
 		// Add collected crystals from target card to player
 		if collectedFromTarget.Total() > 0 {
 			player.Resources.AddAll(collectedFromTarget, 1)
-			fmt.Printf("[DEBUG] Added %d crystals from target card deposits to player\n", collectedFromTarget.Total())
 		}
 
 		player.Hand = append(player.Hand, card)
@@ -250,60 +248,4 @@ func (gs *GameState) CheckGameOver() {
 	}
 }
 
-// PrintState prints the current game state
-func (gs *GameState) PrintState() {
-	fmt.Println("\n" + "=" + strings.Repeat("=", 78))
-	fmt.Printf("Round %d, Turn %d - %s\n", gs.Round, gs.CurrentTurn+1, gs.GetCurrentPlayer().Name)
-	fmt.Println(strings.Repeat("=", 80))
-
-	// Print current player state
-	currentPlayer := gs.GetCurrentPlayer()
-	fmt.Printf("\nCurrent Player: %s\n", currentPlayer.String())
-	fmt.Printf("Hand: %s\n", currentPlayer.GetHandString())
-
-	// Print all players
-	fmt.Println("\nAll Players:")
-	for _, player := range gs.Players {
-		marker := " "
-		if player.ID == currentPlayer.ID {
-			marker = ">"
-		}
-		fmt.Printf("  %s %s\n", marker, player.String())
-	}
-
-	// Print market
-	fmt.Println("\n" + gs.Market.String())
-	fmt.Printf("Action Deck: %d cards remaining\n", len(gs.Market.ActionDeck))
-	fmt.Printf("Point Deck: %d cards remaining\n", len(gs.Market.PointDeck))
-}
-
 // PrintFinalResults prints the final game results
-func (gs *GameState) PrintFinalResults() {
-	fmt.Println("\n" + strings.Repeat("=", 80))
-	fmt.Println("GAME OVER - FINAL RESULTS")
-	fmt.Println(strings.Repeat("=", 80))
-
-	// Sort players by points (simple bubble sort)
-	players := make([]*Player, len(gs.Players))
-	copy(players, gs.Players)
-	for i := 0; i < len(players)-1; i++ {
-		for j := i + 1; j < len(players); j++ {
-			if players[j].Points > players[i].Points {
-				players[i], players[j] = players[j], players[i]
-			}
-		}
-	}
-
-	for i, player := range players {
-		rank := i + 1
-		winnerMark := ""
-		if player.ID == gs.Winner.ID {
-			winnerMark = " 🏆 WINNER"
-		}
-		fmt.Printf("\n%d. %s - %d Points (%d Point Cards)%s\n",
-			rank, player.Name, player.Points, len(player.PointCards), winnerMark)
-		fmt.Printf("   Resources: %s\n", player.Resources.String())
-		fmt.Printf("   Hand: %d cards\n", len(player.Hand))
-	}
-	fmt.Println()
-}

@@ -135,7 +135,7 @@ const SimpleMarketArea = () => {
                   
                   {/* Coin Bonus Badge */}
                   {coinBonus && (
-                    <div className="absolute -top-2 -right-2 bg-amber-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10 shadow-lg" title={index === 0 ? "Silver Token (1 pt)" : "Copper Token (3 pts)"}>
+                    <div className="absolute -top-2 -right-2 bg-amber-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10 shadow-lg" title={index === 0 ? "Copper Token (3 pts)" : "Silver Token (1 pt)"}>
                       🪙
                     </div>
                   )}

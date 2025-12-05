@@ -107,7 +107,7 @@ const useGameStore = create((set, get) => ({
     set({ ws, sessionId });
   },
 
-  sendAction: (actionType, cardIndex = null, inputResources = null, outputResources = null, multiplier = null) => {
+  sendAction: (actionType, cardIndex = null, inputResources = null, outputResources = null, multiplier = null, deposits = null) => {
     const { ws } = get();
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
@@ -125,6 +125,9 @@ const useGameStore = create((set, get) => ({
     }
     if (multiplier !== null && multiplier !== undefined) {
       message.multiplier = multiplier;
+    }
+    if (deposits) {
+      message.deposits = deposits;
     }
 
     ws.send(JSON.stringify(message));
@@ -159,28 +162,8 @@ const useGameStore = create((set, get) => ({
   showTradeModal: (card, cardIndex) => set({ tradeModalCard: card, tradeModalCardIndex: cardIndex }),
   hideTradeModal: () => set({ tradeModalCard: null, tradeModalCardIndex: null }),
 
-  acquireCard: (cardIndex) => {
-    const { gameState, myPlayer } = get();
-    const card = gameState?.market?.actionCards?.[cardIndex];
-    const cost = card?.cost || {};
-
-    // Check if can afford
-    const canAfford =
-      myPlayer?.resources &&
-      (cost.yellow || 0) <= myPlayer.resources.yellow &&
-      (cost.green || 0) <= myPlayer.resources.green &&
-      (cost.blue || 0) <= myPlayer.resources.blue &&
-      (cost.pink || 0) <= myPlayer.resources.pink;
-
-    if (!canAfford) {
-      // Trigger invalid action animation
-      set({ invalidAction: card?.name });
-      setTimeout(() => set({ invalidAction: null }), 300);
-      get().addToLog(`Cannot afford this card!`);
-      return;
-    }
-
-    get().sendAction("acquireCard", cardIndex);
+  acquireCard: (cardIndex, deposits = []) => {
+    get().sendAction("acquireCard", cardIndex, null, null, null, deposits);
     get().addToLog(`Acquiring card from market`);
   },
 

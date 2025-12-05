@@ -33,9 +33,6 @@ func (e *Engine) Run() {
 		turnCount++
 		player := e.GameState.GetCurrentPlayer()
 
-		// Print current state
-		e.GameState.PrintState()
-
 		// Get action from AI
 		action := e.AI.ChooseAction(player, e.GameState.Market, e.GameState)
 
@@ -64,9 +61,6 @@ func (e *Engine) Run() {
 	if turnCount >= maxTurns {
 		fmt.Println("\nWARNING: Maximum turns reached!")
 	}
-
-	// Print final results
-	e.GameState.PrintFinalResults()
 }
 
 // getActionString returns a string representation of an action
@@ -101,4 +95,3 @@ func (e *Engine) getActionString(action Action, player *Player) string {
 func (e *Engine) GetGameState() *GameState {
 	return e.GameState
 }
-
