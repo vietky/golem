@@ -126,6 +126,45 @@ func (r *Resources) HasAll(required *Resources, multiplier int) bool {
 		r.Pink >= required.Pink
 }
 
+// GetMaxMultiplier returns the maximum multiplier that can be applied with current resources
+func (r *Resources) GetMaxMultiplier(required *Resources) int {
+	if required.Total() == 0 {
+		return 0
+	}
+
+	maxMult := 999 // Start with a large number
+
+	if required.Yellow > 0 {
+		mult := r.Yellow / required.Yellow
+		if mult < maxMult {
+			maxMult = mult
+		}
+	}
+	if required.Green > 0 {
+		mult := r.Green / required.Green
+		if mult < maxMult {
+			maxMult = mult
+		}
+	}
+	if required.Blue > 0 {
+		mult := r.Blue / required.Blue
+		if mult < maxMult {
+			maxMult = mult
+		}
+	}
+	if required.Pink > 0 {
+		mult := r.Pink / required.Pink
+		if mult < maxMult {
+			maxMult = mult
+		}
+	}
+
+	if maxMult == 999 {
+		return 0
+	}
+	return maxMult
+}
+
 // SubtractAll subtracts all required resources (returns false if insufficient)
 func (r *Resources) SubtractAll(required *Resources, multiplier int) bool {
 	if multiplier <= 0 {

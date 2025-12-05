@@ -156,8 +156,8 @@ setup-jenkins:
 	ansible-playbook -i ansible/inventory.ini ansible/setup-jenkins-job.yml
 
 dev:
-	docker compose -f docker-compose.dev.yml up -d --build
-	docker exec -it golem-century-server sh
+	sudo docker compose -f docker-compose.dev.yml up -d --build
+	sudo docker exec -it golem-century-server sh
 
 check-data:
 	mkdir -p data/

@@ -263,7 +263,44 @@ func (gs *GameSession) RunGameLoop() {
 			}
 
 		case <-ticker.C:
-			// No AI processing - all players are human
+			// Check if current player is AI
+			currentPlayer := gs.GameState.GetCurrentPlayer()
+			if currentPlayer.IsAI && gs.Engine.AI != nil {
+				// AI turn - execute AI action with a small delay for UX
+				time.Sleep(500 * time.Millisecond)
+
+				aiAction := gs.Engine.AI.ChooseAction(currentPlayer, gs.GameState.Market, gs.GameState)
+				if err := gs.GameState.ExecuteAction(aiAction); err == nil {
+					// Store event if event store is available
+					if gs.EventStore != nil {
+						req := eventstore.StoreEventRequest{
+							GameID:    gs.ID,
+							PlayerID:  currentPlayer.ID,
+							Action:    aiAction,
+							GameState: gs.GameState,
+						}
+						resp := gs.EventStore.StoreEvent(req)
+						if resp.Error != nil {
+							log.Printf("Warning: failed to store event: %v", resp.Error)
+						}
+					}
+
+					gs.GameState.CheckGameOver()
+					if !gs.GameState.GameOver {
+						gs.GameState.NextTurn()
+					}
+					gs.BroadcastState()
+				} else {
+					log.Printf("AI action error: %v", err)
+					// If AI action fails, try rest
+					gs.GameState.ExecuteAction(game.Action{Type: game.Rest})
+					gs.GameState.CheckGameOver()
+					if !gs.GameState.GameOver {
+						gs.GameState.NextTurn()
+					}
+					gs.BroadcastState()
+				}
+			}
 		}
 	}
 

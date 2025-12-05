@@ -344,3 +344,70 @@ func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
+
+// HandleCreateSinglePlayer creates a single-player game with AI opponents
+func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		sendJSONError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req struct {
+		NumAI     int    `json:"numAI"` // Number of AI opponents (1-3)
+		Seed      int64  `json:"seed"`
+		SessionID string `json:"sessionID"` // Optional custom session ID
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendJSONError(w, http.StatusBadRequest, "Invalid request")
+		return
+	}
+
+	// Validate number of AI opponents (player + AI = 2-4 total)
+	if req.NumAI < 1 || req.NumAI > 3 {
+		sendJSONError(w, http.StatusBadRequest, "Number of AI opponents must be 1-3")
+		return
+	}
+
+	if req.Seed == 0 {
+		req.Seed = time.Now().UnixNano()
+	}
+
+	// Use custom session ID if provided, otherwise generate one
+	var sessionID string
+	if req.SessionID != "" {
+		// Check if session already exists
+		if _, exists := gs.GetSession(req.SessionID); exists {
+			sendJSONError(w, http.StatusConflict, "Session ID already exists")
+			return
+		}
+		sessionID = req.SessionID
+	} else {
+		sessionID = fmt.Sprintf("single_%d", time.Now().UnixNano())
+	}
+
+	// Total players = 1 human + numAI
+	totalPlayers := 1 + req.NumAI
+	session := gs.CreateSession(sessionID, totalPlayers, req.Seed)
+
+	// Mark AI players (all except first player which is human)
+	session.mu.Lock()
+	for i := 1; i < totalPlayers; i++ {
+		session.GameState.Players[i].IsAI = true
+		session.GameState.Players[i].Name = fmt.Sprintf("AI Player %d", i+1)
+	}
+	session.mu.Unlock()
+
+	// Initialize AI in the engine
+	session.Engine.AI = game.NewAIPlayer(session.GameState.RNG)
+
+	response := map[string]interface{}{
+		"sessionID":  sessionID,
+		"numPlayers": totalPlayers,
+		"numAI":      req.NumAI,
+		"mode":       "singlePlayer",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}

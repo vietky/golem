@@ -51,6 +51,7 @@ func main() {
 	// Setup routes
 	http.HandleFunc("/ws", gameServer.HandleWebSocket)
 	http.HandleFunc("/api/create", gameServer.HandleCreateSession)
+	http.HandleFunc("/api/single", gameServer.HandleCreateSinglePlayer)
 	http.HandleFunc("/api/join", gameServer.HandleJoinSession)
 	http.HandleFunc("/api/list", gameServer.HandleListSessions)
 

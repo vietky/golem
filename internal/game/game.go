@@ -127,57 +127,69 @@ func (gs *GameState) ExecuteAction(action Action) error {
 			return fmt.Errorf("invalid market card index")
 		}
 
-		// Rule: To acquire card at index N, must have deposited on ALL previous cards (0 to N-1)
+		// Rule: To acquire card at index N, you can either:
+		// 1. Pay the card cost (crystals shown on the card)
+		// 2. Deposit 1 crystal on EACH of the N previous cards (0 to N-1) to get it FREE
 		// Card index 0 (position 1) is always FREE (no previous cards to deposit on)
-		// Card index N (position N+1): must deposit on cards 0..N-1 to acquire FREE
 
 		cost := gs.Market.GetActionCardCost(action.CardIndex)
 
 		// Get the target card BEFORE removing it (to collect its deposits)
 		targetCard := gs.Market.ActionCards[action.CardIndex]
 
-		// Collect deposits ONLY from the target card itself
-		// Deposits on previous cards (0 to N-1) are LEFT BEHIND for other players
+		// Collect deposits from the target card
 		collectedFromTarget := NewResources()
 		if targetCard.Deposits != nil {
 			collectedFromTarget.AddAll(targetCard.Deposits, 1)
-			fmt.Printf("[DEBUG] Collected deposits from target card index %d: %d crystals\n",
-				action.CardIndex, collectedFromTarget.Total())
 		}
 
-		if len(action.DepositList) != action.CardIndex {
-			// Missing required deposits, must pay the normal card cost
-			fmt.Printf("[DEBUG] Missing required deposits on previous cards, must pay cost %s\n", cost.String())
+		// Check if player deposited on all previous cards (FREE acquisition)
+		hasAllDeposits := len(action.DepositList) == action.CardIndex
+
+		if hasAllDeposits {
+			// FREE: deposited on all previous cards
+			fmt.Printf("[DEBUG] FREE acquisition: deposited on %d previous cards\n", action.CardIndex)
+
+			// Verify player has crystals to deposit
+			for _, deposit := range action.DepositList {
+				if !player.Resources.Has(deposit.Crystal, 1) {
+					return fmt.Errorf("insufficient resources for deposit")
+				}
+			}
+		} else {
+			// Must pay the cost
+			fmt.Printf("[DEBUG] Paying cost: %s\n", cost.String())
 			if !player.Resources.HasAll(cost, 1) {
 				return fmt.Errorf("cannot afford card: need %s but have %s", cost.String(), player.Resources.String())
 			}
-			if !player.Resources.SubtractAll(cost, 1) {
-				return fmt.Errorf("failed to pay card cost")
-			}
 		}
 
-		if !player.Resources.HasAll(cost, 1) {
-			return fmt.Errorf("cannot afford card: need %s but have %s", cost.String(), player.Resources.String())
-		}
-
-		if !player.Resources.SubtractAll(cost, 1) {
-			return fmt.Errorf("failed to pay card cost")
-		}
-
+		// Check max crystals limit BEFORE acquiring
 		if collectedFromTarget.Total()+player.Resources.Total() > MaxCrystals {
 			return fmt.Errorf("cannot acquire card: would exceed max crystals")
 		}
 
-		// Now remove the card from market
+		// Remove the card from market FIRST
 		card := gs.Market.AcquireActionCard(action.CardIndex)
 		if card == nil {
 			return fmt.Errorf("cannot acquire card")
 		}
 
-		// Process deposits on previous cards (0 to N-1)
-		for i, deposit := range action.DepositList {
-			gs.Market.ActionCards[i].Deposits.Add(deposit.Crystal, 1)
-			fmt.Printf("[DEBUG] Deposited 1 cyrstal on card index %d\n", i)
+		// Now process payment/deposits
+		if hasAllDeposits {
+			// Process deposits on previous cards (0 to N-1)
+			for i, deposit := range action.DepositList {
+				if !player.Resources.Subtract(deposit.Crystal, 1) {
+					return fmt.Errorf("failed to deposit crystal")
+				}
+				gs.Market.ActionCards[i].Deposits.Add(deposit.Crystal, 1)
+				fmt.Printf("[DEBUG] Deposited 1 %s crystal on card index %d\n", CrystalTypeNames[deposit.Crystal], i)
+			}
+		} else {
+			// Pay the cost
+			if !player.Resources.SubtractAll(cost, 1) {
+				return fmt.Errorf("failed to pay card cost")
+			}
 		}
 
 		// Add collected crystals from target card to player
