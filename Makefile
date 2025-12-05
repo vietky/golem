@@ -156,13 +156,13 @@ setup-jenkins:
 	ansible-playbook -i ansible/inventory.ini ansible/setup-jenkins-job.yml
 
 dev:
-	sudo docker compose -f docker-compose.dev.yml up -d
-	sudo docker exec -it golem-century-server sh
+	docker compose -f docker-compose.dev.yml up -d --build
+	docker exec -it golem-century-server sh
 
 check-data:
 	mkdir -p data/
-	sudo docker exec -it golem-mongodb mongoexport \
+	docker exec -it golem-mongodb mongoexport \
 		--db=golem_game_test \
 		--collection=events \
 		--out=/data/events.json
-	sudo docker cp golem-mongodb:/data/events.json ./data/events.json
+	docker cp golem-mongodb:/data/events.json ./data/events.json
