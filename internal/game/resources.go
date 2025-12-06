@@ -242,6 +242,10 @@ func (r *Resources) CanUpgraded(other *Resources, maxTurnUpgrade int) bool {
 	}
 	beforeLevels := r.GetLevels()
 	afterLevels := other.GetLevels()
+	// If there is no level change, it's not an upgrade
+	if afterLevels == beforeLevels {
+		return false
+	}
 	if afterLevels-beforeLevels > maxTurnUpgrade || afterLevels-beforeLevels < 0 {
 		return false
 	}

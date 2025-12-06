@@ -439,6 +439,8 @@ func serializeCard(card *game.Card) map[string]interface{} {
 		}
 		if card.ActionType == game.Upgrade {
 			result["turnUpgrade"] = card.TurnUpgrade
+			// Frontend expects `upgradeLevel` in some components — include alias for compatibility
+			result["upgradeLevel"] = card.TurnUpgrade
 		}
 	} else if card.Type == game.PointCard {
 		result["points"] = card.Points

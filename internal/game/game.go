@@ -60,10 +60,15 @@ func NewGameState(numPlayers int, seed int64) *GameState {
 		players[i], players[j] = players[j], players[i]
 	}
 
+	// Ensure player IDs reflect seating order after shuffle
+	for i := range players {
+		players[i].ID = i + 1
+	}
+
 	// Give each player starting resources based on turn order (after shuffle)
 	// Turn 1: 3 yellow
-	// Turn 2: 4 yellow
-	// Turn 3: 4 yellow
+	// Turn 2: 3 yellow
+	// Turn 3: 3 yellow
 	// Turn 4: 3 yellow + 1 green
 	// Turn 5: 3 yellow + 1 green
 	for i := 0; i < numPlayers; i++ {
@@ -72,7 +77,7 @@ func NewGameState(numPlayers int, seed int64) *GameState {
 		case 1:
 			players[i].Resources.Yellow = 3
 		case 2, 3:
-			players[i].Resources.Yellow = 4
+			players[i].Resources.Yellow = 3
 		case 4, 5:
 			players[i].Resources.Yellow = 3
 			players[i].Resources.Green = 1

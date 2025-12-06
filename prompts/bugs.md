@@ -4,6 +4,16 @@
 - fix all bugs listed, write tests where applicable
 - run, test, verify the game works as expected according to game rules
 
+## 2025-06-12 11:00:00
+- init state of the game is not correct:
+    - player order is not random
+    - number of players is not correct
+    - number of merchant cards is not correct
+    - initial coins for each player is not correct
+    Please check the backend code to ensure the game is initialized correctly and the frontend reflects the correct state.
+- hovering on any cards should show card details as tooltip.
+
+
 ## 2025-06-12 03:00:00
 - replace all fmt.Print* calls in the #codebase with proper logging using the zap logger with its dedicated package for DI
 - hover on cards doesn't show card details as tooltip.

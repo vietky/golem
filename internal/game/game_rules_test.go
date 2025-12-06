@@ -17,7 +17,7 @@ func TestGameRules_Setup(t *testing.T) {
 			numPlayers: 2,
 			expectedYellow: map[int]int{
 				0: 3, // Player 1: 3 yellow
-				1: 4, // Player 2: 4 yellow
+				1: 3, // Player 2: 3 yellow
 			},
 			expectedGreen: map[int]int{
 				0: 0,
@@ -29,8 +29,8 @@ func TestGameRules_Setup(t *testing.T) {
 			numPlayers: 3,
 			expectedYellow: map[int]int{
 				0: 3, // Player 1: 3 yellow
-				1: 4, // Player 2: 4 yellow
-				2: 4, // Player 3: 4 yellow
+				1: 3, // Player 2: 3 yellow
+				2: 3, // Player 3: 3 yellow
 			},
 			expectedGreen: map[int]int{
 				0: 0,
@@ -43,8 +43,8 @@ func TestGameRules_Setup(t *testing.T) {
 			numPlayers: 4,
 			expectedYellow: map[int]int{
 				0: 3, // Player 1: 3 yellow
-				1: 4, // Player 2: 4 yellow
-				2: 4, // Player 3: 4 yellow
+				1: 3, // Player 2: 3 yellow
+				2: 3, // Player 3: 3 yellow
 				3: 3, // Player 4: 3 yellow + 1 green
 			},
 			expectedGreen: map[int]int{
@@ -59,8 +59,8 @@ func TestGameRules_Setup(t *testing.T) {
 			numPlayers: 5,
 			expectedYellow: map[int]int{
 				0: 3, // Player 1: 3 yellow
-				1: 4, // Player 2: 4 yellow
-				2: 4, // Player 3: 4 yellow
+				1: 3, // Player 2: 3 yellow
+				2: 3, // Player 3: 3 yellow
 				3: 3, // Player 4: 3 yellow + 1 green
 				4: 3, // Player 5: 3 yellow + 1 green
 			},

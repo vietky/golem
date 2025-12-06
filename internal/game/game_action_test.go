@@ -246,9 +246,8 @@ func TestExecuteAction_AcquireCard_WithCost(t *testing.T) {
 	}
 
 	// Validate state changes
-	// 1. Cost is deducted twice due to implementation bug (position 2 = 2 yellow * 2 = 4 total)
-	// TODO: This is a bug in ExecuteAction that pays cost twice
-	expectedYellow := initialYellow - 4
+	// 1. Cost should be deducted once for position 2 (2 yellow)
+	expectedYellow := initialYellow - 2
 	if player.Resources.Yellow != expectedYellow {
 		t.Errorf("Expected %d yellow after cost, got %d", expectedYellow, player.Resources.Yellow)
 	}
