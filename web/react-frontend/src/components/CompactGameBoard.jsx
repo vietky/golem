@@ -53,14 +53,17 @@ const CompactGameBoard = () => {
   const handleAcquireCard = (index) => {
     if (!isMyTurn) return
     const card = actionCards[index]
-    const deposits = card.deposits || {}
-    const hasDeposits = Object.values(deposits).some(v => v > 0)
     
-    if (hasDeposits) {
-      setDepositModal({ show: true, card, index })
-    } else {
+    // Card at index 0 (position 1) is always FREE - no deposits needed
+    if (index === 0) {
       acquireCard(index, {})
+      return
     }
+    
+    // For cards at index > 0, always show deposit modal
+    // This allows player to deposit into previous cards to get it FREE
+    // or see the option to pay the cost directly
+    setDepositModal({ show: true, card, index })
   }
 
   const handleClaimPointCard = (index) => {
@@ -70,22 +73,21 @@ const CompactGameBoard = () => {
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-6 space-y-4">
-      {/* Turn Info and Timer */}
-      <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 border border-white/30 shadow-2xl">
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-white font-bold text-lg drop-shadow-lg">
+      {/* Turn Info and Timer - Compact and Centered */}
+      <div className="flex justify-center">
+        <div className="bg-black/40 backdrop-blur-md rounded-full px-6 py-2 border border-white/30 shadow-lg inline-flex items-center gap-4">
+          <div className="text-white font-semibold text-sm">
             Turn {gameState.turnNumber || 1} - <span className="text-yellow-300">{currentPlayer?.name || 'Waiting...'}</span>
           </div>
-          <div className="text-white/90 text-base font-semibold">
-            Time: {turnTimeRemaining}s
+          <div className="flex items-center gap-2">
+            <span className="text-white/90 text-sm font-semibold">⏱️ {turnTimeRemaining}s</span>
+            <div className="w-12 bg-white/20 rounded-full h-1.5 overflow-hidden">
+              <div 
+                className="bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 h-full transition-all duration-1000"
+                style={{ width: `${turnProgress}%` }}
+              />
+            </div>
           </div>
-        </div>
-        {/* Progress Bar */}
-        <div className="w-full bg-white/20 rounded-full h-3 overflow-hidden shadow-inner">
-          <div 
-            className="bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 h-full transition-all duration-1000 shadow-lg"
-            style={{ width: `${turnProgress}%` }}
-          />
         </div>
       </div>
 

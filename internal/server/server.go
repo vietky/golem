@@ -250,6 +250,7 @@ func (gs *GameSession) RunGameLoop() {
 						resp := gs.EventStore.StoreEvent(req)
 						if resp.Error != nil {
 							// Don't fail the action if event store fails
+							// TODO: log here
 						}
 					}
 
@@ -336,16 +337,21 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 		if avatar == "" {
 			avatar = fmt.Sprintf("%d", p.ID) // Default to player ID
 		}
+		resourcesMap := map[string]int{
+			"yellow": p.Resources.Yellow,
+			"green":  p.Resources.Green,
+			"blue":   p.Resources.Blue,
+			"pink":   p.Resources.Pink,
+		}
+
 		players[i] = map[string]interface{}{
-			"id":     p.ID,
-			"name":   p.Name,
-			"avatar": avatar,
-			"resources": map[string]int{
-				"yellow": p.Resources.Yellow,
-				"green":  p.Resources.Green,
-				"blue":   p.Resources.Blue,
-				"pink":   p.Resources.Pink,
-			},
+			"id":        p.ID,
+			"name":      p.Name,
+			"avatar":    avatar,
+			"resources": resourcesMap,
+			// Backwards compatibility: some frontends expect `caravan`
+			// as the resource container. Provide the same map under that key.
+			"caravan":     resourcesMap,
 			"points":      p.GetPoints(),
 			"hand":        serializeCards(p.Hand),
 			"playedCards": serializeCards(p.PlayedCards),

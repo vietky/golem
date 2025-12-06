@@ -4,6 +4,25 @@
 - fix all bugs listed, write tests where applicable
 - run, test, verify the game works as expected according to game rules
 
+## 2025-06-12 19:00:00
+- when error ("Not enough resources for this trade") occurs, the UI freezes and players cannot take any further actions. Please ensure that the UI remains responsive and allows players to continue playing after such errors.
+- also please check the trade logic in TradeModal as when I click on the card that has enough resources, it still shows the error. Please ensure that the trade logic correctly validates resources and allows trades when sufficient resources are available.
+- I couldn't see the card details when hovering over the cards (desktop) or long touch in mobile. Please implement a tooltip that displays card details when players hover over any card in the game.
+- the copper and silver coins are not positioned correctly in Point Card Section. Copper is put on the first index card and silver on the second index card. Please review FE and backend code to ensure correct positioning and point calculation as Copper has 3 points and Silver has 1 point.
+- Timer section should be small and positioned at the middle top of the screen, not taking too much space. Please adjust the timer UI to be more compact and centered at the top of the screen.
+- Picking merchant cards with index > 0 doesn't display deposit action modal. Please ensure that when players pick merchant cards with index greater than 0, the deposit action modal is displayed correctly.
+
+
+## 2025-06-12 19:00:00
+- the UI doesn't load player resources properly when the game starts. Players are unable to see their initial resources, which affects gameplay. Please ensure that the frontend correctly fetches and displays player resources from the backend at the start of the game.
+- clicking on the card in any sections doesn't trigger any actions. Please ensure the following buttons work as expected:
+    - clicking on any cards for 2 seconds shows card details as tooltip
+    - clicking on player card takes action play
+    - clicking on point card takes action claim
+    - clicking on rest button takes action rest
+    - clicking on merchant card takes action acquire
+
+
 ## 2025-06-12 11:00:00
 - init state of the game is not correct:
     - player order is not random

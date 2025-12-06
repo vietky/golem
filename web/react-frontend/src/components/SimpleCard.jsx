@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import CrystalStack from './CrystalStack'
 import { getVietnameseCardName } from '../utils/cardNames'
 
@@ -13,6 +13,8 @@ const SimpleCard = ({
   size = 'normal' // 'small', 'normal', 'large'
 }) => {
   const [showTooltip, setShowTooltip] = useState(false)
+  const longPressTimer = useRef(null)
+  const LONG_PRESS_MS = 2000
   
   if (!card) return null
 
@@ -39,6 +41,19 @@ const SimpleCard = ({
     }
   }
 
+  const startLongPress = (e) => {
+    // Prevent mouse events from triggering duplicate behavior
+    if (e) e.persist && e.persist()
+    clearTimeout(longPressTimer.current)
+    longPressTimer.current = setTimeout(() => {
+      setShowTooltip(true)
+    }, LONG_PRESS_MS)
+  }
+
+  const cancelLongPress = () => {
+    clearTimeout(longPressTimer.current)
+  }
+
   const borderColor = cardTypeColors[actionType] || 'border-gray-500 bg-gray-900/30'
   const canInteract = isPlayable || isAffordable
 
@@ -46,7 +61,11 @@ const SimpleCard = ({
     <div
       onClick={handleClick}
       onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
+      onMouseLeave={() => { setShowTooltip(false); cancelLongPress(); }}
+      onMouseDown={(e) => startLongPress(e)}
+      onMouseUp={() => cancelLongPress()}
+      onTouchStart={(e) => startLongPress(e)}
+      onTouchEnd={() => cancelLongPress()}
       className={`${sizeClasses[size]} ${borderColor} border-2 rounded-lg p-2 flex flex-col justify-between cursor-pointer hover:scale-105 transition-transform relative ${
         canInteract ? 'opacity-100' : 'opacity-70'
       } ${canInteract ? 'ring-2 ring-white' : ''}`}
@@ -55,15 +74,15 @@ const SimpleCard = ({
       {showTooltip && (
         <div className="absolute -top-28 left-1/2 transform -translate-x-1/2 bg-black/95 backdrop-blur-md text-white p-3 rounded-lg text-xs whitespace-nowrap z-50 border border-white/30 shadow-xl min-w-[200px]">
           <div className="font-bold mb-2">{card.name}</div>
-          <div className="text-gray-400 text-[10px] mb-2">ID: #{card.id || index}</div>
+          <div className="text-gray-400 text-[10px] mb-2">Card Id: #{card.id || index}</div>
           
           {/* Card Type */}
-          {actionType === 'produce' && <div className="text-green-400 font-semibold">Type: Produce Card</div>}
-          {actionType === 'upgrade' && <div className="text-blue-400 font-semibold">Type: Upgrade Card (Lv.{card.upgradeLevel || card.turnUpgrade || 2})</div>}
-          {actionType === 'trade' && <div className="text-pink-400 font-semibold">Type: Trade Card</div>}
+          {actionType === 'produce' && <div className="text-green-400 font-semibold">Card Type: Produce</div>}
+          {actionType === 'upgrade' && <div className="text-blue-400 font-semibold">Card Type: Upgrade (Lv.{card.upgradeLevel || card.turnUpgrade || 2})</div>}
+          {actionType === 'trade' && <div className="text-pink-400 font-semibold">Card Type: Trade</div>}
           {actionType === 'points' && (
             <>
-              <div className="text-yellow-400 font-semibold">Type: Point Card</div>
+              <div className="text-yellow-400 font-semibold">Card Type: Point</div>
               <div className="text-yellow-300 mt-1">Point Value: {card.points}</div>
             </>
           )}
@@ -71,7 +90,7 @@ const SimpleCard = ({
           {/* Crystal Cost (for market cards) */}
           {cost && (cost.yellow + cost.green + cost.blue + cost.pink > 0) && (
             <div className="mt-1 text-red-400">
-              Crystal Cost: 🟡{cost.yellow || 0} 🟢{cost.green || 0} 🔵{cost.blue || 0} 🟣{cost.pink || 0}
+              Crystal Cost: {`🟡${cost.yellow||0}  🟢${cost.green||0}  🔵${cost.blue||0}  🟣${cost.pink||0}`}
             </div>
           )}
 
@@ -85,16 +104,17 @@ const SimpleCard = ({
           {/* Crystal Produced (for produce cards) */}
           {actionType === 'produce' && card.output && (card.output.yellow + card.output.green + card.output.blue + card.output.pink > 0) && (
             <div className="mt-1 text-green-300">
-              Crystal Produced: 🟡{card.output.yellow || 0} 🟢{card.output.green || 0} 🔵{card.output.blue || 0} 🟣{card.output.pink || 0}
+              Crystal Produced: {`🟡${card.output.yellow||0}  🟢${card.output.green||0}  🔵${card.output.blue||0}  🟣${card.output.pink||0}`}
             </div>
           )}
           
           {/* Input → Output (for trade/upgrade cards) */}
           {(actionType === 'upgrade' || actionType === 'trade') && card.input && card.output && (
             <div className="mt-1">
-              <div className="text-red-300">Input: 🟡{card.input.yellow || 0} 🟢{card.input.green || 0} 🔵{card.input.blue || 0} 🟣{card.input.pink || 0}</div>
+              <div className="text-red-300">Input → Output</div>
+              <div className="text-red-300">{`Input: 🟡${card.input.yellow||0} 🟢${card.input.green||0} 🔵${card.input.blue||0} 🟣${card.input.pink||0}`}</div>
               <div className="text-white">↓</div>
-              <div className="text-green-300">Output: 🟡{card.output.yellow || 0} 🟢{card.output.green || 0} 🔵{card.output.blue || 0} 🟣{card.output.pink || 0}</div>
+              <div className="text-green-300">{`Output: 🟡${card.output.yellow||0} 🟢${card.output.green||0} 🔵${card.output.blue||0} 🟣${card.output.pink||0}`}</div>
             </div>
           )}
 

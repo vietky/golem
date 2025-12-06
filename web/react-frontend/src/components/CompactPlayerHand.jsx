@@ -5,7 +5,7 @@ import UpgradeModal from './UpgradeModal'
 import TradeModal from './TradeModal'
 
 const CompactPlayerHand = () => {
-  const { myPlayer, currentPlayer, playCard } = useGameStore()
+  const { myPlayer, currentPlayer, playCard, playCardWithUpgrade, playCardWithTrade } = useGameStore()
   const [upgradeModal, setUpgradeModal] = useState({ show: false, card: null, index: null })
   const [tradeModal, setTradeModal] = useState({ show: false, card: null, index: null })
 
@@ -102,7 +102,14 @@ const CompactPlayerHand = () => {
         <UpgradeModal
           card={upgradeModal.card}
           cardIndex={upgradeModal.index}
-          onClose={() => setUpgradeModal({ show: false, card: null, index: null })}
+          playerResources={myPlayer?.resources}
+          maxTurnUpgrade={upgradeModal.card?.turnUpgrade || 1}
+          onConfirm={(inputResources, outputResources) => {
+            // send upgrade action and close modal
+            playCardWithUpgrade(upgradeModal.index, inputResources, outputResources)
+            setUpgradeModal({ show: false, card: null, index: null })
+          }}
+          onCancel={() => setUpgradeModal({ show: false, card: null, index: null })}
         />
       )}
 
@@ -111,7 +118,12 @@ const CompactPlayerHand = () => {
         <TradeModal
           card={tradeModal.card}
           cardIndex={tradeModal.index}
-          onClose={() => setTradeModal({ show: false, card: null, index: null })}
+          playerResources={myPlayer?.resources}
+          onConfirm={(multiplier) => {
+            playCardWithTrade(tradeModal.index, multiplier)
+            setTradeModal({ show: false, card: null, index: null })
+          }}
+          onCancel={() => setTradeModal({ show: false, card: null, index: null })}
         />
       )}
     </div>

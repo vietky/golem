@@ -58,6 +58,16 @@ const SimpleMarketArea = () => {
     return canAfford(card.requirement);
   };
 
+  // Determine coin badge info for a point card position using server-provided coins
+  const getCoinBadgeInfo = (position) => {
+    if (!gameState?.market?.coins) return null
+    const coin = gameState.market.coins[position]
+    if (!coin || coin.amount <= 0) return null
+    // coin.points should be 3 for copper, 1 for silver
+    const label = coin.points === 3 ? 'Copper Token (3 pts)' : coin.points === 1 ? 'Silver Token (1 pt)' : `Coin (${coin.points} pts)`
+    return { label, amount: coin.amount, points: coin.points }
+  }
+
   return (
     <div className={`w-full max-w-6xl mx-auto px-4 overflow-y-auto z-10 ${
       isMobile && isPortrait ? 'py-4' : 'py-6'
@@ -133,12 +143,16 @@ const SimpleMarketArea = () => {
                     {index + 1}
                   </div>
                   
-                  {/* Coin Bonus Badge */}
-                  {coinBonus && (
-                    <div className="absolute -top-2 -right-2 bg-amber-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10 shadow-lg" title={index === 0 ? "Copper Token (3 pts)" : "Silver Token (1 pt)"}>
-                      🪙
-                    </div>
-                  )}
+                      {/* Coin Bonus Badge */}
+                      {(() => {
+                        const badge = getCoinBadgeInfo(index)
+                        if (!badge) return null
+                        return (
+                          <div className="absolute -top-2 -right-2 bg-amber-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10 shadow-lg" title={badge.label}>
+                            🪙
+                          </div>
+                        )
+                      })()}
                   
                   <SimpleCard
                     card={cardData}
