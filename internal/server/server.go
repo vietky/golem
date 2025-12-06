@@ -351,14 +351,15 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 			"resources": resourcesMap,
 			// Backwards compatibility: some frontends expect `caravan`
 			// as the resource container. Provide the same map under that key.
-			"caravan":     resourcesMap,
-			"points":      p.GetPoints(),
-			"hand":        serializeCards(p.Hand),
-			"playedCards": serializeCards(p.PlayedCards),
-			"pointCards":  serializeCards(p.PointCards),
-			"coins":       serializeCards(p.Coins),
-			"hasRested":   p.HasRested,
-			"isAI":        p.IsAI,
+			"caravan":        resourcesMap,
+			"points":         p.GetPoints(),
+			"hand":           serializeCards(p.Hand),
+			"playedCards":    serializeCards(p.PlayedCards),
+			"pointCards":     serializeCards(p.PointCards),
+			"coins":          serializeCards(p.Coins),
+			"hasRested":      p.HasRested,
+			"isAI":           p.IsAI,
+			"pendingDiscard": p.PendingDiscard,
 		}
 	}
 

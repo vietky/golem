@@ -13,6 +13,7 @@ const (
 	AcquireCard
 	ClaimPointCard
 	Rest
+	Discard
 )
 
 type DepositData struct {
@@ -162,7 +163,7 @@ func (gs *GameState) ExecuteAction(action Action) error {
 		if hasAllDeposits {
 			// FREE: deposited on all previous cards
 
-			// Verify player has crystals to deposit
+			// Verify player has crystals to deposit (any type of crystal is allowed)
 			for _, deposit := range action.DepositList {
 				if !player.Resources.Has(deposit.Crystal, 1) {
 					return fmt.Errorf("insufficient resources for deposit")
@@ -234,8 +235,40 @@ func (gs *GameState) ExecuteAction(action Action) error {
 	case Rest:
 		player.Rest()
 
+	case Discard:
+		// Handle discard action for excess crystals
+		if player.PendingDiscard <= 0 {
+			return fmt.Errorf("no discard needed")
+		}
+		if action.DiscardResources == nil {
+			return fmt.Errorf("discard resources not specified")
+		}
+
+		totalDiscard := action.DiscardResources.Total()
+		if totalDiscard != player.PendingDiscard {
+			return fmt.Errorf("must discard exactly %d crystals, got %d", player.PendingDiscard, totalDiscard)
+		}
+
+		// Verify player has the crystals to discard
+		if !player.Resources.HasAll(action.DiscardResources, 1) {
+			return fmt.Errorf("insufficient crystals to discard")
+		}
+
+		// Discard the crystals
+		if !player.Resources.SubtractAll(action.DiscardResources, 1) {
+			return fmt.Errorf("failed to discard crystals")
+		}
+
+		// Clear pending discard
+		player.PendingDiscard = 0
+
 	default:
 		return fmt.Errorf("unknown action type")
+	}
+
+	// Enforce max crystals rule: if player has more than MaxCrystals, they must discard
+	if player.Resources.Total() > MaxCrystals {
+		player.PendingDiscard = player.Resources.Total() - MaxCrystals
 	}
 
 	return nil

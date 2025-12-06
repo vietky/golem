@@ -40,14 +40,23 @@ const SimpleResourcePanel = ({ showDetailed = false }) => {
         <div className="space-y-2 mb-3">
           <div className="flex justify-between items-center text-white text-xs mb-1">
             <span className="opacity-75">Crystals</span>
-            <span className="font-bold">{total}/{maxCrystals}</span>
+            <span className={`font-bold ${total > maxCrystals ? 'text-red-400 animate-pulse' : ''}`}>
+              {total}/{maxCrystals}
+            </span>
           </div>
+          
+          {/* Warning if over max */}
+          {total > maxCrystals && (
+            <div className="bg-red-500/20 border border-red-500 rounded px-2 py-1 text-red-200 text-xs">
+              ⚠️ Over limit! Must discard {total - maxCrystals}
+            </div>
+          )}
           
           {/* Crystal Count Bar */}
           <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
             <div 
               className={`h-full transition-all ${
-                total > maxCrystals ? 'bg-red-500' : 'bg-green-500'
+                total > maxCrystals ? 'bg-red-500 animate-pulse' : total === maxCrystals ? 'bg-yellow-500' : 'bg-green-500'
               }`}
               style={{ width: `${Math.min((total / maxCrystals) * 100, 100)}%` }}
             />

@@ -229,6 +229,29 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 				gameAction = game.Action{
 					Type: game.Rest,
 				}
+			case "discard":
+				// Parse discard resources
+				var discardResources *game.Resources
+				if discardRes, ok := actionMsg["discardResources"].(map[string]interface{}); ok {
+					getInt := func(m map[string]interface{}, key string) int {
+						if val, exists := m[key]; exists {
+							if f, ok := val.(float64); ok {
+								return int(f)
+							}
+						}
+						return 0
+					}
+					discardResources = &game.Resources{
+						Yellow: getInt(discardRes, "yellow"),
+						Green:  getInt(discardRes, "green"),
+						Blue:   getInt(discardRes, "blue"),
+						Pink:   getInt(discardRes, "pink"),
+					}
+				}
+				gameAction = game.Action{
+					Type:             game.Discard,
+					DiscardResources: discardResources,
+				}
 			default:
 				continue
 			}

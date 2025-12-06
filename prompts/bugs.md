@@ -4,7 +4,13 @@
 - fix all bugs listed, write tests where applicable
 - run, test, verify the game works as expected according to game rules
 
-## 2025-06-12 19:00:00
+## 2025-12-07 00:00:00
+- please fix calculate point cards logic as copper  and silver coins seem to be included incorrectly
+- deposit logic: as long as the player has enough resources to deposit, the deposit action should be allowed (no matter what kind of resources the player has). Please fix the deposit logic accordingly.
+- end game summary: should show the number of each point cards collected by each player along with total points from point cards, number of coppers/silvers and the crystals on their hand. Please implement the end game summary accordingly.
+- max crystal in caravan should be 10. Please enforce this rule in the frontend and backend. in that case, we need to revamp the UI so that it's convenient for players to pick crystals from caravan and play/discard/deposit crystals from their hand.
+
+## 2025-12-06 19:00:00
 - when error ("Not enough resources for this trade") occurs, the UI freezes and players cannot take any further actions. Please ensure that the UI remains responsive and allows players to continue playing after such errors.
 - also please check the trade logic in TradeModal as when I click on the card that has enough resources, it still shows the error. Please ensure that the trade logic correctly validates resources and allows trades when sufficient resources are available.
 - I couldn't see the card details when hovering over the cards (desktop) or long touch in mobile. Please implement a tooltip that displays card details when players hover over any card in the game.
@@ -13,7 +19,7 @@
 - Picking merchant cards with index > 0 doesn't display deposit action modal. Please ensure that when players pick merchant cards with index greater than 0, the deposit action modal is displayed correctly.
 
 
-## 2025-06-12 19:00:00
+## 2025-12-06 19:00:00
 - the UI doesn't load player resources properly when the game starts. Players are unable to see their initial resources, which affects gameplay. Please ensure that the frontend correctly fetches and displays player resources from the backend at the start of the game.
 - clicking on the card in any sections doesn't trigger any actions. Please ensure the following buttons work as expected:
     - clicking on any cards for 2 seconds shows card details as tooltip
@@ -23,7 +29,7 @@
     - clicking on merchant card takes action acquire
 
 
-## 2025-06-12 11:00:00
+## 2025-12-06 11:00:00
 - init state of the game is not correct:
     - player order is not random
     - number of players is not correct
@@ -33,13 +39,13 @@
 - hovering on any cards should show card details as tooltip.
 
 
-## 2025-06-12 03:00:00
+## 2025-12-06 03:00:00
 - replace all fmt.Print* calls in the #codebase with proper logging using the zap logger with its dedicated package for DI
 - hover on cards doesn't show card details as tooltip.
 - the game menu still displays maxium 4 players allowed.
 - initial crystal doesn't work
 
-## 2025-06-12 02:00:00
+## 2025-12-06 02:00:00
 - replace all fmt.Print* calls with proper logging using the zap logger with its dedicated package for DI
 - these buttons are not working:
     - clicking on player card takes action play
@@ -59,7 +65,7 @@
     - Upgrade Level (2 or 3)
 - the copper and silver coins are not positioned correctly. Copper is put on the first index card and silver on the second index card. Please review FE and backend code to ensure correct positioning and point calculation as Copper has 3 points and Silver has 1 point.
 
-## 2025-06-12 01:48:00
+## 2025-12-06 01:48:00
 - initially, there are maximum 5 players allowed, but the game should support up to 4 players. Please fix the player limit to allow up to 5 players.
 - initially, there are 6 merchant cards, but only 5 are shown on the UI. The 6th merchant is not visible or accessible to the player.
 - initially, 1st player has 3 yellow coins, 2nd and 3rd player have 3 yellow coins each, 4th and 5th player have 3 yellow coins and 1 green coin each.

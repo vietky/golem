@@ -183,8 +183,8 @@ const useGameStore = create((set, get) => ({
 
     const message = {
       type: 'action',
-      actionType: 'discardCrystals',
-      discard: {
+      actionType: 'discard',
+      discardResources: {
         yellow: discard.yellow || 0,
         green: discard.green || 0,
         blue: discard.blue || 0,
