@@ -178,5 +178,5 @@ fe-run-local:
 
 fe-release:
 	docker build --build-arg VITE_API_HOST=http://157.66.101.66:3001 -f Dockerfile.fe -t golem-frontend:latest .
-	docker run --rm -v /opt/nginx/repo/sre/nginx/basic_apps/golem:/nginx-dest golem-frontend:latest \
+	docker run --rm -v /opt/nginx/apps/golem/:/nginx-dest golem-frontend:latest \
         sh -c "cp -r /app/dist/* /nginx-dest/"
