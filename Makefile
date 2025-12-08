@@ -177,5 +177,5 @@ fe-run-local:
 	cd web/react-frontend && npm i && npm run dev
 
 fe-release:
-	export VITE_API_HOST=http://157.66.101.66:3001
-	make fe-build-local
+	docker build --build-arg VITE_API_HOST=http://157.66.101.66:3001 -v ./:/app -f Dockerfile.fe -t golem-frontend:latest .
+	cp -rf web/react-frontend/dist/* /opt/nginx/repo/sre/nginx/basic_app/example/
