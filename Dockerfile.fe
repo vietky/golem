@@ -12,9 +12,7 @@ WORKDIR /app
 RUN apk add --no-cache make git python3 build-base
 
 # Copy repository files (we run the Make target which expects repo structure)
-COPY . .
-
-RUN cd web/react-frontend
+COPY ./web/react-frontend .
 
 RUN npm i
 
