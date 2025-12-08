@@ -58,17 +58,18 @@ func main() {
 		Logger:     log,
 	})
 
-	// Setup routes
-	http.HandleFunc("/ws", gameServer.HandleWebSocket)
-	http.HandleFunc("/api/create", gameServer.HandleCreateSession)
-	http.HandleFunc("/api/single", gameServer.HandleCreateSinglePlayer)
-	http.HandleFunc("/api/join", gameServer.HandleJoinSession)
-	http.HandleFunc("/api/list", gameServer.HandleListSessions)
+	// Setup routes on a ServeMux so we can wrap with CORS middleware
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", gameServer.HandleWebSocket)
+	mux.HandleFunc("/api/create", gameServer.HandleCreateSession)
+	mux.HandleFunc("/api/single", gameServer.HandleCreateSinglePlayer)
+	mux.HandleFunc("/api/join", gameServer.HandleJoinSession)
+	mux.HandleFunc("/api/list", gameServer.HandleListSessions)
 
 	// Admin API endpoints for event store
-	http.HandleFunc("/api/events", gameServer.HandleGetEvents)
-	http.HandleFunc("/api/snapshot", gameServer.HandleGetSnapshot)
-	http.HandleFunc("/api/games", gameServer.HandleListGames)
+	mux.HandleFunc("/api/events", gameServer.HandleGetEvents)
+	mux.HandleFunc("/api/snapshot", gameServer.HandleGetSnapshot)
+	mux.HandleFunc("/api/games", gameServer.HandleListGames)
 
 	// Always serve images from static directory (both React and vanilla JS need this)
 	staticDir := filepath.Join(".", "web", "static")
@@ -100,7 +101,11 @@ func main() {
 	log.Info("Century: Golem Edition - Web Server")
 	log.Info("Server starting", zap.String("url", fmt.Sprintf("http://localhost%s", addr)))
 
-	if err := http.ListenAndServe(addr, nil); err != nil {
+	// Wrap the mux with CORS middleware so both HTTP endpoints and websocket
+	// upgrade requests receive the appropriate CORS headers.
+	handler := server.WrapWithCORS(mux)
+
+	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatal("Server failed to start", zap.Error(err))
 	}
 }
