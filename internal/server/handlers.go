@@ -268,6 +268,11 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 // HandleCreateSession creates a new game session
 func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request) {
+	// Allow CORS preflight
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	if r.Method != http.MethodPost {
 		sendJSONError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
@@ -396,6 +401,11 @@ func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request)
 
 // HandleCreateSinglePlayer creates a single-player game with AI opponents
 func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Request) {
+	// Allow CORS preflight
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	if r.Method != http.MethodPost {
 		sendJSONError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return

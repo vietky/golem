@@ -52,7 +52,7 @@ export default ({ mode }) => {
         // Serve static images via nginx so caching / headers can be handled there.
         '/static/images': {
           target: nginxHost,
-          // changeOrigin: false,
+          changeOrigin: true,
           // If your nginx uses HTTPS with self-signed certs in dev, you may set secure: false
           // secure: false
         }
