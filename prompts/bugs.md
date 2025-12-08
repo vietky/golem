@@ -4,6 +4,14 @@
 - fix all bugs listed, write tests where applicable
 - run, test, verify the game works as expected according to game rules
 
+## 2025-12-07 18:00:00
+- match summary page doesn't show up after the game ends. Please implement the match summary page to display the final scores and statistics of the game.
+    - show each player's collected point cards, crystals, coins, and total points
+- I still cannot deposit when I have no yellow crystals on Frontend side. please fix the deposit logic accordingly.
+- Holding or hovering over cards should show card details as tooltip. Please implement the tooltip functionality to display card details when players hover over or hold on any card in the game.
+- Copper and silver points are in wrong position in Point Card. It should be at the index 0 and 1 respectively. Please fix the positioning of copper and silver points in the Point Card section.
+- Please show deposited crystal types below the merchant card to indicate which crystals have been deposited for that merchant card so that others could see and collect accordingly.
+
 ## 2025-12-07 00:00:00
 - please fix calculate point cards logic as copper  and silver coins seem to be included incorrectly
 - deposit logic: as long as the player has enough resources to deposit, the deposit action should be allowed (no matter what kind of resources the player has). Please fix the deposit logic accordingly.
