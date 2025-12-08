@@ -17,7 +17,7 @@ export default ({ mode }) => {
   const enableSourceMaps = env.SOURCE_MAPS === 'true'
   const isDev = mode === 'development'
 
-  const base = isDev ? "/" : apiHost
+  const base = "/";
 
   return defineConfig({
     base: base, 
