@@ -29,11 +29,11 @@ const FlyingCrystal = ({ type, startPos, endPos, onComplete }) => {
       onAnimationComplete={onComplete}
     >
       <img
-        src={`/images/stone_${type}.JPG`}
+        src={`/static/images/stone_${type}.JPG`}
         alt={type}
         className="w-8 h-8"
         onError={(e) => {
-          e.target.src = '/images/stone_yellow.JPG'
+          e.target.src = '/static/images/stone_yellow.JPG'
         }}
       />
     </motion.div>

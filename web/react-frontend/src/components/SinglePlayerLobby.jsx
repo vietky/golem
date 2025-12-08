@@ -47,7 +47,7 @@ const SinglePlayerLobby = ({ onStartGame }) => {
     <div 
       className="min-h-screen flex items-center justify-center p-6"
       style={{
-        backgroundImage: 'url(/images/background.jpg)',
+        backgroundImage: 'url(/static/images/background.jpg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center center',
         backgroundRepeat: 'no-repeat',
@@ -121,7 +121,7 @@ const SinglePlayerLobby = ({ onStartGame }) => {
                   }`}
                 >
                   <img
-                    src={`/images/avatar/${avatar}.png`}
+                    src={`/static/images/avatar/${avatar}.png`}
                     alt={`Avatar ${avatar}`}
                     className="w-full h-full object-cover"
                     onError={(e) => {

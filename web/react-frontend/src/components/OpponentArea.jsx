@@ -36,13 +36,13 @@ const OpponentArea = () => {
                   {/* Avatar */}
                   <div className="relative">
                     <img
-                      src={`/images/avatar/${opponent.avatar || opponent.id}.webp`}
+                      src={`/static/images/avatar/${opponent.avatar || opponent.id}.webp`}
                       alt={opponent.name}
                       className={`rounded-full border-2 border-white ${
                         isMobile && isPortrait ? 'w-10 h-10' : 'w-12 h-12 sm:w-16 sm:h-16'
                       }`}
                       onError={(e) => {
-                        e.target.src = '/images/avatar/1.webp'
+                        e.target.src = '/staticimages/avatar/1.webp'
                       }}
                     />
                     {isCurrentTurn && (

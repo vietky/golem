@@ -211,10 +211,10 @@ const Card = ({
         })
         
         const crystalImages = {
-          yellow: '/images/stone_yellow.JPG',
-          green: '/images/stone_green.JPG',
-          blue: '/images/stone_blue.JPG',
-          pink: '/images/stone_pink.JPG'
+          yellow: '/static/images/stone_yellow.JPG',
+          green: '/static/images/stone_green.JPG',
+          blue: '/static/images/stone_blue.JPG',
+          pink: '/static/images/stone_pink.JPG'
         }
         
         return (
@@ -229,11 +229,11 @@ const Card = ({
               {Object.entries(crystalCounts).map(([crystalType, count]) => (
                 <div key={crystalType} className="relative">
                   <img
-                    src={crystalImages[crystalType] || '/images/stone_yellow.JPG'}
+                    src={crystalImages[crystalType] || '/static/images/stone_yellow.JPG'}
                     alt={crystalType}
                     className="w-5 h-5 rounded-full object-cover border border-white"
                     onError={(e) => {
-                      e.target.src = '/images/stone_yellow.JPG'
+                      e.target.src = '/static/images/stone_yellow.JPG'
                     }}
                   />
                   {count > 1 && (
@@ -277,7 +277,7 @@ const Card = ({
             alt={getVietnameseCardName(card.name)}
             className="w-full h-auto max-h-[320px]"
             onError={(e) => {
-              e.target.src = '/images/golem_bg.JPG'
+              e.target.src = '/static/images/golem_bg.JPG'
             }}
             whileHover={{ 
               filter: "brightness(1.1) saturate(1.2)",
@@ -325,10 +325,10 @@ const Card = ({
           })
           
           const crystalImages = {
-            yellow: '/images/stone_yellow.JPG',
-            green: '/images/stone_green.JPG',
-            blue: '/images/stone_blue.JPG',
-            pink: '/images/stone_pink.JPG'
+            yellow: '/static/images/stone_yellow.JPG',
+            green: '/static/images/stone_green.JPG',
+            blue: '/static/images/stone_blue.JPG',
+            pink: '/static/images/stone_pink.JPG'
           }
           
           return (
@@ -338,11 +338,11 @@ const Card = ({
                 {Object.entries(crystalCounts).map(([crystalType, count]) => (
                   <div key={crystalType} className="relative">
                     <img
-                      src={crystalImages[crystalType] || '/images/stone_yellow.JPG'}
+                      src={crystalImages[crystalType] || '/static/images/stone_yellow.JPG'}
                       alt={crystalType}
                       className="w-6 h-6 rounded-full object-cover border border-gray-400"
                       onError={(e) => {
-                        e.target.src = '/images/stone_yellow.JPG'
+                        e.target.src = '/static/images/stone_yellow.JPG'
                       }}
                     />
                     {count > 1 && (

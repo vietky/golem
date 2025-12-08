@@ -269,11 +269,11 @@ function createPlayerCardElement(player) {
     
     // Get avatar number (default to player ID if not set)
     const avatarNum = player.avatar || player.id || '1';
-    const avatarPath = `images/avatar/${avatarNum}.webp`;
+    const avatarPath = `/static/images/avatar/${avatarNum}.webp`;
     
     div.innerHTML = `
         <div class="player-avatar-vertical">
-            <img src="${avatarPath}" alt="${player.name}" onerror="this.src='images/avatar/1.webp'">
+            <img src="${avatarPath}" alt="${player.name}" onerror="this.src='/static/images/avatar/1.webp'">
             ${player.id === gameState.currentPlayer ? '<div class="turn-badge-vertical">TURN</div>' : ''}
         </div>
         <div class="player-name-vertical">${player.name}</div>
