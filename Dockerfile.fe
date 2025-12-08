@@ -14,4 +14,8 @@ RUN apk add --no-cache make git python3 build-base
 # Copy repository files (we run the Make target which expects repo structure)
 COPY . .
 
-RUN cd web/react-frontend && npm i && npm run build
+RUN cd web/react-frontend
+
+RUN npm i
+
+RUN  npm run build

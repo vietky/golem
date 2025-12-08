@@ -34,6 +34,8 @@ export default ({ mode }) => {
       sourcemap: enableSourceMaps || isDev
     },
 
+    publicDir: isDev ? 'public' : false,
+
     server: {
       port: 3000,
       proxy: {
