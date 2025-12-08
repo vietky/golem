@@ -17,7 +17,10 @@ export default ({ mode }) => {
   const enableSourceMaps = env.SOURCE_MAPS === 'true'
   const isDev = mode === 'development'
 
+  const base = isDev ? "/" : apiHost
+
   return defineConfig({
+    base: base, 
     plugins: [react()],
 
     // build.sourcemap accepts: true | false | 'hidden'
