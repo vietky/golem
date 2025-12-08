@@ -11,9 +11,11 @@ WORKDIR /app
 # Install make + build deps
 RUN apk add --no-cache make git python3 build-base
 
-# Copy repository files (we run the Make target which expects repo structure)
-COPY ./web/react-frontend .
+COPY package*.json ./
 
 RUN npm i
+
+# Copy repository files (we run the Make target which expects repo structure)
+COPY ./web/react-frontend .
 
 RUN  npm run build
