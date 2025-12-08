@@ -11,7 +11,7 @@ WORKDIR /app
 # Install make + build deps
 RUN apk add --no-cache make git python3 build-base
 
-COPY package*.json ./
+COPY ./web/react-frontend/package*.json ./
 
 RUN npm ci
 
