@@ -7,7 +7,7 @@ const getCardImagePath = (card, type) => {
 //   }
   
   if (card?.name) {
-    return `/images/${card.name}.JPG`
+    return `/static/images/${card.name}.JPG`
   }
   
   return null

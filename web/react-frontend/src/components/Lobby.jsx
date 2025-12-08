@@ -92,7 +92,7 @@ const Lobby = ({ onJoinGame }) => {
     <div 
       className="min-h-screen flex items-center justify-center p-6"
       style={{
-        backgroundImage: 'url(/images/background.jpg)',
+        backgroundImage: 'url(/static/images/background.jpg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center center',
         backgroundRepeat: 'no-repeat',
@@ -165,11 +165,11 @@ const Lobby = ({ onJoinGame }) => {
                     }`}
                   >
                     <img
-                      src={`/images/avatar/${num}.webp`}
+                      src={`/static/images/avatar/${num}.webp`}
                       alt={`Avatar ${num}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.target.src = '/images/avatar/1.webp'
+                        e.target.src = '/static/images/avatar/1.webp'
                       }}
                     />
                   </button>

@@ -39,7 +39,7 @@ function SinglePlayerApp() {
       <div 
         className="min-h-screen flex items-center justify-center p-6"
         style={{
-          backgroundImage: 'url(/images/background.jpg)',
+              backgroundImage: 'url(/static/images/background.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
           backgroundRepeat: 'no-repeat',
@@ -116,7 +116,7 @@ function SinglePlayerApp() {
       <div 
         className="min-h-screen flex items-center justify-center"
         style={{
-          backgroundImage: 'url(/images/background.jpg)',
+              backgroundImage: 'url(/static/images/background.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
           backgroundRepeat: 'no-repeat',
@@ -139,7 +139,7 @@ function SinglePlayerApp() {
       {/* Blurred Background Layer */}
       <div className="fixed inset-0 z-0"
         style={{
-          backgroundImage: 'url(/images/background.jpg)',
+            backgroundImage: 'url(/static/images/background.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
           backgroundRepeat: 'no-repeat',

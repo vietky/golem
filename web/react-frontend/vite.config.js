@@ -47,7 +47,7 @@ export default ({ mode }) => {
           target: toWsTarget(apiHost),
           ws: true
         },
-        '/images': {
+        '/static/images': {
           target: apiHost,
           changeOrigin: true
         }

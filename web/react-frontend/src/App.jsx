@@ -30,7 +30,7 @@ function App() {
       <div 
         className="min-h-screen flex items-center justify-center"
         style={{
-          backgroundImage: 'url(/images/background.jpg)',
+          backgroundImage: 'url(/static/images/background.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
           backgroundRepeat: 'no-repeat',
@@ -54,7 +54,7 @@ function App() {
         isMobile ? (isPortrait ? 'mobile-portrait' : 'mobile-landscape') : ''
       } ${isTablet ? 'tablet' : ''}`} 
       style={{
-        backgroundImage: 'url(/images/background.jpg)',
+        backgroundImage: 'url(/static/images/background.jpg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center center',
         backgroundRepeat: 'no-repeat',

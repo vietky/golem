@@ -40,10 +40,10 @@ const DepositModal = ({ card, cardIndex, isHandCard = false, onClose }) => {
     : []
 
   const crystalTypes = [
-    { key: 'yellow', label: 'Yellow', color: 'bg-yellow-400', image: '/images/stone_yellow.JPG' },
-    { key: 'green', label: 'Green', color: 'bg-green-400', image: '/images/stone_green.JPG' },
-    { key: 'blue', label: 'Blue', color: 'bg-blue-400', image: '/images/stone_blue.JPG' },
-    { key: 'pink', label: 'Pink', color: 'bg-pink-400', image: '/images/stone_pink.JPG' }
+    { key: 'yellow', label: 'Yellow', color: 'bg-yellow-400', image: '/static/images/stone_yellow.JPG' },
+    { key: 'green', label: 'Green', color: 'bg-green-400', image: '/static/images/stone_green.JPG' },
+    { key: 'blue', label: 'Blue', color: 'bg-blue-400', image: '/static/images/stone_blue.JPG' },
+    { key: 'pink', label: 'Pink', color: 'bg-pink-400', image: '/static/images/stone_pink.JPG' }
   ]
 
   const availableCrystals = {
@@ -184,7 +184,7 @@ const DepositModal = ({ card, cardIndex, isHandCard = false, onClose }) => {
                             alt={label}
                             className="w-12 h-12 mx-auto mb-2 rounded-full object-cover"
                             onError={(e) => {
-                              e.target.src = '/images/stone_yellow.JPG'
+                              e.target.src = '/static/images/stone_yellow.JPG'
                             }}
                           />
                           <div className="text-xs font-medium text-gray-700">

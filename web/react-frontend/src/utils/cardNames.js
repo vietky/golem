@@ -95,7 +95,7 @@ export const getVietnameseCardName = (cardName) => {
 }
 
 export const getCardImagePath = (cardName) => {
-  if (!cardName) return '/images/golem_bg.JPG'
-  return `/images/${cardName}.JPG`
+  if (!cardName) return '/static/images/golem_bg.JPG'
+  return `/static/images/${cardName}.JPG`
 }
 
