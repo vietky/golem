@@ -167,7 +167,15 @@ check-data:
 		--out=/data/events.json
 	docker cp golem-mongodb:/data/events.json ./data/events.json
 
-fe-build:
+fe-build-local:
 	cd web/react-frontend && npm i && npm run build
-	rm -rf web/react/*
+	mkdir -p web/react
+	rm -rf web/react/* || true
 	cp -rf web/react-frontend/dist/* web/react/
+
+fe-run-local:
+	cd web/react-frontend && npm i && npm run dev
+
+fe-release:
+	export VITE_API_HOST=http://157.66.101.66:3001
+	make fe-build-local

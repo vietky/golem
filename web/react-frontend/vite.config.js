@@ -3,8 +3,15 @@ import react from '@vitejs/plugin-react'
 
 // Use a function config so we can read env vars (mode aware)
 export default ({ mode }) => {
-  // Load environment variables prefixed from .env files
+  // Load environment variables from .env files
   const env = loadEnv(mode, process.cwd(), '')
+  // Vite env: expected `VITE_API_HOST` like `http://backend-host:8080`
+  const apiHost = env.VITE_API_HOST || 'http://localhost:3001'
+  const toWsTarget = (host) => {
+    if (host.startsWith('https://')) return host.replace(/^https:\/\//, 'wss://')
+    if (host.startsWith('http://')) return host.replace(/^http:\/\//, 'ws://')
+    return host
+  }
   // If SOURCE_MAPS is set to 'true', generate full maps and reference them.
   // Otherwise, for production default to 'hidden' maps (generated but not referenced).
   const enableSourceMaps = env.SOURCE_MAPS === 'true'
@@ -30,13 +37,13 @@ export default ({ mode }) => {
     server: {
       port: 3000,
       proxy: {
-        '/api': 'http://localhost:8080',
+        '/api': apiHost,
         '/ws': {
-          target: 'ws://localhost:8080',
+          target: toWsTarget(apiHost),
           ws: true
         },
         '/images': {
-          target: 'http://localhost:8080',
+          target: apiHost,
           changeOrigin: true
         }
       }

@@ -1,0 +1,18 @@
+# Docker file for building and packaging the frontend
+# Usage:
+#  docker build -f docker.fe -t golem-frontend:latest .
+
+# Stage 1 - builder: run the Makefile target that builds the frontend
+FROM node:18-alpine AS builder
+ARG VITE_API_HOST
+ENV VITE_API_HOST=${VITE_API_HOST}
+WORKDIR /app
+
+# Install make + build deps
+RUN apk add --no-cache make git python3 build-base
+
+# Copy repository files (we run the Make target which expects repo structure)
+COPY . .
+
+# Run the frontend build via Makefile target `fe-build`
+RUN make fe-build

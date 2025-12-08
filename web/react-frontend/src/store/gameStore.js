@@ -28,12 +28,20 @@ const useGameStore = create((set, get) => ({
 
   // Actions
   connectWebSocket: (sessionId, playerName, playerAvatar) => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws?session=${sessionId}&name=${encodeURIComponent(
-      playerName
-    )}&avatar=${playerAvatar}`;
+    // Allow overriding backend host via Vite env `VITE_API_HOST`.
+    // Example: VITE_API_HOST="http://backend-host:8080"
+    const configuredHost = import.meta.env.VITE_API_HOST || `${window.location.protocol}//${window.location.host}`;
+    const toWs = (host) => {
+      if (host.startsWith('https://')) return host.replace(/^https:\/\//, 'wss://')
+      if (host.startsWith('http://')) return host.replace(/^http:\/\//, 'ws://')
+      return host
+    }
 
-    const ws = new WebSocket(wsUrl);
+    const hostForWs = configuredHost.replace(/\/$/, '')
+    const wsBase = toWs(hostForWs)
+    const wsUrl = `${wsBase}/ws?session=${sessionId}&name=${encodeURIComponent(playerName)}&avatar=${playerAvatar}`
+
+    const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
       set({ connected: true, ws });

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
+import { apiFetch } from '../utils/api'
 
 const SinglePlayerLobby = ({ onStartGame }) => {
   const [playerName, setPlayerName] = useState('Player 1')
@@ -17,7 +18,7 @@ const SinglePlayerLobby = ({ onStartGame }) => {
   const startGame = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/single', {
+      const response = await apiFetch('/api/single', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
