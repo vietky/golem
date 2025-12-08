@@ -46,6 +46,27 @@ RUN if [ -f package.json ]; then \
       mkdir -p dist; \
     fi
 
+# Build stage - Static frontend (vanilla JS)
+FROM node:18-alpine AS fe-builder
+
+WORKDIR /app
+
+# Copy frontend source
+COPY web/react-frontend/package*.json ./web/react-frontend/
+
+# Install dependencies
+RUN cd web/react-frontend && (npm ci || npm install)
+
+# Copy all frontend files
+COPY web/react-frontend ./web/react-frontend
+
+# Build frontend
+RUN cd web/react-frontend && npm run build
+
+# Copy build output to web/react directory
+RUN mkdir -p web/react && \
+  cp -rf web/react-frontend/dist/* web/react/
+
 # Runtime stage
 FROM alpine:latest
 

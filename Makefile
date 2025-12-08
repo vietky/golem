@@ -168,6 +168,6 @@ check-data:
 	docker cp golem-mongodb:/data/events.json ./data/events.json
 
 fe-build:
-	cd web/react-frontend && npm run build
+	cd web/react-frontend && npm i && npm run build
 	rm -rf web/react/*
 	cp -rf web/react-frontend/dist/* web/react/
