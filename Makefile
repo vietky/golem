@@ -156,7 +156,7 @@ setup-jenkins:
 	ansible-playbook -i ansible/inventory.ini ansible/setup-jenkins-job.yml
 
 dev:
-	sudo docker compose -f docker-compose.dev.yml up -d
+	sudo docker compose -f docker-compose.dev.yml up -d --build
 	sudo docker exec -it golem-century-server sh
 
 check-data:
@@ -168,7 +168,10 @@ check-data:
 	docker cp golem-mongodb:/data/events.json ./data/events.json
 
 fe-build-local:
-	cd web/react-frontend && npm run build
+# 	docker build --build-arg VITE_API_HOST=https://game.anhtran.dev/api/golem --build-arg VITE_NGINX_HOST=https://game.anhtran.dev -f Dockerfile.fe -t golem-frontend:latest .
+# 	docker run --rm -v ./web/react/:/nginx-dest golem-frontend:latest \
+#         sh -c "cp -r /app/dist/* /nginx-dest/"
+	cd web/react-frontend && npm i && npm run build
 	mkdir -p web/react
 	rm -rf web/react/* || true
 	cp -rf web/react-frontend/dist/* web/react/
