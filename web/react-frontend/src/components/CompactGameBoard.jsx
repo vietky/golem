@@ -55,7 +55,6 @@ const CompactGameBoard = () => {
   }
 
   const handleAcquireCard = (index) => {
-    console.log('[CompactGameBoard] handleAcquireCard', index, 'isMyTurn:', isMyTurn)
     if (!isMyTurn) {
       showToast("Not your turn!", 'error')
       return

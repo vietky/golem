@@ -44,9 +44,6 @@ const MarketArea = () => {
     setDragOverIndex(null);
   };
 
-  // Debug log
-  console.log('[MarketArea] Device:', { isMobile, isTablet, isPortrait, isLandscape, isDesktop })
-
   // Determine card grid classes based on device
   const getActionCardGridClasses = () => {
     if (isMobile && isPortrait) {

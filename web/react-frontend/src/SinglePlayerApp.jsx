@@ -17,9 +17,6 @@ function SinglePlayerApp() {
   const { connectWebSocket, gameState, connected, sessionId } = useGameStore()
   const { isPortrait, isLandscape, isMobile, isTablet, isDesktop, width } = useOrientation()
 
-  // Debug log
-  console.log('[SinglePlayerApp] Device:', { isMobile, isTablet, isDesktop, isPortrait, width })
-
   const handleStartSinglePlayer = (sessionId, playerName, playerAvatar) => {
     connectWebSocket(sessionId, playerName, playerAvatar)
     setGameMode('single')
