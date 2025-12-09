@@ -6,6 +6,7 @@ import CompactGameBoard from './components/CompactGameBoard'
 import CompactPlayerHand from './components/CompactPlayerHand'
 import CollapsibleInfo from './components/CollapsibleInfo'
 import DiscardModal from './components/DiscardModal'
+import Toast from './components/Toast'
 import useGameStore from './store/gameStore'
 import useOrientation from './hooks/useOrientation'
 import { MobileLayoutProvider } from './contexts/MobileLayoutContext'
@@ -14,7 +15,10 @@ function SinglePlayerApp() {
   const [gameMode, setGameMode] = useState(null) // null, 'single', 'multi'
   const [inGame, setInGame] = useState(false)
   const { connectWebSocket, gameState, connected, sessionId } = useGameStore()
-  const { isPortrait, isLandscape, isMobile, isTablet } = useOrientation()
+  const { isPortrait, isLandscape, isMobile, isTablet, isDesktop, width } = useOrientation()
+
+  // Debug log
+  console.log('[SinglePlayerApp] Device:', { isMobile, isTablet, isDesktop, isPortrait, width })
 
   const handleStartSinglePlayer = (sessionId, playerName, playerAvatar) => {
     connectWebSocket(sessionId, playerName, playerAvatar)
@@ -33,51 +37,76 @@ function SinglePlayerApp() {
     setInGame(false)
   }
 
-  // Mode selection screen
+  // Mode selection screen - RESPONSIVE
   if (gameMode === null) {
     return (
+      <>
+      <Toast />
       <div 
-        className="min-h-screen flex items-center justify-center p-6"
+        className={`
+          min-h-screen min-h-[100dvh] flex items-center justify-center 
+          ${isMobile ? 'p-3' : 'p-6'}
+        `}
         style={{
-              backgroundImage: 'url(/static/images/background.jpg)',
+          backgroundImage: 'url(/images/background.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
           backgroundRepeat: 'no-repeat',
-          backgroundAttachment: 'fixed'
+          backgroundAttachment: isMobile ? 'scroll' : 'fixed'
         }}
       >
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 max-w-md w-full border border-white/20">
-          <h1 className="text-4xl font-bold text-white text-center mb-8">
-            Century: Golem Edition
+        <div className={`
+          backdrop-blur-md border border-white/20 w-full
+          ${isMobile 
+            ? 'bg-black/40 rounded-xl p-4 max-w-[320px]' 
+            : 'bg-white/10 rounded-2xl p-8 max-w-md'
+          }
+        `}>
+          <h1 className={`
+            font-bold text-white text-center
+            ${isMobile ? 'text-xl mb-4' : 'text-3xl sm:text-4xl mb-8'}
+          `}>
+            {'Century: Golem Edition'}
           </h1>
           
-          <div className="space-y-4">
+          <div className={`space-y-3 ${isMobile ? '' : 'space-y-4'}`}>
             <button
               onClick={() => setGameMode('single')}
-              className="w-full py-6 rounded-lg font-bold text-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg transform hover:scale-105 transition-all"
+              className={`
+                w-full rounded-lg font-bold bg-gradient-to-r from-purple-500 to-pink-500 
+                hover:from-purple-600 hover:to-pink-600 text-white shadow-lg 
+                transform hover:scale-105 transition-all
+                ${isMobile ? 'py-4 text-base' : 'py-6 text-xl'}
+              `}
             >
               🤖 Single Player
-              <div className="text-sm font-normal mt-1 text-white/90">
+              <div className={`font-normal text-white/90 ${isMobile ? 'text-xs mt-0.5' : 'text-sm mt-1'}`}>
                 Play against AI opponents
               </div>
             </button>
             
             <button
               onClick={() => setGameMode('multi')}
-              className="w-full py-6 rounded-lg font-bold text-xl bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-lg transform hover:scale-105 transition-all"
+              className={`
+                w-full rounded-lg font-bold bg-gradient-to-r from-blue-500 to-cyan-500 
+                hover:from-blue-600 hover:to-cyan-600 text-white shadow-lg 
+                transform hover:scale-105 transition-all
+                ${isMobile ? 'py-4 text-base' : 'py-6 text-xl'}
+              `}
             >
               👥 Multiplayer
-              <div className="text-sm font-normal mt-1 text-white/90">
+              <div className={`font-normal text-white/90 ${isMobile ? 'text-xs mt-0.5' : 'text-sm mt-1'}`}>
                 Play with friends online
               </div>
             </button>
           </div>
 
-          <div className="text-center text-white/70 text-sm mt-6">
+          <div className={`text-center text-white/70 ${isMobile ? 'text-xs mt-4' : 'text-sm mt-6'}`}>
             <p>A classic spice trading game</p>
           </div>
         </div>
       </div>
+      </>
     )
   }
 
@@ -85,27 +114,41 @@ function SinglePlayerApp() {
   if (!inGame) {
     if (gameMode === 'single') {
       return (
-        <div>
-          <button
-            onClick={handleBackToMenu}
-            className="absolute top-4 left-4 z-50 px-4 py-2 bg-white/20 backdrop-blur-md rounded-lg text-white font-semibold hover:bg-white/30 transition-all"
-          >
-            ← Back
-          </button>
-          <SinglePlayerLobby onStartGame={handleStartSinglePlayer} />
-        </div>
+        <>
+          <Toast />
+          <div>
+            <button
+              onClick={handleBackToMenu}
+              className={`
+                absolute z-50 bg-white/20 backdrop-blur-md rounded-lg text-white font-semibold 
+                hover:bg-white/30 transition-all
+                ${isMobile ? 'top-2 left-2 px-3 py-1.5 text-sm' : 'top-4 left-4 px-4 py-2'}
+              `}
+            >
+              ← Back
+            </button>
+            <SinglePlayerLobby onStartGame={handleStartSinglePlayer} />
+          </div>
+        </>
       )
     } else {
       return (
-        <div>
-          <button
-            onClick={handleBackToMenu}
-            className="absolute top-4 left-4 z-50 px-4 py-2 bg-white/20 backdrop-blur-md rounded-lg text-white font-semibold hover:bg-white/30 transition-all"
-          >
-            ← Back
-          </button>
-          <Lobby onJoinGame={handleJoinMultiplayer} />
-        </div>
+        <>
+          <Toast />
+          <div>
+            <button
+              onClick={handleBackToMenu}
+              className={`
+                absolute z-50 bg-white/20 backdrop-blur-md rounded-lg text-white font-semibold 
+                hover:bg-white/30 transition-all
+                ${isMobile ? 'top-2 left-2 px-3 py-1.5 text-sm' : 'top-4 left-4 px-4 py-2'}
+              `}
+            >
+              ← Back
+            </button>
+            <Lobby onJoinGame={handleJoinMultiplayer} />
+          </div>
+        </>
       )
     }
   }
@@ -113,24 +156,36 @@ function SinglePlayerApp() {
   // Show loading screen while connecting or waiting for game state
   if (!connected || !gameState) {
     return (
-      <div 
-        className="min-h-screen flex items-center justify-center"
-        style={{
-              backgroundImage: 'url(/static/images/background.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center center',
-          backgroundRepeat: 'no-repeat',
-          backgroundAttachment: 'fixed'
-        }}
-      >
-        <div className="bg-white/90 backdrop-blur-md rounded-2xl p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            {!connected ? 'Connecting to game...' : 'Loading game state...'}
-          </h2>
-          <p className="text-gray-600">Please wait...</p>
+      <>
+        <Toast />
+        <div 
+          className={`
+            min-h-screen min-h-[100dvh] flex items-center justify-center
+            ${isMobile ? 'p-3' : 'p-6'}
+          `}
+          style={{
+            backgroundImage: 'url(/images/background.jpg)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center center',
+            backgroundRepeat: 'no-repeat',
+            backgroundAttachment: isMobile ? 'scroll' : 'fixed'
+          }}
+        >
+          <div className={`
+            bg-white/90 backdrop-blur-md rounded-2xl text-center
+            ${isMobile ? 'p-4 max-w-[280px]' : 'p-8'}
+          `}>
+            <div className={`
+              animate-spin rounded-full border-b-2 border-purple-500 mx-auto mb-4
+              ${isMobile ? 'h-8 w-8' : 'h-12 w-12'}
+            `}></div>
+            <h2 className={`font-bold text-gray-800 mb-2 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
+              {!connected ? 'Connecting...' : 'Loading...'}
+            </h2>
+            <p className={`text-gray-600 ${isMobile ? 'text-sm' : ''}`}>Please wait...</p>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
@@ -139,22 +194,27 @@ function SinglePlayerApp() {
       {/* Blurred Background Layer */}
       <div className="fixed inset-0 z-0"
         style={{
-            backgroundImage: 'url(/static/images/background.jpg)',
+          backgroundImage: 'url(/images/background.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
           backgroundRepeat: 'no-repeat',
-          filter: 'blur(8px) brightness(0.7)',
+          filter: isMobile ? 'blur(4px) brightness(0.8)' : 'blur(8px) brightness(0.7)',
         }}
       />
       
-      <div className={`min-h-screen flex flex-col relative z-10 ${
-        isMobile ? (isPortrait ? 'mobile-portrait' : 'mobile-landscape') : ''
-      } ${isTablet ? 'tablet' : ''}`}>
+      <div className={`
+        min-h-screen min-h-[100dvh] flex flex-col relative z-10
+        ${isMobile ? (isPortrait ? 'mobile-portrait' : 'mobile-landscape') : ''}
+        ${isTablet ? 'tablet' : ''}
+      `}>
         {/* Players Info Bar - Top */}
         <PlayersInfoBar />
 
         {/* Central Game Board - Scrollable */}
-        <div className="flex-1 overflow-y-auto">
+        <div className={`
+          flex-1 overflow-y-auto
+          ${isMobile && isPortrait ? 'pb-32' : 'pb-24'}
+        `}>
           <CompactGameBoard />
         </div>
 
@@ -162,20 +222,23 @@ function SinglePlayerApp() {
         <CompactPlayerHand />
 
         {/* Collapsible Info (Room ID + Action Log) - Bottom Right */}
-        <CollapsibleInfo sessionId={sessionId} />
+        {!isMobile && <CollapsibleInfo sessionId={sessionId} />}
 
         {/* Discard Modal (when crystals exceed max) */}
         <DiscardModal />
 
         {/* Game Over Modal */}
         {gameState?.gameOver && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl p-8 max-w-md text-center mx-4">
-              <h2 className="text-3xl font-bold mb-4">Game Over!</h2>
-              <p className="text-xl mb-2">
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className={`
+              bg-white rounded-2xl text-center
+              ${isMobile ? 'p-4 max-w-[300px]' : 'p-8 max-w-md mx-4'}
+            `}>
+              <h2 className={`font-bold mb-4 ${isMobile ? 'text-2xl' : 'text-3xl'}`}>Game Over!</h2>
+              <p className={`mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
                 Winner: {gameState.winner?.name || 'Unknown'}
               </p>
-              <p className="text-lg text-gray-600 mb-6">
+              <p className={`text-gray-600 mb-6 ${isMobile ? 'text-base' : 'text-lg'}`}>
                 Final Score: {gameState.winner?.points || 0} points
               </p>
               <button
@@ -184,7 +247,11 @@ function SinglePlayerApp() {
                   setGameMode(null)
                   window.location.reload()
                 }}
-                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-3 px-6 rounded-lg hover:from-purple-600 hover:to-pink-600 touch-target"
+                className={`
+                  bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold 
+                  rounded-lg hover:from-purple-600 hover:to-pink-600 touch-target
+                  ${isMobile ? 'py-2 px-4 text-sm' : 'py-3 px-6'}
+                `}
               >
                 Back to Menu
               </button>
@@ -192,6 +259,9 @@ function SinglePlayerApp() {
           </div>
         )}
       </div>
+      
+      {/* Global Toast Notifications */}
+      <Toast />
     </MobileLayoutProvider>
   )
 }

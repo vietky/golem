@@ -6,7 +6,7 @@ export default ({ mode }) => {
   // Load environment variables from .env files
   const env = loadEnv(mode, process.cwd(), '')
   // Vite env: expected `VITE_API_HOST` like `http://backend-host:8080`
-  const apiHost = env.VITE_API_HOST || 'http://localhost:3001'
+  const apiHost = env.VITE_API_HOST || 'http://localhost:8080'
   // Route static images to nginx. Configure via VITE_NGINX_HOST (e.g. http://nginx-host:80).
   const nginxHost = env.VITE_NGINX_HOST || 'http://localhost:8080'
   const toWsTarget = (host) => {
