@@ -25,10 +25,10 @@ const CollectModal = ({ card, cardIndex, onClose }) => {
   }
 
   const crystalImages = {
-    yellow: '/images/stone_yellow.JPG',
-    green: '/images/stone_green.JPG',
-    blue: '/images/stone_blue.JPG',
-    pink: '/images/stone_pink.JPG'
+    yellow: '/static/images/stone_yellow.JPG',
+    green: '/static/images/stone_green.JPG',
+    blue: '/static/images/stone_blue.JPG',
+    pink: '/static/images/stone_pink.JPG'
   }
 
   const handleSelectPosition = (position) => {
@@ -117,11 +117,11 @@ const CollectModal = ({ card, cardIndex, onClose }) => {
                     </div>
                     <div className="flex-1 flex items-center gap-3">
                       <img
-                        src={crystalImages[crystalType] || '/images/stone_yellow.JPG'}
+                        src={crystalImages[crystalType] || '/static/images/stone_yellow.JPG'}
                         alt={crystalTypeNames[crystalType] || crystalType}
                         className="w-10 h-10 rounded-full object-cover"
                         onError={(e) => {
-                          e.target.src = '/images/stone_yellow.JPG'
+                          e.target.src = '/static/images/stone_yellow.JPG'
                         }}
                       />
                       <span className="text-lg font-semibold text-gray-800">

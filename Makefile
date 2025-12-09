@@ -1,4 +1,4 @@
-.PHONY: help build up down logs restart deploy update status clean test
+.PHONY: help build up down logs restart deploy update status clean test test-unit test-integration run dev
 
 # Variables
 ANSIBLE_PLAYBOOK = ansible-playbook
@@ -20,24 +20,66 @@ help: ## Show this help message
 	@echo 'Available targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-# Local Docker commands
-build: ## Build the Docker image locally
+# Docker commands
+docker-build: ## Build the Docker image locally
 	docker-compose build
 
-up: ## Start the containers locally
+up: ## Start all services (MongoDB, Redis, Server)
 	docker-compose up -d
 
-down: ## Stop the containers locally
+down: ## Stop all containers
 	docker-compose down
 
 logs: ## View container logs
 	docker-compose logs -f
 
-restart: ## Restart the containers locally
+restart: ## Restart all containers
 	docker-compose restart
 
 status: ## Show container status
 	docker-compose ps
+
+# Database commands
+mongo-shell: ## Open MongoDB shell
+	docker-compose exec mongodb mongosh golem_game
+
+redis-cli: ## Open Redis CLI
+	docker-compose exec redis redis-cli
+
+# Testing commands
+test: ## Run all tests
+	go test -v ./...
+
+test-unit: ## Run unit tests
+	go test -v -short ./...
+
+test-integration: ## Run integration tests
+	go test -v -run Integration ./...
+
+# Admin interface commands
+admin-install: ## Install admin interface dependencies
+	cd web/admin-interface && npm install
+
+admin-dev: ## Run admin interface in development mode
+	cd web/admin-interface && npm run dev
+
+admin-build: ## Build admin interface for production
+	cd web/admin-interface && npm run build
+
+# Event store commands
+events-list: ## List events for a game (requires GAME_ID)
+	@if [ -z "$(GAME_ID)" ]; then \
+		echo "Error: GAME_ID not set. Usage: make events-list GAME_ID=session-123"; \
+		exit 1; \
+	fi
+	@curl -s "http://localhost:8080/api/events?gameId=$(GAME_ID)" | jq .
+
+events-snapshot: ## Get latest snapshot for a game (requires GAME_ID)
+	@if [ -z "$(GAME_ID)" ]; then \
+		echo "Error: GAME_ID not set. Usage: make events-snapshot GAME_ID=session-123"; \
+		exit 1; \
+	fi
+	@curl -s "http://localhost:8080/api/snapshot?gameId=$(GAME_ID)" | jq .
 
 # Ansible deployment commands
 generate-inventory: ## Generate inventory.yml from .env file
@@ -99,10 +141,6 @@ create-archive: ## Create deployment archive (required before deploy)
 	@echo ""
 	@echo "Archive created successfully. You can now run 'make deploy-only' to deploy."
 
-test: ## Run tests (if any)
-	@echo "Running tests..."
-	go test ./...
-
 validate-ansible: generate-inventory ## Validate Ansible playbook syntax
 	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK) --syntax-check
 
@@ -116,3 +154,29 @@ deploy-to: ## Deploy to a specific host (usage: make deploy-to HOST=user@hostnam
 
 setup-jenkins:
 	ansible-playbook -i ansible/inventory.ini ansible/setup-jenkins-job.yml
+
+dev:
+	sudo docker compose -f docker-compose.dev.yml up -d --build
+	sudo docker exec -it golem-century-server sh
+
+check-data:
+	mkdir -p data/
+	docker exec -it golem-mongodb mongoexport \
+		--db=golem_game_test \
+		--collection=events \
+		--out=/data/events.json
+	docker cp golem-mongodb:/data/events.json ./data/events.json
+
+fe-build-local:
+	cd web/react-frontend && npm i && npm run build
+	mkdir -p web/react
+	rm -rf web/react/* || true
+	cp -rf web/react-frontend/dist/* web/react/
+
+fe-run-local:
+	cd web/react-frontend && npm i && npm run dev
+
+fe-release:
+	docker build --build-arg VITE_API_HOST=http://157.66.101.66:3001 --build-arg VITE_NGINX_HOST=http://157.66.101.66 -f Dockerfile.fe -t golem-frontend:latest .
+	docker run --rm -v /opt/nginx/apps/:/nginx-dest golem-frontend:latest \
+        sh -c "cp -r /app/dist/* /nginx-dest/golem/"

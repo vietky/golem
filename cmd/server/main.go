@@ -3,57 +3,109 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 
+	"golem_century/internal/config"
+	"golem_century/internal/eventstore"
+	"golem_century/internal/logger"
 	"golem_century/internal/server"
+
+	"go.uber.org/zap"
 )
 
 func main() {
 	port := flag.Int("port", 8080, "Port to run the server on")
 	flag.Parse()
 
-	gameServer := server.NewGameServer()
+	// Initialize logger
+	log, err := logger.NewLogger(true) // true for development mode
+	if err != nil {
+		panic(fmt.Sprintf("Failed to initialize logger: %v", err))
+	}
+	defer log.Sync()
 
-	// Setup routes
-	http.HandleFunc("/ws", gameServer.HandleWebSocket)
-	http.HandleFunc("/api/create", gameServer.HandleCreateSession)
-	http.HandleFunc("/api/join", gameServer.HandleJoinSession)
-	http.HandleFunc("/api/list", gameServer.HandleListSessions)
-	
+	// Load configuration
+	cfg := config.LoadConfig()
+
+	// Initialize event store
+	eventStoreConfig := eventstore.EventStoreConfig{
+		MongoURI:      cfg.MongoURI,
+		Database:      cfg.MongoDB,
+		EventsColl:    cfg.MongoEventsColl,
+		SnapshotsColl: cfg.MongoSnapshotsColl,
+	}
+
+	storeResp := eventstore.NewMongoEventStore(eventstore.NewMongoEventStoreRequest{
+		Config: eventStoreConfig,
+	})
+
+	var store eventstore.EventStore
+	if storeResp.Error != nil {
+		log.Warn("Failed to initialize event store - continuing without event store",
+			zap.Error(storeResp.Error))
+		store = nil
+	} else {
+		store = storeResp.Store
+		log.Info("Event store initialized successfully")
+		defer store.Close()
+	}
+
+	// Create game server with event store
+	gameServer := server.NewGameServer(server.NewGameServerRequest{
+		EventStore: store,
+		Logger:     log,
+	})
+
+	// Setup routes on a ServeMux so we can wrap with CORS middleware
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", gameServer.HandleWebSocket)
+	mux.HandleFunc("/api/create", gameServer.HandleCreateSession)
+	mux.HandleFunc("/api/single", gameServer.HandleCreateSinglePlayer)
+	mux.HandleFunc("/api/join", gameServer.HandleJoinSession)
+	mux.HandleFunc("/api/list", gameServer.HandleListSessions)
+
+	// Admin API endpoints for event store
+	mux.HandleFunc("/api/events", gameServer.HandleGetEvents)
+	mux.HandleFunc("/api/snapshot", gameServer.HandleGetSnapshot)
+	mux.HandleFunc("/api/games", gameServer.HandleListGames)
+
 	// Always serve images from static directory (both React and vanilla JS need this)
 	staticDir := filepath.Join(".", "web", "static")
 	imagesDir := filepath.Join(staticDir, "images")
 	if _, err := os.Stat(imagesDir); err == nil {
 		http.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(imagesDir))))
-		log.Printf("Serving images from ./web/static/images")
+		log.Info("Serving images from ./web/static/images")
 	}
-	
+
 	// Serve static files - try React build first, fallback to vanilla JS
 	reactDir := filepath.Join(".", "web", "react")
 	reactIndexPath := filepath.Join(reactDir, "index.html")
-	
+
 	// Check if React build exists and has content (index.html exists), otherwise serve vanilla JS
 	if _, err := os.Stat(reactIndexPath); err == nil {
 		// Serve React build
 		http.Handle("/", http.FileServer(http.Dir("./web/react")))
-		log.Printf("Serving React frontend from ./web/react")
+		log.Info("Serving React frontend from ./web/react")
 	} else {
 		// Fallback to vanilla JS
 		if _, err := os.Stat(staticDir); os.IsNotExist(err) {
 			os.MkdirAll(staticDir, 0755)
 		}
 		http.Handle("/", http.FileServer(http.Dir("./web/static")))
-		log.Printf("Serving vanilla JS frontend from ./web/static")
+		log.Info("Serving vanilla JS frontend from ./web/static")
 	}
 
 	addr := fmt.Sprintf(":%d", *port)
-	fmt.Printf("Century: Golem Edition - Web Server\n")
-	fmt.Printf("Server starting on http://localhost%s\n", addr)
-	fmt.Printf("Open http://localhost%s in your browser to play\n", addr)
-	
-	log.Fatal(http.ListenAndServe(addr, nil))
-}
+	log.Info("Century: Golem Edition - Web Server")
+	log.Info("Server starting", zap.String("url", fmt.Sprintf("http://localhost%s", addr)))
 
+	// Wrap the mux with CORS middleware so both HTTP endpoints and websocket
+	// upgrade requests receive the appropriate CORS headers.
+	handler := server.WrapWithCORS(mux)
+
+	if err := http.ListenAndServe(addr, handler); err != nil {
+		log.Fatal("Server failed to start", zap.Error(err))
+	}
+}

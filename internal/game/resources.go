@@ -39,6 +39,15 @@ func NewResources() *Resources {
 	return &Resources{}
 }
 
+func (c *Resources) ToMap() map[string]string {
+	return map[string]string{
+		"yellow": fmt.Sprintf("%d", c.Yellow),
+		"green":  fmt.Sprintf("%d", c.Green),
+		"blue":   fmt.Sprintf("%d", c.Blue),
+		"pink":   fmt.Sprintf("%d", c.Pink),
+	}
+}
+
 // Get returns the count of a specific crystal type
 func (r *Resources) Get(crystal CrystalType) int {
 	switch crystal {
@@ -115,6 +124,45 @@ func (r *Resources) HasAll(required *Resources, multiplier int) bool {
 		r.Green >= required.Green &&
 		r.Blue >= required.Blue &&
 		r.Pink >= required.Pink
+}
+
+// GetMaxMultiplier returns the maximum multiplier that can be applied with current resources
+func (r *Resources) GetMaxMultiplier(required *Resources) int {
+	if required.Total() == 0 {
+		return 0
+	}
+
+	maxMult := 999 // Start with a large number
+
+	if required.Yellow > 0 {
+		mult := r.Yellow / required.Yellow
+		if mult < maxMult {
+			maxMult = mult
+		}
+	}
+	if required.Green > 0 {
+		mult := r.Green / required.Green
+		if mult < maxMult {
+			maxMult = mult
+		}
+	}
+	if required.Blue > 0 {
+		mult := r.Blue / required.Blue
+		if mult < maxMult {
+			maxMult = mult
+		}
+	}
+	if required.Pink > 0 {
+		mult := r.Pink / required.Pink
+		if mult < maxMult {
+			maxMult = mult
+		}
+	}
+
+	if maxMult == 999 {
+		return 0
+	}
+	return maxMult
 }
 
 // SubtractAll subtracts all required resources (returns false if insufficient)
@@ -194,6 +242,10 @@ func (r *Resources) CanUpgraded(other *Resources, maxTurnUpgrade int) bool {
 	}
 	beforeLevels := r.GetLevels()
 	afterLevels := other.GetLevels()
+	// If there is no level change, it's not an upgrade
+	if afterLevels == beforeLevels {
+		return false
+	}
 	if afterLevels-beforeLevels > maxTurnUpgrade || afterLevels-beforeLevels < 0 {
 		return false
 	}
@@ -216,9 +268,5 @@ func (r *Resources) CanUpgraded(other *Resources, maxTurnUpgrade int) bool {
 	for aidx < len(after) && after[aidx] == 0 {
 		aidx++
 	}
-	if aidx < len(after) {
-		return false
-	}
-
-	return true
+	return aidx >= len(after)
 }

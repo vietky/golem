@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	"golem_century/internal/game"
@@ -180,6 +179,31 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
+			// Parse deposit list if present (for acquireCard action)
+			var depositList []game.DepositData
+			if deposits, ok := actionMsg["deposits"].([]interface{}); ok {
+				for _, dep := range deposits {
+					if depMap, ok := dep.(map[string]interface{}); ok {
+						if crystalStr, ok := depMap["crystal"].(string); ok {
+							var crystal game.CrystalType
+							switch crystalStr {
+							case "yellow":
+								crystal = game.Yellow
+							case "green":
+								crystal = game.Green
+							case "blue":
+								crystal = game.Blue
+							case "pink":
+								crystal = game.Pink
+							default:
+								continue
+							}
+							depositList = append(depositList, game.DepositData{Crystal: crystal})
+						}
+					}
+				}
+			}
+
 			var gameAction game.Action
 			switch actionTypeStr {
 			case "playCard":
@@ -192,8 +216,9 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 				}
 			case "acquireCard":
 				gameAction = game.Action{
-					Type:      game.AcquireCard,
-					CardIndex: int(cardIndex),
+					Type:        game.AcquireCard,
+					CardIndex:   int(cardIndex),
+					DepositList: depositList,
 				}
 			case "claimPointCard":
 				gameAction = game.Action{
@@ -204,72 +229,28 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 				gameAction = game.Action{
 					Type: game.Rest,
 				}
-			case "discardCrystals":
-				discardMap, _ := actionMsg["discard"].(map[string]interface{})
-				getInt := func(m map[string]interface{}, key string) int {
-					if val, exists := m[key]; exists {
-						if f, ok := val.(float64); ok {
-							return int(f)
+			case "discard":
+				// Parse discard resources
+				var discardResources *game.Resources
+				if discardRes, ok := actionMsg["discardResources"].(map[string]interface{}); ok {
+					getInt := func(m map[string]interface{}, key string) int {
+						if val, exists := m[key]; exists {
+							if f, ok := val.(float64); ok {
+								return int(f)
+							}
 						}
+						return 0
 					}
-					return 0
-				}
-				discard := &game.Resources{
-					Yellow: getInt(discardMap, "yellow"),
-					Green:  getInt(discardMap, "green"),
-					Blue:   getInt(discardMap, "blue"),
-					Pink:   getInt(discardMap, "pink"),
-				}
-				gameAction = game.Action{
-					Type:    game.DiscardCrystals,
-					Discard: discard,
-				}
-			case "depositCrystals":
-				depositsMap, _ := actionMsg["deposits"].(map[string]interface{})
-				targetPos, _ := actionMsg["targetPosition"].(float64)
-				deposits := make(map[int][]game.CrystalType)
-				for posStr, crystalStr := range depositsMap {
-					pos, _ := strconv.Atoi(posStr)
-					crystalName, _ := crystalStr.(string)
-					var crystalType game.CrystalType
-					switch crystalName {
-					case "yellow":
-						crystalType = game.Yellow
-					case "green":
-						crystalType = game.Green
-					case "blue":
-						crystalType = game.Blue
-					case "pink":
-						crystalType = game.Pink
-					default:
-						continue
-					}
-					// Wrap single crystal in array to support stacking
-					deposits[pos] = []game.CrystalType{crystalType}
-				}
-				gameAction = game.Action{
-					Type:           game.DepositCrystals,
-					CardIndex:      int(cardIndex),
-					Deposits:       deposits,
-					TargetPosition: int(targetPos),
-				}
-			case "collectCrystals":
-				positionsArr, _ := actionMsg["positions"].([]interface{})
-				positions := make([]int, 0, len(positionsArr))
-				for _, pos := range positionsArr {
-					if f, ok := pos.(float64); ok {
-						positions = append(positions, int(f))
+					discardResources = &game.Resources{
+						Yellow: getInt(discardRes, "yellow"),
+						Green:  getInt(discardRes, "green"),
+						Blue:   getInt(discardRes, "blue"),
+						Pink:   getInt(discardRes, "pink"),
 					}
 				}
 				gameAction = game.Action{
-					Type:             game.CollectCrystals,
-					CardIndex:        int(cardIndex),
-					CollectPositions: positions,
-				}
-			case "collectAllCrystals":
-				gameAction = game.Action{
-					Type:      game.CollectAllCrystals,
-					CardIndex: int(cardIndex),
+					Type:             game.Discard,
+					DiscardResources: discardResources,
 				}
 			default:
 				continue
@@ -287,6 +268,11 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 // HandleCreateSession creates a new game session
 func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request) {
+	// Allow CORS preflight
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	if r.Method != http.MethodPost {
 		sendJSONError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
@@ -407,6 +393,78 @@ func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request)
 	response := map[string]interface{}{
 		"sessions": sessions,
 		"count":    len(sessions),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// HandleCreateSinglePlayer creates a single-player game with AI opponents
+func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Request) {
+	// Allow CORS preflight
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		sendJSONError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req struct {
+		NumAI     int    `json:"numAI"` // Number of AI opponents (1-3)
+		Seed      int64  `json:"seed"`
+		SessionID string `json:"sessionID"` // Optional custom session ID
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendJSONError(w, http.StatusBadRequest, "Invalid request")
+		return
+	}
+
+	// Validate number of AI opponents (player + AI = 2-4 total)
+	if req.NumAI < 1 || req.NumAI > 3 {
+		sendJSONError(w, http.StatusBadRequest, "Number of AI opponents must be 1-3")
+		return
+	}
+
+	if req.Seed == 0 {
+		req.Seed = time.Now().UnixNano()
+	}
+
+	// Use custom session ID if provided, otherwise generate one
+	var sessionID string
+	if req.SessionID != "" {
+		// Check if session already exists
+		if _, exists := gs.GetSession(req.SessionID); exists {
+			sendJSONError(w, http.StatusConflict, "Session ID already exists")
+			return
+		}
+		sessionID = req.SessionID
+	} else {
+		sessionID = fmt.Sprintf("single_%d", time.Now().UnixNano())
+	}
+
+	// Total players = 1 human + numAI
+	totalPlayers := 1 + req.NumAI
+	session := gs.CreateSession(sessionID, totalPlayers, req.Seed)
+
+	// Mark AI players (all except first player which is human)
+	session.mu.Lock()
+	for i := 1; i < totalPlayers; i++ {
+		session.GameState.Players[i].IsAI = true
+		session.GameState.Players[i].Name = fmt.Sprintf("AI Player %d", i+1)
+	}
+	session.mu.Unlock()
+
+	// Initialize AI in the engine
+	session.Engine.AI = game.NewAIPlayer(session.GameState.RNG)
+
+	response := map[string]interface{}{
+		"sessionID":  sessionID,
+		"numPlayers": totalPlayers,
+		"numAI":      req.NumAI,
+		"mode":       "singlePlayer",
 	}
 
 	w.Header().Set("Content-Type", "application/json")

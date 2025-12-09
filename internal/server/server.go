@@ -3,15 +3,16 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
+	"golem_century/internal/eventstore"
 	"golem_century/internal/game"
+	"golem_century/internal/logger"
 
 	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 )
 
 var upgrader = websocket.Upgrader{
@@ -30,6 +31,7 @@ type GameSession struct {
 	PlayerAvatars map[int]string          // Player ID -> Avatar number
 	CreatedAt     time.Time               // When session was created
 	LastActivity  time.Time               // Last time someone was in the room
+	EventStore    eventstore.EventStore   // Event store for recording actions
 	mu            sync.RWMutex
 	ActionChan    chan PlayerAction
 	BroadcastChan chan []byte
@@ -59,6 +61,7 @@ func NewGameSession(sessionID string, numPlayers int, seed int64) *GameSession {
 		PlayerAvatars: make(map[int]string),
 		CreatedAt:     now,
 		LastActivity:  now,
+		EventStore:    nil, // Will be set by GameServer
 		ActionChan:    make(chan PlayerAction, 10),
 		BroadcastChan: make(chan []byte, 100),
 	}
@@ -121,14 +124,28 @@ func (gs *GameSession) SendToPlayer(playerID int, message []byte) error {
 
 // GameServer manages multiple game sessions
 type GameServer struct {
-	Sessions map[string]*GameSession
-	mu       sync.RWMutex
+	Sessions   map[string]*GameSession
+	EventStore eventstore.EventStore
+	Logger     *logger.Logger
+	mu         sync.RWMutex
+}
+
+// NewGameServerRequest represents request to create a new game server
+type NewGameServerRequest struct {
+	EventStore eventstore.EventStore
+	Logger     *logger.Logger
 }
 
 // NewGameServer creates a new game server
-func NewGameServer() *GameServer {
+func NewGameServer(req NewGameServerRequest) *GameServer {
+	log := req.Logger
+	if log == nil {
+		log = logger.NewNopLogger()
+	}
 	return &GameServer{
-		Sessions: make(map[string]*GameSession),
+		Sessions:   make(map[string]*GameSession),
+		EventStore: req.EventStore,
+		Logger:     log,
 	}
 }
 
@@ -138,7 +155,22 @@ func (gs *GameServer) CreateSession(sessionID string, numPlayers int, seed int64
 	defer gs.mu.Unlock()
 
 	session := NewGameSession(sessionID, numPlayers, seed)
+	session.EventStore = gs.EventStore // Set event store
 	gs.Sessions[sessionID] = session
+
+	// Store initial game state as first event if event store is available
+	if session.EventStore != nil {
+		req := eventstore.StoreEventRequest{
+			GameID:    sessionID,
+			PlayerID:  0,                     // System event
+			Action:    game.Action{Type: -1}, // Special marker for initial state
+			GameState: session.GameState,
+		}
+		resp := session.EventStore.StoreEvent(req)
+		if resp.Error != nil {
+			gs.Logger.Warn("Failed to store initial game state", zap.Error(resp.Error))
+		}
+	}
 
 	// Start game loop
 	go session.RunGameLoop()
@@ -171,7 +203,7 @@ func (gs *GameServer) startCleanupTimer(sessionID string) {
 			if !hasPlayers {
 				timeSinceActivity := time.Since(lastActivity)
 				if timeSinceActivity >= 5*time.Minute {
-					log.Printf("Deleting empty room %s (inactive for %v)", sessionID, timeSinceActivity)
+					gs.Logger.Info("Deleting empty room", zap.String("sessionID", sessionID))
 					gs.mu.Lock()
 					delete(gs.Sessions, sessionID)
 					gs.mu.Unlock()
@@ -207,13 +239,24 @@ func (gs *GameSession) RunGameLoop() {
 			currentPlayer := gs.GameState.GetCurrentPlayer()
 			if action.PlayerID == currentPlayer.ID {
 				if err := gs.GameState.ExecuteAction(action.Action); err == nil {
-					// DepositCrystals and CollectCrystals don't end the turn
-					// They are intermediate actions before acquiring a card
-					if action.Action.Type != game.DepositCrystals && action.Action.Type != game.CollectCrystals && action.Action.Type != game.CollectAllCrystals {
-						gs.GameState.CheckGameOver()
-						if !gs.GameState.GameOver {
-							gs.GameState.NextTurn()
+					// Store event if event store is available
+					if gs.EventStore != nil {
+						req := eventstore.StoreEventRequest{
+							GameID:    gs.ID,
+							PlayerID:  action.PlayerID,
+							Action:    action.Action,
+							GameState: gs.GameState,
 						}
+						resp := gs.EventStore.StoreEvent(req)
+						if resp.Error != nil {
+							// Don't fail the action if event store fails
+							// TODO: log here
+						}
+					}
+
+					gs.GameState.CheckGameOver()
+					if !gs.GameState.GameOver {
+						gs.GameState.NextTurn()
 					}
 					gs.BroadcastState()
 				} else {
@@ -229,7 +272,43 @@ func (gs *GameSession) RunGameLoop() {
 			}
 
 		case <-ticker.C:
-			// No AI processing - all players are human
+			// Check if current player is AI
+			currentPlayer := gs.GameState.GetCurrentPlayer()
+			if currentPlayer.IsAI && gs.Engine.AI != nil {
+				// AI turn - execute AI action with a small delay for UX
+				time.Sleep(500 * time.Millisecond)
+
+				aiAction := gs.Engine.AI.ChooseAction(currentPlayer, gs.GameState.Market, gs.GameState)
+				if err := gs.GameState.ExecuteAction(aiAction); err == nil {
+					// Store event if event store is available
+					if gs.EventStore != nil {
+						req := eventstore.StoreEventRequest{
+							GameID:    gs.ID,
+							PlayerID:  currentPlayer.ID,
+							Action:    aiAction,
+							GameState: gs.GameState,
+						}
+						resp := gs.EventStore.StoreEvent(req)
+						if resp.Error != nil {
+							// Don't fail the action if event store fails
+						}
+					}
+
+					gs.GameState.CheckGameOver()
+					if !gs.GameState.GameOver {
+						gs.GameState.NextTurn()
+					}
+					gs.BroadcastState()
+				} else {
+					// If AI action fails, try rest
+					gs.GameState.ExecuteAction(game.Action{Type: game.Rest})
+					gs.GameState.CheckGameOver()
+					if !gs.GameState.GameOver {
+						gs.GameState.NextTurn()
+					}
+					gs.BroadcastState()
+				}
+			}
 		}
 	}
 
@@ -242,7 +321,6 @@ func (gs *GameSession) BroadcastState() {
 	state := gs.SerializeState()
 	data, err := json.Marshal(state)
 	if err != nil {
-		log.Printf("Error marshaling state: %v", err)
 		return
 	}
 	gs.Broadcast(data)
@@ -259,23 +337,29 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 		if avatar == "" {
 			avatar = fmt.Sprintf("%d", p.ID) // Default to player ID
 		}
+		resourcesMap := map[string]int{
+			"yellow": p.Resources.Yellow,
+			"green":  p.Resources.Green,
+			"blue":   p.Resources.Blue,
+			"pink":   p.Resources.Pink,
+		}
+
 		players[i] = map[string]interface{}{
-			"id":     p.ID,
-			"name":   p.Name,
-			"avatar": avatar,
-			"resources": map[string]int{
-				"yellow": p.Resources.Yellow,
-				"green":  p.Resources.Green,
-				"blue":   p.Resources.Blue,
-				"pink":   p.Resources.Pink,
-			},
-			"points":      p.GetPoints(),
-			"hand":        serializeCards(p.Hand),
-			"playedCards": serializeCards(p.PlayedCards),
-			"pointCards":  serializeCards(p.PointCards),
-			"coins":       serializeCards(p.Coins),
-			"hasRested":   p.HasRested,
-			"isAI":        p.IsAI,
+			"id":        p.ID,
+			"name":      p.Name,
+			"avatar":    avatar,
+			"resources": resourcesMap,
+			// Backwards compatibility: some frontends expect `caravan`
+			// as the resource container. Provide the same map under that key.
+			"caravan":        resourcesMap,
+			"points":         p.GetPoints(),
+			"hand":           serializeCards(p.Hand),
+			"playedCards":    serializeCards(p.PlayedCards),
+			"pointCards":     serializeCards(p.PointCards),
+			"coins":          serializeCards(p.Coins),
+			"hasRested":      p.HasRested,
+			"isAI":           p.IsAI,
+			"pendingDiscard": p.PendingDiscard,
 		}
 	}
 
@@ -283,24 +367,8 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 	for i, card := range gs.GameState.Market.ActionCards {
 		cost := gs.GameState.Market.GetActionCardCost(i)
 		serialized := serializeCardWithCost(card, cost)
-		// Debug: log deposits when serializing - check if field exists
-		deposits, hasDeposits := serialized["deposits"]
-		if hasDeposits {
-			if depositsMap, ok := deposits.(map[string]string); ok {
-				if len(depositsMap) > 0 {
-					fmt.Printf("[DEBUG Serialize] Market card index %d (position %d) HAS deposits: %+v\n", i, i+1, depositsMap)
-				} else {
-					fmt.Printf("[DEBUG Serialize] Market card index %d (position %d) has EMPTY deposits map\n", i, i+1)
-				}
-			} else {
-				fmt.Printf("[DEBUG Serialize] Market card index %d (position %d) deposits field has wrong type: %T\n", i, i+1, deposits)
-			}
-		} else {
-			fmt.Printf("[DEBUG Serialize] WARNING: Market card index %d (position %d) MISSING deposits field!\n", i, i+1)
-		}
 		// Ensure deposits field exists
 		if _, exists := serialized["deposits"]; !exists {
-			fmt.Printf("[DEBUG Serialize] FIXING: Adding missing deposits field to card %s\n", card.Name)
 			serialized["deposits"] = make(map[string]string)
 		}
 		marketActionCards[i] = serialized
@@ -378,6 +446,8 @@ func serializeCard(card *game.Card) map[string]interface{} {
 		}
 		if card.ActionType == game.Upgrade {
 			result["turnUpgrade"] = card.TurnUpgrade
+			// Frontend expects `upgradeLevel` in some components — include alias for compatibility
+			result["upgradeLevel"] = card.TurnUpgrade
 		}
 	} else if card.Type == game.PointCard {
 		result["points"] = card.Points
@@ -396,53 +466,11 @@ func serializeCard(card *game.Card) map[string]interface{} {
 
 	// Serialize deposits - ALWAYS include deposits field, even if empty
 	// Now supports stacking: each position can have multiple crystals
-	if card.Deposits != nil && len(card.Deposits) > 0 {
-		depositsMap := make(map[string]string)
-		for pos, depositArray := range card.Deposits {
-			if len(depositArray) == 0 {
-				continue
-			}
-			posStr := fmt.Sprintf("%d", pos)
-			// For each crystal in the array, add to map
-			// Since map can only have one value per key, we'll count and store as "crystalType:count"
-			// Or we can serialize as array - but frontend expects map[string]string
-			// Let's count crystals by type at this position
-			crystalCounts := make(map[game.CrystalType]int)
-			for _, crystalType := range depositArray {
-				crystalCounts[crystalType]++
-			}
-			// For now, serialize as "crystalType" (frontend will count)
-			// Or better: serialize all crystals as comma-separated or array
-			// Actually, let's change to map[string][]string to support multiple
-			// But that requires frontend changes too. For now, let's use a simple approach:
-			// Store as "crystalType1,crystalType2,..." or just the first one with count
-			// Convert all crystals in array to comma-separated string
-			var crystalNames []string
-			for _, crystalType := range depositArray {
-				var crystalName string
-				switch crystalType {
-				case game.Yellow:
-					crystalName = "yellow"
-				case game.Green:
-					crystalName = "green"
-				case game.Blue:
-					crystalName = "blue"
-				case game.Pink:
-					crystalName = "pink"
-				default:
-					continue
-				}
-				crystalNames = append(crystalNames, crystalName)
-			}
-			// Store as comma-separated string (frontend will split and count)
-			depositsMap[posStr] = strings.Join(crystalNames, ",")
-		}
-		result["deposits"] = depositsMap
-		fmt.Printf("[DEBUG Serialize] Card %s has deposits: %+v\n", card.Name, depositsMap)
+	if card.Deposits != nil {
+		result["deposits"] = card.Deposits.ToMap()
 	} else {
 		// Always include deposits field, even if empty
 		result["deposits"] = make(map[string]string)
-		fmt.Printf("[DEBUG Serialize] Card %s has NO deposits (empty map)\n", card.Name)
 	}
 
 	return result

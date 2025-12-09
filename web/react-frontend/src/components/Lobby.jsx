@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useGameStore from '../store/gameStore'
+import { apiFetch } from '../utils/api'
 
 const Lobby = ({ onJoinGame }) => {
   const [playerName, setPlayerName] = useState('Player 1')
@@ -15,7 +16,7 @@ const Lobby = ({ onJoinGame }) => {
   // Fetch available rooms
   const fetchRooms = async () => {
     try {
-      const response = await fetch('/api/list')
+      const response = await apiFetch('/api/list')
       const data = await response.json()
       if (response.ok) {
         setRooms(data.sessions || [])
@@ -50,7 +51,7 @@ const Lobby = ({ onJoinGame }) => {
   const createGame = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/create', {
+      const response = await apiFetch('/api/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -91,7 +92,7 @@ const Lobby = ({ onJoinGame }) => {
     <div 
       className="min-h-screen flex items-center justify-center p-6"
       style={{
-        backgroundImage: 'url(/images/background.jpg)',
+        backgroundImage: 'url(/static/images/background.jpg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center center',
         backgroundRepeat: 'no-repeat',
@@ -164,11 +165,11 @@ const Lobby = ({ onJoinGame }) => {
                     }`}
                   >
                     <img
-                      src={`/images/avatar/${num}.webp`}
+                      src={`/static/images/avatar/${num}.webp`}
                       alt={`Avatar ${num}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.target.src = '/images/avatar/1.webp'
+                        e.target.src = '/static/images/avatar/1.webp'
                       }}
                     />
                   </button>
@@ -190,6 +191,7 @@ const Lobby = ({ onJoinGame }) => {
                     <option value={2}>2 Players</option>
                     <option value={3}>3 Players</option>
                     <option value={4}>4 Players</option>
+                    <option value={5}>5 Players</option>
                   </select>
                 </div>
 

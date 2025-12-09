@@ -28,12 +28,20 @@ const useGameStore = create((set, get) => ({
 
   // Actions
   connectWebSocket: (sessionId, playerName, playerAvatar) => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws?session=${sessionId}&name=${encodeURIComponent(
-      playerName
-    )}&avatar=${playerAvatar}`;
+    // Allow overriding backend host via Vite env `VITE_API_HOST`.
+    // Example: VITE_API_HOST="http://backend-host:8080"
+    const configuredHost = import.meta.env.VITE_API_HOST || `${window.location.protocol}//${window.location.host}`;
+    const toWs = (host) => {
+      if (host.startsWith('https://')) return host.replace(/^https:\/\//, 'wss://')
+      if (host.startsWith('http://')) return host.replace(/^http:\/\//, 'ws://')
+      return host
+    }
 
-    const ws = new WebSocket(wsUrl);
+    const hostForWs = configuredHost.replace(/\/$/, '')
+    const wsBase = toWs(hostForWs)
+    const wsUrl = `${wsBase}/ws?session=${sessionId}&name=${encodeURIComponent(playerName)}&avatar=${playerAvatar}`
+
+    const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
       set({ connected: true, ws });
@@ -107,7 +115,7 @@ const useGameStore = create((set, get) => ({
     set({ ws, sessionId });
   },
 
-  sendAction: (actionType, cardIndex = null, inputResources = null, outputResources = null, multiplier = null) => {
+  sendAction: (actionType, cardIndex = null, inputResources = null, outputResources = null, multiplier = null, deposits = null) => {
     const { ws } = get();
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
@@ -125,6 +133,9 @@ const useGameStore = create((set, get) => ({
     }
     if (multiplier !== null && multiplier !== undefined) {
       message.multiplier = multiplier;
+    }
+    if (deposits) {
+      message.deposits = deposits;
     }
 
     ws.send(JSON.stringify(message));
@@ -159,28 +170,8 @@ const useGameStore = create((set, get) => ({
   showTradeModal: (card, cardIndex) => set({ tradeModalCard: card, tradeModalCardIndex: cardIndex }),
   hideTradeModal: () => set({ tradeModalCard: null, tradeModalCardIndex: null }),
 
-  acquireCard: (cardIndex) => {
-    const { gameState, myPlayer } = get();
-    const card = gameState?.market?.actionCards?.[cardIndex];
-    const cost = card?.cost || {};
-
-    // Check if can afford
-    const canAfford =
-      myPlayer?.resources &&
-      (cost.yellow || 0) <= myPlayer.resources.yellow &&
-      (cost.green || 0) <= myPlayer.resources.green &&
-      (cost.blue || 0) <= myPlayer.resources.blue &&
-      (cost.pink || 0) <= myPlayer.resources.pink;
-
-    if (!canAfford) {
-      // Trigger invalid action animation
-      set({ invalidAction: card?.name });
-      setTimeout(() => set({ invalidAction: null }), 300);
-      get().addToLog(`Cannot afford this card!`);
-      return;
-    }
-
-    get().sendAction("acquireCard", cardIndex);
+  acquireCard: (cardIndex, deposits = []) => {
+    get().sendAction("acquireCard", cardIndex, null, null, null, deposits);
     get().addToLog(`Acquiring card from market`);
   },
 
@@ -200,8 +191,8 @@ const useGameStore = create((set, get) => ({
 
     const message = {
       type: 'action',
-      actionType: 'discardCrystals',
-      discard: {
+      actionType: 'discard',
+      discardResources: {
         yellow: discard.yellow || 0,
         green: discard.green || 0,
         blue: discard.blue || 0,

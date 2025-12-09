@@ -3,6 +3,8 @@ package game
 import (
 	"fmt"
 	"strings"
+
+	"golem_century/internal/logger"
 )
 
 // Engine manages the game flow and turn execution
@@ -23,8 +25,11 @@ func NewEngine(numPlayers int, seed int64) *Engine {
 
 // Run executes the full game simulation
 func (e *Engine) Run() {
-	fmt.Println("Starting Century: Golem Edition Simulation")
-	fmt.Println("=" + strings.Repeat("=", 78))
+	// Use development logger for CLI/engine logs
+	lg, _ := logger.NewLogger(true)
+	defer lg.Sync()
+	lg.Info("Starting Century: Golem Edition Simulation")
+	lg.Info(strings.Repeat("=", 78))
 
 	maxTurns := 1000 // Safety limit
 	turnCount := 0
@@ -33,18 +38,15 @@ func (e *Engine) Run() {
 		turnCount++
 		player := e.GameState.GetCurrentPlayer()
 
-		// Print current state
-		e.GameState.PrintState()
-
 		// Get action from AI
 		action := e.AI.ChooseAction(player, e.GameState.Market, e.GameState)
 
 		// Execute action
 		actionStr := e.getActionString(action, player)
-		fmt.Printf("\n>>> Action: %s\n", actionStr)
+		lg.Sugar().Infof("\n>>> Action: %s", actionStr)
 
 		if err := e.GameState.ExecuteAction(action); err != nil {
-			fmt.Printf("ERROR: %v\n", err)
+			lg.Sugar().Errorf("ERROR: %v", err)
 			// If action fails, force rest
 			player.Rest()
 		}
@@ -62,11 +64,8 @@ func (e *Engine) Run() {
 	}
 
 	if turnCount >= maxTurns {
-		fmt.Println("\nWARNING: Maximum turns reached!")
+		lg.Warn("Maximum turns reached!")
 	}
-
-	// Print final results
-	e.GameState.PrintFinalResults()
 }
 
 // getActionString returns a string representation of an action
@@ -101,4 +100,3 @@ func (e *Engine) getActionString(action Action, player *Player) string {
 func (e *Engine) GetGameState() *GameState {
 	return e.GameState
 }
-

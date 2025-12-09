@@ -4,17 +4,17 @@ import "fmt"
 
 // Player represents a game player
 type Player struct {
-	ID            int
-	Name          string
-	Resources     *Resources
-	Hand          []*Card // Action cards in hand
-	PlayedCards   []*Card // Cards played this turn (will be returned on rest)
-	PointCards    []*Card // Claimed point cards
-	Coins         []*Card // Claimed coins
-	Points        int
-	IsAI          bool
-	HasRested     bool // Whether player has rested this round
-	PendingDiscard int // Number of crystals that must be discarded (0 = no discard needed)
+	ID             int
+	Name           string
+	Resources      *Resources
+	Hand           []*Card // Action cards in hand
+	PlayedCards    []*Card // Cards played this turn (will be returned on rest)
+	PointCards     []*Card // Claimed point cards
+	Coins          []*Card // Claimed coins
+	Points         int
+	IsAI           bool
+	HasRested      bool // Whether player has rested this round
+	PendingDiscard int  // Number of crystals that must be discarded (0 = no discard needed)
 }
 
 // NewPlayer creates a new player
@@ -75,18 +75,6 @@ func (p *Player) Rest() {
 	p.Hand = append(p.Hand, p.PlayedCards...)
 	p.PlayedCards = make([]*Card, 0)
 	p.HasRested = true
-}
-
-// AcquireCard acquires a card from the market
-func (p *Player) AcquireCard(card *Card, cost *Resources) bool {
-	if !p.Resources.HasAll(cost, 1) {
-		return false
-	}
-	if !p.Resources.SubtractAll(cost, 1) {
-		return false
-	}
-	p.AddCard(card)
-	return true
 }
 
 // ClaimPointCard claims a point card

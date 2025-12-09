@@ -7,3 +7,7 @@ vendor/
 ansible/inventory.yml
 
 .DS_Store
+bin/
+web/react
+
+node_modules/

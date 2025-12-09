@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, useAnimation } from 'framer-motion'
 import CrystalStack from './CrystalStack'
 import useGameStore from '../store/gameStore'
@@ -19,6 +19,8 @@ const Card = ({
   isDragging = false
 }) => {
   const [isHovered, setIsHovered] = useState(false)
+  const longPressTimer = useRef(null)
+  const LONG_PRESS_MS = 2000
   const [isClicked, setIsClicked] = useState(false)
   const [isInvalidAction, setIsInvalidAction] = useState(false)
   const { setSelectedCard, selectedCard, invalidAction } = useGameStore()
@@ -127,6 +129,18 @@ const Card = ({
     }
   }
 
+  const startLongPress = (e) => {
+    if (e) e.persist && e.persist()
+    clearTimeout(longPressTimer.current)
+    longPressTimer.current = setTimeout(() => {
+      setIsHovered(true)
+    }, LONG_PRESS_MS)
+  }
+
+  const cancelLongPress = () => {
+    clearTimeout(longPressTimer.current)
+  }
+
   const isSelected = selectedCard?.name === card?.name
   const glowColor = cardTypeGlowColors[actionType] || '#FFD966'
 
@@ -139,6 +153,10 @@ const Card = ({
       } w-full min-w-0 sm:min-w-[160px] md:min-w-[200px]`}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
+      onMouseDown={(e) => startLongPress(e)}
+      onMouseUp={() => cancelLongPress()}
+      onTouchStart={(e) => startLongPress(e)}
+      onTouchEnd={() => cancelLongPress()}
       onClick={handleClick}
       animate={controls}
       // Hover animation: simplified
@@ -193,10 +211,10 @@ const Card = ({
         })
         
         const crystalImages = {
-          yellow: '/images/stone_yellow.JPG',
-          green: '/images/stone_green.JPG',
-          blue: '/images/stone_blue.JPG',
-          pink: '/images/stone_pink.JPG'
+          yellow: '/static/images/stone_yellow.JPG',
+          green: '/static/images/stone_green.JPG',
+          blue: '/static/images/stone_blue.JPG',
+          pink: '/static/images/stone_pink.JPG'
         }
         
         return (
@@ -211,11 +229,11 @@ const Card = ({
               {Object.entries(crystalCounts).map(([crystalType, count]) => (
                 <div key={crystalType} className="relative">
                   <img
-                    src={crystalImages[crystalType] || '/images/stone_yellow.JPG'}
+                    src={crystalImages[crystalType] || '/static/images/stone_yellow.JPG'}
                     alt={crystalType}
                     className="w-5 h-5 rounded-full object-cover border border-white"
                     onError={(e) => {
-                      e.target.src = '/images/stone_yellow.JPG'
+                      e.target.src = '/static/images/stone_yellow.JPG'
                     }}
                   />
                   {count > 1 && (
@@ -259,7 +277,7 @@ const Card = ({
             alt={getVietnameseCardName(card.name)}
             className="w-full h-auto max-h-[320px]"
             onError={(e) => {
-              e.target.src = '/images/golem_bg.JPG'
+              e.target.src = '/static/images/golem_bg.JPG'
             }}
             whileHover={{ 
               filter: "brightness(1.1) saturate(1.2)",
@@ -307,10 +325,10 @@ const Card = ({
           })
           
           const crystalImages = {
-            yellow: '/images/stone_yellow.JPG',
-            green: '/images/stone_green.JPG',
-            blue: '/images/stone_blue.JPG',
-            pink: '/images/stone_pink.JPG'
+            yellow: '/static/images/stone_yellow.JPG',
+            green: '/static/images/stone_green.JPG',
+            blue: '/static/images/stone_blue.JPG',
+            pink: '/static/images/stone_pink.JPG'
           }
           
           return (
@@ -320,11 +338,11 @@ const Card = ({
                 {Object.entries(crystalCounts).map(([crystalType, count]) => (
                   <div key={crystalType} className="relative">
                     <img
-                      src={crystalImages[crystalType] || '/images/stone_yellow.JPG'}
+                      src={crystalImages[crystalType] || '/static/images/stone_yellow.JPG'}
                       alt={crystalType}
                       className="w-6 h-6 rounded-full object-cover border border-gray-400"
                       onError={(e) => {
-                        e.target.src = '/images/stone_yellow.JPG'
+                        e.target.src = '/static/images/stone_yellow.JPG'
                       }}
                     />
                     {count > 1 && (
@@ -356,6 +374,29 @@ const Card = ({
             borderRadius: '0.75rem'
           }}
         />
+      )}
+
+      {/* Long-press Tooltip (desktop hover already shows glow; long-press shows details) */}
+      {isHovered && (
+        <div className="absolute -top-36 left-1/2 transform -translate-x-1/2 bg-black/95 backdrop-blur-md text-white p-3 rounded-lg text-xs whitespace-nowrap z-50 border border-white/30 shadow-xl min-w-[220px]">
+          <div className="font-bold mb-1">{getVietnameseCardName(card?.name)}</div>
+          <div className="text-gray-400 text-[10px] mb-1">ID: #{card?.id || index}</div>
+          <div className="mb-1">
+            <strong>Type:</strong> {actionType.toUpperCase()}
+          </div>
+          {cost && (
+            <div className="text-red-300">Cost: 🟡{cost.yellow || 0} 🟢{cost.green || 0} 🔵{cost.blue || 0} 🟣{cost.pink || 0}</div>
+          )}
+          {type === 'point' && card?.points !== undefined && (
+            <div className="text-yellow-300 mt-1">Points: {card.points}</div>
+          )}
+          {(card?.input || card?.output) && (
+            <div className="mt-1 text-sm">
+              {card.input && <div className="text-red-300">Input: 🟡{card.input?.yellow||0} 🟢{card.input?.green||0} 🔵{card.input?.blue||0} 🟣{card.input?.pink||0}</div>}
+              {card.output && <div className="text-green-300">Output: 🟡{card.output?.yellow||0} 🟢{card.output?.green||0} 🔵{card.output?.blue||0} 🟣{card.output?.pink||0}</div>}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Invalid Action Feedback - Red glow and shake */}

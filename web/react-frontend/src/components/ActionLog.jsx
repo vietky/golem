@@ -2,8 +2,27 @@ import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useGameStore from '../store/gameStore'
 
-const ActionLog = () => {
+const ActionLog = ({ compact = false }) => {
   const { actionLog } = useGameStore()
+
+  if (compact) {
+    // Compact version for CollapsibleInfo
+    return (
+      <div className="space-y-1">
+        {actionLog.slice(-10).reverse().map((log, index) => (
+          <div
+            key={index}
+            className="text-xs text-white/80 bg-white/5 p-2 rounded border-l-2 border-purple-500"
+          >
+            {log}
+          </div>
+        ))}
+        {actionLog.length === 0 && (
+          <div className="text-xs text-white/50 text-center py-4">No actions yet</div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="fixed top-24 sm:top-28 md:top-32 right-2 sm:right-4 md:right-6 z-30 w-48 sm:w-56 md:w-64">
@@ -33,4 +52,5 @@ const ActionLog = () => {
 }
 
 export default ActionLog
+
 
