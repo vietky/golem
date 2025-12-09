@@ -75,7 +75,7 @@ func main() {
 	staticDir := filepath.Join(".", "web", "static")
 	imagesDir := filepath.Join(staticDir, "images")
 	if _, err := os.Stat(imagesDir); err == nil {
-		http.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(imagesDir))))
+		mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(imagesDir))))
 		log.Info("Serving images from ./web/static/images")
 	}
 
@@ -86,14 +86,14 @@ func main() {
 	// Check if React build exists and has content (index.html exists), otherwise serve vanilla JS
 	if _, err := os.Stat(reactIndexPath); err == nil {
 		// Serve React build
-		http.Handle("/", http.FileServer(http.Dir("./web/react")))
+		mux.Handle("/", http.FileServer(http.Dir("./web/react")))
 		log.Info("Serving React frontend from ./web/react")
 	} else {
 		// Fallback to vanilla JS
 		if _, err := os.Stat(staticDir); os.IsNotExist(err) {
 			os.MkdirAll(staticDir, 0755)
 		}
-		http.Handle("/", http.FileServer(http.Dir("./web/static")))
+		mux.Handle("/", http.FileServer(http.Dir("./web/static")))
 		log.Info("Serving vanilla JS frontend from ./web/static")
 	}
 
