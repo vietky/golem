@@ -2,6 +2,11 @@
 
 A modern React + TailwindCSS frontend for Century: Golem Edition, inspired by Hearthstone's card game UI.
 
+## Run
+- `make dev`
+- `make fe-build-local`
+- `make fe-run-local`
+
 ## Features
 
 - 🎮 **Hearthstone-inspired UI** with beautiful card designs

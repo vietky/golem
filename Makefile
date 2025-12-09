@@ -174,8 +174,6 @@ fe-build-local:
 	cp -rf web/react-frontend/dist/* web/react/
 
 fe-run-local:
-	export VITE_API_HOST=https://game.anhtran.dev/api/golem
-	export VITE_NGINX_HOST=https://game.anhtran.dev 
 	cd web/react-frontend && npm run dev
 
 fe-release:
