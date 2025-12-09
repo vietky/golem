@@ -3,7 +3,7 @@ services:
     image: mongo:7
     container_name: golem-mongodb
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     environment:
       - MONGO_INITDB_DATABASE=golem_game
     volumes:
@@ -18,7 +18,7 @@ services:
     image: redis:7-alpine
     container_name: golem-redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
@@ -34,7 +34,7 @@ services:
       dockerfile: Dockerfile
     container_name: golem-century-server
     ports:
-      - "3001:8080"
+      - "127.0.0.1:8100:8080"
     restart: unless-stopped
     depends_on:
       mongodb:
