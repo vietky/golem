@@ -25,10 +25,13 @@ const PlayerHand = () => {
     showTradeModal,
     hideTradeModal,
   } = useGameStore();
-  const { isMobile, isPortrait } = useOrientation();
+  const { isMobile, isTablet, isPortrait, isLandscape, isDesktop } = useOrientation();
   const handRef = useRef(null);
   const [draggedCardIndex, setDraggedCardIndex] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Debug log
+  console.log('[PlayerHand] Device:', { isMobile, isPortrait, isExpanded });
   const [depositModal, setDepositModal] = useState({ show: false, card: null, index: null });
 
   // Pan handlers for swipe to dismiss (portrait mode)
@@ -48,9 +51,9 @@ const PlayerHand = () => {
   if (!myPlayer.hand || myPlayer.hand.length === 0) {
     return (
       <div className={`fixed z-30 ${
-        isMobile && isPortrait ? 'bottom-16 left-2' : 'bottom-4 left-4'
+        isMobile && isPortrait ? 'bottom-4 left-2 right-auto' : 'bottom-4 left-4'
       }`}>
-        <div className="bg-slate-800/90 backdrop-blur-md rounded-lg px-3 sm:px-4 py-2 border-2 border-gray-600">
+        <div className="bg-slate-800/90 backdrop-blur-md rounded-lg px-3 py-2 border-2 border-gray-600">
           <p className="text-white text-xs sm:text-sm">No cards in hand</p>
         </div>
       </div>
@@ -83,9 +86,6 @@ const PlayerHand = () => {
         if (isMyTurn) {
           handleCardClick(cardIndex);
         }
-      } else {
-        // Invalid drop - shake back to position
-        // Animation handled by Card component
       }
     }
   };
@@ -120,97 +120,140 @@ const PlayerHand = () => {
     }
   };
 
+  // Button position based on device
+  const getButtonPosition = () => {
+    if (isMobile && isPortrait) {
+      return 'bottom-4 left-3 right-auto'
+    }
+    if (isMobile && isLandscape) {
+      return 'bottom-3 left-3'
+    }
+    return 'bottom-4 left-4'
+  }
+
+  // Panel styles based on device
+  const getPanelStyles = () => {
+    if (isMobile && isPortrait) {
+      return 'bottom-0 left-0 right-0 rounded-t-2xl border-t-2 max-h-[65vh]'
+    }
+    if (isMobile && isLandscape) {
+      return 'bottom-0 left-0 right-0 rounded-t-xl border-t-2 max-h-[50vh]'
+    }
+    if (isTablet) {
+      return 'bottom-0 left-0 right-52 rounded-t-xl border-t-2 py-3 px-4'
+    }
+    // Desktop
+    return 'bottom-0 left-0 right-52 border-t-2 py-3 px-4'
+  }
+
   return (
     <>
-      {/* Backdrop overlay (mobile portrait only) */}
-      {isExpanded && isMobile && isPortrait && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={() => setIsExpanded(false)}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-35"
-        />
-      )}
+      {/* Backdrop overlay (mobile only) */}
+      <AnimatePresence>
+        {isExpanded && isMobile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsExpanded(false)}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-fixed"
+          />
+        )}
+      </AnimatePresence>
 
-      {/* Collapsed Button */}
-      {!isExpanded && (
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          onClick={() => setIsExpanded(true)}
-          className="fixed bottom-4 left-4 z-30 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold rounded-xl shadow-2xl border-2 border-white/20 flex items-center gap-2 sm:gap-3 transition-all touch-target px-5 py-3 sm:px-6 sm:py-4"
-          whileTap={{ scale: 0.95 }}
-        >
-          <div className="relative">
-            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-              />
-            </svg>
-            {hand.length > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white font-bold rounded-full flex items-center justify-center text-[10px] w-4 h-4 sm:text-xs sm:w-5 sm:h-5">
-                {hand.length}
-              </span>
-            )}
-          </div>
-          <div className="text-left">
-            <div className="font-semibold text-xs sm:text-sm">Your Hand</div>
-            <div className="opacity-90 text-[10px] sm:text-xs">
-              {isMyTurn ? <span className="text-green-300">Your Turn ▶</span> : `${hand.length} cards`}
+      {/* Collapsed Button - Always visible when not expanded */}
+      <AnimatePresence>
+        {!isExpanded && (
+          <motion.button
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            onClick={() => setIsExpanded(true)}
+            className={`
+              fixed z-30 
+              ${getButtonPosition()}
+              bg-gradient-to-r from-purple-600 to-blue-600 
+              hover:from-purple-700 hover:to-blue-700 
+              text-white font-bold rounded-xl 
+              shadow-2xl border-2 border-white/20 
+              flex items-center gap-2 
+              transition-all touch-target 
+              px-4 py-3
+              ${isMobile ? 'text-sm' : 'sm:px-5 sm:py-3'}
+            `}
+            whileTap={{ scale: 0.95 }}
+          >
+            <div className="relative">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                />
+              </svg>
+              {hand.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white font-bold rounded-full flex items-center justify-center text-[10px] w-4 h-4">
+                  {hand.length}
+                </span>
+              )}
             </div>
-          </div>
-        </motion.button>
-      )}
+            <div className="text-left">
+              <div className="font-semibold text-xs">Your Hand</div>
+              <div className="opacity-90 text-[10px]">
+                {isMyTurn ? <span className="text-green-300">Your Turn ▶</span> : `${hand.length} cards`}
+              </div>
+            </div>
+          </motion.button>
+        )}
+      </AnimatePresence>
 
-      {/* Expanded Hand Panel */}
+      {/* Expanded Hand Panel - Bottom Sheet Style */}
       <AnimatePresence>
         {isExpanded && (
           <motion.div
             initial={{ 
-              y: isMobile && isPortrait ? 400 : 0, 
-              x: isMobile && isPortrait ? 0 : -400, 
-              opacity: isMobile && isPortrait ? 1 : 0 
+              y: isMobile ? '100%' : 0, 
+              opacity: isMobile ? 1 : 0 
             }}
-            animate={{ y: 0, x: 0, opacity: 1 }}
+            animate={{ y: 0, opacity: 1 }}
             exit={{ 
-              y: isMobile && isPortrait ? 400 : 0, 
-              x: isMobile && isPortrait ? 0 : -400, 
-              opacity: isMobile && isPortrait ? 1 : 0 
+              y: isMobile ? '100%' : 0, 
+              opacity: isMobile ? 1 : 0 
             }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            {...(isMobile && isPortrait ? panHandlers : {})}
-            className={`fixed bg-slate-900/95 backdrop-blur-xl shadow-2xl border-purple-500/50 ${
-              isMobile && isPortrait
-                ? 'bottom-0 left-0 right-0 z-40 rounded-t-3xl border-t-2 max-h-[70vh] safe-bottom'
-                : 'bottom-0 left-0 right-0 z-30 border-t-2 py-3 px-4 pr-[260px]'
-            }`}
+            {...(isMobile ? panHandlers : {})}
+            className={`
+              fixed z-modal-backdrop
+              bg-slate-900/95 backdrop-blur-xl 
+              shadow-2xl border-purple-500/50
+              ${getPanelStyles()}
+              safe-bottom
+            `}
           >
-            {/* Drag handle (portrait only) */}
-            {isMobile && isPortrait && (
-              <div className="flex justify-center pt-3 pb-2">
-                <div className="w-12 h-1.5 bg-gray-400 rounded-full opacity-50" />
+            {/* Drag handle (mobile only) */}
+            {isMobile && (
+              <div className="flex justify-center pt-2 pb-1">
+                <div className="w-10 h-1 bg-gray-400 rounded-full opacity-50" />
               </div>
             )}
 
             {/* Header */}
-            <div className={`flex items-center justify-between ${
-              isMobile && isPortrait ? 'px-4 pb-3 mb-3 border-b border-gray-700' : 'mb-2'
-            }`}>
-              <div className="flex items-center gap-3">
-                <h3 className="text-white font-bold text-base">
+            <div className={`
+              flex items-center justify-between 
+              ${isMobile ? 'px-3 pb-2 mb-2 border-b border-gray-700' : 'mb-2'}
+            `}>
+              <div className="flex items-center gap-2">
+                <h3 className="text-white font-bold text-sm sm:text-base">
                   Your Hand
-                  {isMyTurn && (
-                    <span className="ml-2 inline-flex items-center gap-1 text-green-400 text-xs bg-green-500/20 px-2 py-1 rounded-full">
-                      <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                      Your Turn
-                    </span>
-                  )}
                 </h3>
-                <span className="text-gray-400 text-sm">{hand.length} cards</span>
+                {isMyTurn && (
+                  <span className="inline-flex items-center gap-1 text-green-400 text-[10px] sm:text-xs bg-green-500/20 px-2 py-0.5 rounded-full">
+                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                    Your Turn
+                  </span>
+                )}
+                <span className="text-gray-400 text-xs">{hand.length} cards</span>
               </div>
               <button
                 onClick={() => setIsExpanded(false)}
@@ -225,11 +268,14 @@ const PlayerHand = () => {
             {/* Cards Container */}
             <div
               ref={handRef}
-              className={`${
-                isMobile && isPortrait
-                  ? 'grid grid-cols-2 gap-3 overflow-y-auto max-h-[50vh] px-4 pb-2'
-                  : 'flex gap-4 overflow-x-auto snap-x scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-gray-800 pb-2'
-              }`}
+              className={`
+                ${isMobile && isPortrait
+                  ? 'grid grid-cols-2 gap-2 overflow-y-auto max-h-[50vh] px-3 pb-3'
+                  : isMobile && isLandscape
+                    ? 'flex gap-3 overflow-x-auto snap-x scrollbar-thin pb-2 px-3'
+                    : 'flex gap-3 overflow-x-auto snap-x scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-gray-800 pb-2'
+                }
+              `}
               style={{
                 scrollbarWidth: "thin",
               }}
@@ -242,12 +288,15 @@ const PlayerHand = () => {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
                     layout
-                    className={`${
-                      isMobile && isPortrait 
+                    className={`
+                      ${isMobile && isPortrait 
                         ? 'w-full' 
-                        : 'flex-shrink-0 snap-center w-36 sm:w-40'
-                    }`}
-                    whileHover={{ y: -8, scale: 1.05 }}
+                        : isMobile && isLandscape
+                          ? 'flex-shrink-0 w-32 snap-center'
+                          : 'flex-shrink-0 snap-center w-36 sm:w-40'
+                      }
+                    `}
+                    whileHover={!isMobile ? { y: -8, scale: 1.03 } : {}}
                     whileTap={{ scale: 0.97 }}
                     transition={{
                       type: "spring",

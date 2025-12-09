@@ -7,7 +7,7 @@ const getCardImagePath = (card, type) => {
 //   }
   
   if (card?.name) {
-    return `/static/images/${card.name}.JPG`
+    return `/images/${card.name}.JPG`
   }
   
   return null
@@ -21,7 +21,7 @@ const CompactCard = ({
   isPlayable = false, 
   isAffordable = false, 
   onClick,
-  size = 'normal', // 'small', 'normal'
+  size = 'normal', // 'small', 'sm', 'normal'
   showDetails = false
 }) => {
   const [showHover, setShowHover] = useState(false)
@@ -31,12 +31,14 @@ const CompactCard = ({
   const imagePath = getCardImagePath(card, type)
   
   const sizeClasses = {
-    small: 'w-16 h-24',
-    normal: 'w-28 h-44'
+    small: 'w-14 h-20',   // Very small for played cards
+    sm: 'w-[100px] h-[150px]',  // Mobile size
+    normal: 'w-28 h-44'   // Desktop size
   }
 
   const handleClick = () => {
-    if (onClick && (isPlayable || isAffordable)) {
+    // Always call onClick - let parent handle validation and show toast if needed
+    if (onClick) {
       onClick()
     }
   }

@@ -8,7 +8,7 @@ import useOrientation from '../hooks/useOrientation'
 const FlyingCrystal = ({ type, startPos, endPos, onComplete }) => {
   return (
     <motion.div
-      className="absolute z-50"
+      className="fixed z-tooltip"
       initial={{
         x: startPos.x,
         y: startPos.y,
@@ -29,11 +29,11 @@ const FlyingCrystal = ({ type, startPos, endPos, onComplete }) => {
       onAnimationComplete={onComplete}
     >
       <img
-        src={`/static/images/stone_${type}.JPG`}
+        src={`/images/stone_${type}.JPG`}
         alt={type}
-        className="w-8 h-8"
+        className="w-6 h-6 sm:w-8 sm:h-8"
         onError={(e) => {
-          e.target.src = '/static/images/stone_yellow.JPG'
+          e.target.src = '/images/stone_yellow.JPG'
         }}
       />
     </motion.div>
@@ -42,10 +42,13 @@ const FlyingCrystal = ({ type, startPos, endPos, onComplete }) => {
 
 const ResourcePanel = () => {
   const { myPlayer, rest, collectAnimations } = useGameStore()
-  const { isMobile, isPortrait } = useOrientation()
+  const { isMobile, isTablet, isPortrait, isLandscape, isDesktop } = useOrientation()
   const [flyingCrystals, setFlyingCrystals] = useState([])
-  const [isCollapsed, setIsCollapsed] = useState(isMobile && isPortrait)
+  const [isExpanded, setIsExpanded] = useState(false)
   const previousResourcesRef = useRef(null)
+
+  // Debug log
+  console.log('[ResourcePanel] Device:', { isMobile, isExpanded })
 
   // Don't show resource panel until player data is loaded
   if (!myPlayer) {
@@ -54,7 +57,6 @@ const ResourcePanel = () => {
 
   // Detect resource changes and trigger collect animations
   useEffect(() => {
-    // Early return if player or resources don't exist
     if (!myPlayer || !myPlayer.resources) {
       if (myPlayer?.resources && typeof myPlayer.resources === 'object') {
         previousResourcesRef.current = { ...myPlayer.resources }
@@ -64,7 +66,6 @@ const ResourcePanel = () => {
       return
     }
 
-    // Ensure resources is an object
     if (typeof myPlayer.resources !== 'object' || myPlayer.resources === null) {
       previousResourcesRef.current = null
       return
@@ -72,47 +73,43 @@ const ResourcePanel = () => {
 
     const previousResources = previousResourcesRef.current
 
-    // Only compare if we have previous resources (must be an object)
     if (previousResources && typeof previousResources === 'object' && !Array.isArray(previousResources) && myPlayer.resources) {
       const newCrystals = []
-      
-      // Check each crystal type for increases
       const crystalTypes = ['yellow', 'green', 'blue', 'pink']
+      
       try {
         crystalTypes.forEach((type) => {
           const prev = previousResources[type] || 0
           const curr = myPlayer.resources[type] || 0
           const diff = curr - prev
         
-        if (diff > 0) {
-          // Create flying crystals for each gained crystal
-          for (let i = 0; i < diff; i++) {
-            const cardElement = document.querySelector('[data-card-source]')
-            const panelElement = document.querySelector('[data-resource-panel]')
-            
-            if (cardElement && panelElement) {
-              const cardRect = cardElement.getBoundingClientRect()
-              const panelRect = panelElement.getBoundingClientRect()
+          if (diff > 0) {
+            for (let i = 0; i < diff; i++) {
+              const cardElement = document.querySelector('[data-card-source]')
+              const panelElement = document.querySelector('[data-resource-panel]')
               
-              newCrystals.push({
-                id: `${type}-${Date.now()}-${i}`,
-                type,
-                startPos: {
-                  x: cardRect.left + cardRect.width / 2,
-                  y: cardRect.top + cardRect.height / 2
-                },
-                endPos: {
-                  x: panelRect.left + panelRect.width / 2,
-                  y: panelRect.top + panelRect.height / 2
-                }
-              })
+              if (cardElement && panelElement) {
+                const cardRect = cardElement.getBoundingClientRect()
+                const panelRect = panelElement.getBoundingClientRect()
+                
+                newCrystals.push({
+                  id: `${type}-${Date.now()}-${i}`,
+                  type,
+                  startPos: {
+                    x: cardRect.left + cardRect.width / 2,
+                    y: cardRect.top + cardRect.height / 2
+                  },
+                  endPos: {
+                    x: panelRect.left + panelRect.width / 2,
+                    y: panelRect.top + panelRect.height / 2
+                  }
+                })
+              }
             }
           }
-        }
         })
       } catch (error) {
         console.error('Error in resource comparison:', error)
-        // Reset previous resources on error
         previousResourcesRef.current = null
       }
       
@@ -121,7 +118,6 @@ const ResourcePanel = () => {
       }
     }
     
-    // Only update previous resources if current resources exist and is an object (not array, not null)
     if (myPlayer.resources && typeof myPlayer.resources === 'object' && !Array.isArray(myPlayer.resources) && myPlayer.resources !== null) {
       try {
         previousResourcesRef.current = { ...myPlayer.resources }
@@ -148,8 +144,6 @@ const ResourcePanel = () => {
       
       if (animations.length > 0) {
         setFlyingCrystals(prev => [...prev, ...animations])
-        
-        // Clear animations from store
         useGameStore.setState({ collectAnimations: [] })
       }
     }
@@ -158,6 +152,26 @@ const ResourcePanel = () => {
   const removeFlyingCrystal = (id) => {
     setFlyingCrystals(prev => prev.filter(c => c.id !== id))
   }
+
+  // Get position based on device
+  const getPosition = () => {
+    if (isMobile && isPortrait) {
+      return 'bottom-4 right-3'
+    }
+    if (isMobile && isLandscape) {
+      return 'bottom-3 right-3'
+    }
+    if (isTablet) {
+      return 'bottom-4 right-4'
+    }
+    return 'top-32 right-4'
+  }
+
+  // Total crystals count
+  const totalCrystals = myPlayer.resources 
+    ? (myPlayer.resources.yellow || 0) + (myPlayer.resources.green || 0) + 
+      (myPlayer.resources.blue || 0) + (myPlayer.resources.pink || 0)
+    : 0
 
   return (
     <>
@@ -174,120 +188,152 @@ const ResourcePanel = () => {
         ))}
       </AnimatePresence>
 
+      {/* Resource Panel */}
       <div 
-        className={`fixed z-30 ${
-          isMobile && isPortrait 
-            ? 'bottom-20 right-2' 
-            : 'bottom-24 sm:bottom-28 md:bottom-32 right-2 sm:right-4 md:right-6'
-        }`}
+        className={`fixed z-30 ${getPosition()}`}
         data-resource-panel
       >
-        {isCollapsed && isMobile ? (
-          /* Collapsed mobile view - compact button */
+        {/* Collapsed FAB - Mobile Only */}
+        {!isExpanded && isMobile && (
           <motion.button
-            onClick={() => setIsCollapsed(false)}
-            className="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold px-4 py-3 rounded-xl shadow-2xl border-2 border-white/20 touch-target"
+            onClick={() => setIsExpanded(true)}
+            className="bg-gradient-to-br from-purple-500 to-pink-500 text-white font-bold rounded-full shadow-2xl border-2 border-white/20 touch-target w-14 h-14 flex flex-col items-center justify-center"
             whileTap={{ scale: 0.95 }}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
           >
-            <div className="flex flex-col items-center gap-1">
-              <div className="text-2xl font-bold">{myPlayer.points || 0}</div>
-              <div className="text-[10px] opacity-90">Points</div>
-            </div>
+            <div className="text-lg font-bold leading-none">{myPlayer.points || 0}</div>
+            <div className="text-[8px] opacity-80">pts</div>
           </motion.button>
-        ) : (
-          /* Expanded view - full panel */
-          <motion.div
-            className={`bg-white/95 backdrop-blur-md rounded-xl p-3 sm:p-4 md:p-6 shadow-2xl border-2 border-gray-300 ${
-              isMobile && isPortrait ? 'w-[280px]' : 'w-[180px] sm:w-[200px] md:w-auto'
-            }`}
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
-            {/* Header with close button on mobile */}
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base sm:text-lg font-bold text-gray-800">Your Resources</h3>
-              {isMobile && (
-                <button
-                  onClick={() => setIsCollapsed(true)}
-                  className="text-gray-500 hover:text-gray-700 p-1"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-            
-            <div className="space-y-3 sm:space-y-4">
-              {/* Crystals */}
-              <div>
-                <label className="text-xs sm:text-sm text-gray-600 mb-2 block">Crystals</label>
-                <CrystalStack resources={myPlayer.resources} size={isMobile ? "sm" : "md"} />
-              </div>
-
-              {/* Points */}
-              <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-3 sm:p-4 text-center">
-                <div className="text-xs sm:text-sm text-white/80 mb-1">Victory Points</div>
-                <motion.div
-                  className="text-2xl sm:text-3xl font-bold text-white"
-                  key={myPlayer.points || 0}
-                  initial={{ scale: 0.8 }}
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{
-                    duration: 0.5,
-                    ease: "easeOut"
-                  }}
-                >
-                  {myPlayer.points || 0}
-                </motion.div>
-              </div>
-
-              {/* Point Cards Collected */}
-              <div>
-                <label className="text-xs sm:text-sm text-gray-600 mb-2 block">
-                  Point Cards: {myPlayer.pointCards?.length || 0}
-                </label>
-                <div className="flex gap-2 flex-wrap">
-                  {Array.isArray(myPlayer.pointCards) && myPlayer.pointCards.length > 0 ? (
-                    <>
-                      {myPlayer.pointCards.slice(0, 5).map((card, idx) => (
-                        <motion.div
-                          key={idx}
-                          className="w-10 h-14 sm:w-12 sm:h-16 bg-golem-yellow rounded border-2 border-yellow-600"
-                          title={card?.name || `Card ${idx + 1}`}
-                          initial={{ scale: 0, rotate: -180 }}
-                          animate={{ scale: 1, rotate: 0 }}
-                          transition={{
-                            delay: idx * 0.1,
-                            type: "spring",
-                            stiffness: 200
-                          }}
-                        />
-                      ))}
-                      {myPlayer.pointCards.length > 5 && (
-                        <div className="w-10 h-14 sm:w-12 sm:h-16 bg-gray-300 rounded border-2 border-gray-400 flex items-center justify-center text-xs font-bold">
-                          +{myPlayer.pointCards.length - 5}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-xs text-gray-400">No point cards yet</div>
-                  )}
-                </div>
-              </div>
-
-              {/* Rest Button */}
-              <motion.button
-                onClick={rest}
-                className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold py-3 px-4 sm:px-6 rounded-lg hover:from-orange-600 hover:to-red-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 touch-target"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Rest
-              </motion.button>
-            </div>
-          </motion.div>
         )}
+
+        {/* Expanded Panel */}
+        <AnimatePresence>
+          {(isExpanded || !isMobile) && (
+            <motion.div
+              className={`
+                bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border-2 border-gray-300
+                ${isMobile && isPortrait 
+                  ? 'w-[260px] p-3' 
+                  : isMobile && isLandscape
+                    ? 'w-[220px] p-2'
+                    : isTablet
+                      ? 'w-[200px] p-3'
+                      : 'w-[200px] p-4'
+                }
+              `}
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 20 }}
+              transition={{ type: "spring", damping: 20, stiffness: 300 }}
+            >
+              {/* Header with close button on mobile */}
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <h3 className={`font-bold text-gray-800 ${isMobile ? 'text-sm' : 'text-base'}`}>
+                  Your Resources
+                </h3>
+                {isMobile && (
+                  <button
+                    onClick={() => setIsExpanded(false)}
+                    className="text-gray-500 hover:text-gray-700 p-1 -mr-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              
+              <div className={`space-y-2 ${isMobile ? 'sm:space-y-3' : 'space-y-4'}`}>
+                {/* Crystals */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs text-gray-600">Crystals</label>
+                    <span className="text-xs text-gray-500">{totalCrystals}/10</span>
+                  </div>
+                  <CrystalStack 
+                    resources={myPlayer.resources} 
+                    size={isMobile ? "sm" : "md"} 
+                  />
+                </div>
+
+                {/* Points */}
+                <div className={`
+                  bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg text-center
+                  ${isMobile ? 'p-2' : 'p-3'}
+                `}>
+                  <div className="text-[10px] sm:text-xs text-white/80 mb-0.5">Victory Points</div>
+                  <motion.div
+                    className={`font-bold text-white ${isMobile ? 'text-xl' : 'text-2xl sm:text-3xl'}`}
+                    key={myPlayer.points || 0}
+                    initial={{ scale: 0.8 }}
+                    animate={{ scale: [1, 1.15, 1] }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                  >
+                    {myPlayer.points || 0}
+                  </motion.div>
+                </div>
+
+                {/* Point Cards Collected - Compact on mobile */}
+                <div>
+                  <label className="text-xs text-gray-600 mb-1 block">
+                    Point Cards: {myPlayer.pointCards?.length || 0}
+                  </label>
+                  <div className="flex gap-1 flex-wrap">
+                    {Array.isArray(myPlayer.pointCards) && myPlayer.pointCards.length > 0 ? (
+                      <>
+                        {myPlayer.pointCards.slice(0, isMobile ? 4 : 5).map((card, idx) => (
+                          <motion.div
+                            key={idx}
+                            className={`
+                              bg-golem-yellow rounded border border-yellow-600
+                              ${isMobile ? 'w-7 h-10' : 'w-10 h-14'}
+                            `}
+                            title={card?.name || `Card ${idx + 1}`}
+                            initial={{ scale: 0, rotate: -180 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            transition={{
+                              delay: idx * 0.08,
+                              type: "spring",
+                              stiffness: 200
+                            }}
+                          />
+                        ))}
+                        {myPlayer.pointCards.length > (isMobile ? 4 : 5) && (
+                          <div className={`
+                            bg-gray-300 rounded border border-gray-400 flex items-center justify-center text-[10px] font-bold
+                            ${isMobile ? 'w-7 h-10' : 'w-10 h-14'}
+                          `}>
+                            +{myPlayer.pointCards.length - (isMobile ? 4 : 5)}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-[10px] text-gray-400">No point cards yet</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Rest Button */}
+                <motion.button
+                  onClick={rest}
+                  className={`
+                    w-full bg-gradient-to-r from-orange-500 to-red-500 
+                    text-white font-bold rounded-lg 
+                    hover:from-orange-600 hover:to-red-600 
+                    transition-all shadow-lg hover:shadow-xl 
+                    transform hover:scale-105 touch-target
+                    ${isMobile ? 'py-2.5 px-4 text-sm' : 'py-3 px-6'}
+                  `}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  Rest
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </>
   )

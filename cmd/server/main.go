@@ -75,8 +75,11 @@ func main() {
 	staticDir := filepath.Join(".", "web", "static")
 	imagesDir := filepath.Join(staticDir, "images")
 	if _, err := os.Stat(imagesDir); err == nil {
+		// Serve at /images/ (legacy path)
 		http.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(imagesDir))))
-		log.Info("Serving images from ./web/static/images")
+		// Also serve at /static/images/ (for Vite proxy)
+		http.Handle("/static/images/", http.StripPrefix("/static/images/", http.FileServer(http.Dir(imagesDir))))
+		log.Info("Serving images from ./web/static/images at /images/ and /static/images/")
 	}
 
 	// Serve static files - try React build first, fallback to vanilla JS

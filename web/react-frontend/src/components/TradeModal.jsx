@@ -1,10 +1,20 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import CrystalStack from "./CrystalStack";
+import useOrientation from "../hooks/useOrientation";
 
 const TradeModal = ({ card, playerResources, onConfirm, onCancel }) => {
   const [multiplier, setMultiplier] = useState(1);
   const [error, setError] = useState("");
+  const { isMobile } = useOrientation();
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
 
   // Calculate required input and output based on multiplier
   const requiredInput = {
@@ -64,18 +74,17 @@ const TradeModal = ({ card, playerResources, onConfirm, onCancel }) => {
     }
 
     if (multiplier > maxMultiplier) {
-      setError(`You can only trade up to ${maxMultiplier} times`);
+      setError(`Max ${maxMultiplier} times`);
       return false;
     }
 
-    // Check if player has enough resources for the calculated required input
     const hasEnoughYellow = requiredInput.yellow <= (playerResources?.yellow || 0);
     const hasEnoughGreen = requiredInput.green <= (playerResources?.green || 0);
     const hasEnoughBlue = requiredInput.blue <= (playerResources?.blue || 0);
     const hasEnoughPink = requiredInput.pink <= (playerResources?.pink || 0);
     
     if (!hasEnoughYellow || !hasEnoughGreen || !hasEnoughBlue || !hasEnoughPink) {
-      setError("Not enough resources for this trade");
+      setError("Not enough resources");
       return false;
     }
 
@@ -86,13 +95,7 @@ const TradeModal = ({ card, playerResources, onConfirm, onCancel }) => {
   const handleConfirm = () => {
     if (validateTrade()) {
       if (typeof onConfirm === "function") onConfirm(multiplier);
-      setError(""); // Clear error on successful confirmation
     }
-  };
-
-  const handleCancel = () => {
-    setError(""); // Clear error when cancelling
-    if (typeof onCancel === "function") onCancel();
   };
 
   const adjustMultiplier = (delta) => {
@@ -105,12 +108,11 @@ const TradeModal = ({ card, playerResources, onConfirm, onCancel }) => {
     });
   };
 
-  // Keep multiplier within bounds when resources or card change
   useEffect(() => {
     const mm = calculateMaxMultiplier();
     if (mm === 0) {
       setMultiplier(0);
-      setError("Not enough resources for this trade");
+      setError("Not enough resources");
     } else {
       setMultiplier((prev) => {
         if (prev < 1) return 1;
@@ -119,172 +121,208 @@ const TradeModal = ({ card, playerResources, onConfirm, onCancel }) => {
       });
       setError("");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerResources, card]);
 
-  // Validate whenever multiplier changes (for UI error updates)
   useEffect(() => {
     validateTrade();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [multiplier]);
 
-  return (
+  const crystalTypes = [
+    { key: "yellow", label: "Yellow", image: "/images/stone_yellow.JPG" },
+    { key: "green", label: "Green", image: "/images/stone_green.JPG" },
+    { key: "blue", label: "Blue", image: "/images/stone_blue.JPG" },
+    { key: "pink", label: "Pink", image: "/images/stone_pink.JPG" },
+  ];
+
+  const canConfirm = !error && multiplier >= 1;
+
+  return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+      <motion.div
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onCancel}
+      >
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.9 }}
-          className="bg-white rounded-2xl shadow-2xl p-6 max-w-lg w-full mx-4"
+          className={`
+            bg-white rounded-xl sm:rounded-2xl shadow-2xl border-4 border-pink-500 w-full overflow-y-auto
+            max-h-[85vh]
+            ${isMobile ? 'max-w-[95vw] p-3 mx-2' : 'max-w-2xl p-6 mx-4'}
+          `}
+          initial={{ scale: 0.8, y: 50 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0.8, y: 50 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          onClick={(e) => e.stopPropagation()}
         >
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
-            Trade - {card?.name || "Trade Card"}
-          </h2>
-          <p className="text-sm text-gray-600 mb-6">
-            Select how many times you want to perform this trade
-          </p>
+          {/* Header */}
+          <div className={`text-center ${isMobile ? 'mb-3' : 'mb-6'}`}>
+            <h2 className={`font-bold text-pink-600 ${isMobile ? 'text-xl mb-1' : 'text-3xl mb-2'}`}>
+              🔄 Trade Crystals
+            </h2>
+            <p className={`text-gray-700 ${isMobile ? 'text-xs' : 'text-base'}`}>
+              {card?.name || "Trade Card"} - Select multiplier (max {maxMultiplier}x)
+            </p>
+          </div>
 
-          {/* Trade Info */}
-          <div className="mb-6 space-y-4">
-            {/* Input Section */}
-            <div className="bg-red-50 rounded-lg p-4 border-2 border-red-200">
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">You Pay (x{multiplier})</h3>
-              <div className="flex items-center gap-3">
-                <div title="Yellow crystals" className="flex items-center gap-1">
-                  <div className="w-6 h-6 rounded-full bg-yellow-400 border border-yellow-600 shadow-sm" />
-                  <div className="text-gray-800 font-semibold text-sm">{requiredInput.yellow || 0}</div>
-                </div>
-
-                <div title="Green crystals" className="flex items-center gap-1">
-                  <div className="w-6 h-6 rounded-full bg-green-500 border border-green-700 shadow-sm" />
-                  <div className="text-gray-800 font-semibold text-sm">{requiredInput.green || 0}</div>
-                </div>
-
-                <div title="Blue crystals" className="flex items-center gap-1">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 border border-blue-700 shadow-sm" />
-                  <div className="text-gray-800 font-semibold text-sm">{requiredInput.blue || 0}</div>
-                </div>
-
-                <div title="Pink crystals" className="flex items-center gap-1">
-                  <div className="w-6 h-6 rounded-full bg-pink-400 border border-pink-600 shadow-sm" />
-                  <div className="text-gray-800 font-semibold text-sm">{requiredInput.pink || 0}</div>
-                </div>
-              </div>
+          {/* Input Section - You Pay */}
+          <div className={`bg-red-50 rounded-lg ${isMobile ? 'p-2 mb-2' : 'p-4 mb-4'}`}>
+            <h3 className={`font-semibold text-gray-800 ${isMobile ? 'text-sm mb-2' : 'text-lg mb-3'}`}>
+              You Pay (x{multiplier})
+            </h3>
+            <div className={`grid gap-2 ${isMobile ? 'grid-cols-4' : 'grid-cols-4 gap-3'}`}>
+              {crystalTypes.map(({ key, label, image }) => {
+                const amount = requiredInput[key] || 0;
+                return (
+                  <div
+                    key={key}
+                    className={`
+                      rounded-lg border-2 text-center
+                      ${isMobile ? 'p-1.5' : 'p-2'}
+                      ${amount > 0 ? 'border-red-400 bg-red-100' : 'border-gray-200 bg-white'}
+                    `}
+                  >
+                    <img
+                      src={image}
+                      alt={label}
+                      className={`mx-auto rounded-full object-cover ${isMobile ? 'w-6 h-6' : 'w-10 h-10'}`}
+                      onError={(e) => { e.target.src = '/images/stone_yellow.JPG' }}
+                    />
+                    <div className={`font-bold text-gray-800 ${isMobile ? 'text-sm' : 'text-lg'}`}>
+                      {amount}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+          </div>
 
-            {/* Arrow */}
-            <div className="flex justify-center">
-              <motion.div
-                animate={{ y: [0, -5, 0] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-                className="text-3xl text-gray-400"
-              >
-                ↓
-              </motion.div>
-            </div>
+          {/* Arrow */}
+          <div className="flex justify-center my-2">
+            <motion.div
+              animate={{ y: [0, 5, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className={`text-pink-400 ${isMobile ? 'text-2xl' : 'text-4xl'}`}
+            >
+              ↓
+            </motion.div>
+          </div>
 
-            {/* Output Section */}
-            <div className="bg-green-50 rounded-lg p-4 border-2 border-green-200">
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">You Receive (x{multiplier})</h3>
-              <div className="flex items-center gap-3">
-                <div title="Yellow crystals" className="flex items-center gap-1">
-                  <div className="w-6 h-6 rounded-full bg-yellow-400 border border-yellow-600 shadow-sm" />
-                  <div className="text-gray-800 font-semibold text-sm">{outputResult.yellow || 0}</div>
-                </div>
-
-                <div title="Green crystals" className="flex items-center gap-1">
-                  <div className="w-6 h-6 rounded-full bg-green-500 border border-green-700 shadow-sm" />
-                  <div className="text-gray-800 font-semibold text-sm">{outputResult.green || 0}</div>
-                </div>
-
-                <div title="Blue crystals" className="flex items-center gap-1">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 border border-blue-700 shadow-sm" />
-                  <div className="text-gray-800 font-semibold text-sm">{outputResult.blue || 0}</div>
-                </div>
-
-                <div title="Pink crystals" className="flex items-center gap-1">
-                  <div className="w-6 h-6 rounded-full bg-pink-400 border border-pink-600 shadow-sm" />
-                  <div className="text-gray-800 font-semibold text-sm">{outputResult.pink || 0}</div>
-                </div>
-              </div>
+          {/* Output Section - You Receive */}
+          <div className={`bg-green-50 rounded-lg ${isMobile ? 'p-2 mb-3' : 'p-4 mb-4'}`}>
+            <h3 className={`font-semibold text-gray-800 ${isMobile ? 'text-sm mb-2' : 'text-lg mb-3'}`}>
+              You Receive (x{multiplier})
+            </h3>
+            <div className={`grid gap-2 ${isMobile ? 'grid-cols-4' : 'grid-cols-4 gap-3'}`}>
+              {crystalTypes.map(({ key, label, image }) => {
+                const amount = outputResult[key] || 0;
+                return (
+                  <div
+                    key={key}
+                    className={`
+                      rounded-lg border-2 text-center
+                      ${isMobile ? 'p-1.5' : 'p-2'}
+                      ${amount > 0 ? 'border-green-400 bg-green-100' : 'border-gray-200 bg-white'}
+                    `}
+                  >
+                    <img
+                      src={image}
+                      alt={label}
+                      className={`mx-auto rounded-full object-cover ${isMobile ? 'w-6 h-6' : 'w-10 h-10'}`}
+                      onError={(e) => { e.target.src = '/images/stone_yellow.JPG' }}
+                    />
+                    <div className={`font-bold text-gray-800 ${isMobile ? 'text-sm' : 'text-lg'}`}>
+                      {amount}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
           {/* Multiplier Selection */}
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
-              Multiplier (Max: {maxMultiplier})
-            </label>
-            <div className="flex items-center justify-center gap-4">
-              <button
+          <div className={`bg-gray-50 rounded-lg ${isMobile ? 'p-2 mb-3' : 'p-4 mb-4'}`}>
+            <h3 className={`font-semibold text-gray-800 text-center ${isMobile ? 'text-sm mb-2' : 'text-base mb-3'}`}>
+              Trade Multiplier
+            </h3>
+            <div className="flex items-center justify-center gap-3">
+              <motion.button
                 onClick={() => adjustMultiplier(-1)}
                 disabled={multiplier <= 1}
-                className="w-12 h-12 rounded-full bg-red-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-red-600 transition text-xl"
+                className={`
+                  rounded-full bg-red-500 text-white font-bold 
+                  disabled:bg-gray-300 disabled:cursor-not-allowed
+                  ${isMobile ? 'w-10 h-10 text-xl' : 'w-12 h-12 text-2xl'}
+                `}
+                whileTap={{ scale: 0.9 }}
               >
-                -
-              </button>
-              <div className="w-20 text-center">
-                <input
-                  type="number"
-                  min="1"
-                  max={maxMultiplier}
-                  value={multiplier}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value) || 1;
-                    if (val >= 1 && val <= maxMultiplier) {
-                      setMultiplier(val);
-                    }
-                  }}
-                  className="w-full text-3xl font-bold text-center text-gray-800 bg-transparent border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
-                />
+                −
+              </motion.button>
+              <div className={`
+                font-bold text-gray-800 text-center bg-white border-2 border-gray-300 rounded-lg
+                ${isMobile ? 'w-16 py-2 text-2xl' : 'w-20 py-2 text-3xl'}
+              `}>
+                {multiplier}
               </div>
-              <button
+              <motion.button
                 onClick={() => adjustMultiplier(1)}
                 disabled={multiplier >= maxMultiplier}
-                className="w-12 h-12 rounded-full bg-green-500 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-green-600 transition text-xl"
+                className={`
+                  rounded-full bg-green-500 text-white font-bold 
+                  disabled:bg-gray-300 disabled:cursor-not-allowed
+                  ${isMobile ? 'w-10 h-10 text-xl' : 'w-12 h-12 text-2xl'}
+                `}
+                whileTap={{ scale: 0.9 }}
               >
                 +
-              </button>
+              </motion.button>
             </div>
-            <div className="mt-2 text-center text-sm text-gray-600">
-              {multiplier === 1
-                ? "Single trade"
-                : `${multiplier}x trade`}
+            <div className={`text-center text-gray-600 ${isMobile ? 'text-xs mt-1' : 'text-sm mt-2'}`}>
+              {multiplier === 1 ? "Single trade" : `${multiplier}x trade`}
             </div>
           </div>
 
           {/* Error Message */}
           {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-red-100 border-2 border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4"
-            >
-              {error}
-            </motion.div>
+            <div className={`bg-red-50 border border-red-300 text-red-700 rounded-lg text-center ${isMobile ? 'px-2 py-1.5 mb-3 text-xs' : 'px-4 py-2 mb-4 text-sm'}`}>
+              ⚠️ {error}
+            </div>
           )}
 
           {/* Buttons */}
-          <div className="flex gap-4 justify-end">
-            <button
-              onClick={handleCancel}
-              className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-400 transition"
+          <div className={`flex ${isMobile ? 'gap-2' : 'gap-4'}`}>
+            <motion.button
+              onClick={onCancel}
+              className={`
+                flex-1 bg-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-400 transition-all
+                ${isMobile ? 'py-2 px-3 text-sm' : 'py-3 px-6'}
+              `}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.95 }}
             >
               Cancel
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               onClick={handleConfirm}
-              disabled={!!error || multiplier < 1}
-              className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg font-semibold disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed hover:from-blue-600 hover:to-purple-600 transition"
+              disabled={!canConfirm}
+              className={`
+                flex-1 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-bold 
+                rounded-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl
+                ${isMobile ? 'py-2 px-3 text-sm' : 'py-3 px-6'}
+              `}
+              whileHover={canConfirm ? { scale: 1.02 } : {}}
+              whileTap={canConfirm ? { scale: 0.95 } : {}}
             >
               Confirm Trade
-            </button>
+            </motion.button>
           </div>
         </motion.div>
-      </div>
-    </AnimatePresence>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
   );
 };
 
 export default TradeModal;
-
