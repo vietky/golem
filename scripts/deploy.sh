@@ -94,11 +94,8 @@ $DOCKER_COMPOSE_CMD down || warning "No existing containers to stop"
 
 # Build and start containers
 log "Building and starting containers..."
-if $DOCKER_COMPOSE_CMD up -d --build; then
-    log "✓ Containers started successfully"
-else
-    error "Failed to start containers"
-fi
+make be-release
+make fe-release
 
 # Wait a bit for containers to start
 sleep 5
