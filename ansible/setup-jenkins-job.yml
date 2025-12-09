@@ -142,13 +142,11 @@
       ignore_errors: yes
       
     - name: Ensure Jenkins job directory exists (fix for atomic write failure)
-      file:
-        path: "{{ jenkins_home }}/jobs/{{ jenkins_job_name }}"
-        state: directory
-        owner: "{{ jenkins_user | default('jenkins') }}"
-        group: "{{ jenkins_user | default('jenkins') }}"
-        mode: '0755'
+      shell: |
+        docker exec jenkins mkdir -p /var/jenkins_home/jobs/{{ jenkins_job_name }}
+        docker exec jenkins chown -R root:root /var/jenkins_home/jobs/{{ jenkins_job_name }}
       become: yes
+      ignore_errors: yes
       
     - name: Create Jenkins job using CLI
       shell: |
@@ -177,8 +175,9 @@
           copy:
             src: "{{ jenkins_job_config }}"
             dest: "{{ jenkins_home }}/jobs/{{ jenkins_job_name }}/config.xml"
-            owner: "{{ jenkins_user | default('jenkins') }}"
-            group: "{{ jenkins_user | default('jenkins') }}"
+            remote_src: yes
+            owner: root
+            group: root
             mode: '0644'
             
         - name: Reload Jenkins configuration
