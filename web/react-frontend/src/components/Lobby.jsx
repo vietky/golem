@@ -109,13 +109,6 @@ const Lobby = ({ onJoinGame }) => {
         backgroundAttachment: isMobile ? 'scroll' : 'fixed'
       }}
     >
-      {/* Debug indicator - remove in production */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="fixed top-2 left-2 z-50 bg-black/80 text-white text-[10px] px-2 py-1 rounded">
-          {isMobileLayout ? '📱 Mobile' : isCompactLayout ? '📱 Compact' : '🖥️ Desktop'}
-        </div>
-      )}
-
       <motion.div
         className={`
           backdrop-blur-md w-full overflow-hidden

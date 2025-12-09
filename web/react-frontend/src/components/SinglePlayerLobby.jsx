@@ -10,9 +10,6 @@ const SinglePlayerLobby = ({ onStartGame }) => {
   const [loading, setLoading] = useState(false)
   const { isMobile, isTablet, isPortrait } = useOrientation()
 
-  // Debug log
-  console.log('[SinglePlayerLobby] Device:', { isMobile, isTablet, isPortrait })
-
   const avatars = ['1', '2', '3', '4']
   const difficulties = [
     { value: 1, label: isMobile ? '1 AI (2P)' : '1 AI Opponent (2 Players)' },

@@ -30,8 +30,6 @@ const PlayerHand = () => {
   const [draggedCardIndex, setDraggedCardIndex] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Debug log
-  console.log('[PlayerHand] Device:', { isMobile, isPortrait, isExpanded });
   const [depositModal, setDepositModal] = useState({ show: false, card: null, index: null });
 
   // Pan handlers for swipe to dismiss (portrait mode)

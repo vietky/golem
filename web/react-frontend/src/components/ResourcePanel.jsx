@@ -47,9 +47,6 @@ const ResourcePanel = () => {
   const [isExpanded, setIsExpanded] = useState(false)
   const previousResourcesRef = useRef(null)
 
-  // Debug log
-  console.log('[ResourcePanel] Device:', { isMobile, isExpanded })
-
   // Don't show resource panel until player data is loaded
   if (!myPlayer) {
     return null
