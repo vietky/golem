@@ -18,4 +18,4 @@ RUN npm ci
 # Copy repository files (we run the Make target which expects repo structure)
 COPY ./web/react-frontend .
 
-RUN  npm run build
+RUN  npm run release

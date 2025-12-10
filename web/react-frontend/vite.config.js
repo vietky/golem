@@ -5,10 +5,14 @@ import react from '@vitejs/plugin-react'
 export default ({ mode }) => {
   // Load environment variables from .env files
   const env = loadEnv(mode, process.cwd(), '')
+  const isDev = mode === 'development'
+  console.log('Vite mode:', mode, isDev, env.VITE_API_HOST, env.VITE_NGINX_HOST)
+
   // Vite env: expected `VITE_API_HOST` like `http://backend-host:8080`
-  const apiHost = env.VITE_API_HOST || 'http://localhost:3001'
+  const localServer = 'http://localhost:3001'
+  const apiHost = env.VITE_API_HOST || localServer
   // Route static images to nginx. Configure via VITE_NGINX_HOST (e.g. http://nginx-host:80).
-  const nginxHost = env.VITE_NGINX_HOST || 'http://localhost:8080'
+  const nginxHost = env.VITE_NGINX_HOST || 'http://localhost:3001'
   const toWsTarget = (host) => {
     if (host.startsWith('https://')) return host.replace(/^https:\/\//, 'wss://')
     if (host.startsWith('http://')) return host.replace(/^http:\/\//, 'ws://')
@@ -16,11 +20,10 @@ export default ({ mode }) => {
   }
   // If SOURCE_MAPS is set to 'true', generate full maps and reference them.
   // Otherwise, for production default to 'hidden' maps (generated but not referenced).
-  const enableSourceMaps = env.SOURCE_MAPS === 'true'
-  const isDev = mode === 'development'
+  const enableSourceMaps = isDev || (env.SOURCE_MAPS === 'true')
 
-  const base = "./";
-
+  const base = isDev ? "./" : (env.VITE_API_HOST || "./");
+  console.log('mode:', mode, ' | apiHost:', apiHost, ' | nginxHost:', nginxHost, ' | enableSourceMaps:', enableSourceMaps, ' | base:', base)
   return defineConfig({
     base: base, 
     plugins: [react()],

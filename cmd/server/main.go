@@ -75,8 +75,10 @@ func main() {
 	staticDir := filepath.Join(".", "web", "static")
 	imagesDir := filepath.Join(staticDir, "images")
 	if _, err := os.Stat(imagesDir); err == nil {
-		mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(imagesDir))))
+		mux.Handle("/static/images/", http.StripPrefix("/static/images/", http.FileServer(http.Dir(imagesDir))))
 		log.Info("Serving images from ./web/static/images")
+	} else {
+		log.Error("Images directory does not exist or is inaccessible", zap.String("path", imagesDir), zap.Error(err))
 	}
 
 	// Serve static files - try React build first, fallback to vanilla JS
