@@ -22,7 +22,7 @@ export default ({ mode }) => {
   // Otherwise, for production default to 'hidden' maps (generated but not referenced).
   const enableSourceMaps = isDev || (env.SOURCE_MAPS === 'true')
 
-  const base = isDev ? "./" : (env.VITE_API_HOST || "./");
+  const base = "./"; // isDev ? "./" : (env.VITE_API_HOST || "./");
   console.log('mode:', mode, ' | apiHost:', apiHost, ' | nginxHost:', nginxHost, ' | enableSourceMaps:', enableSourceMaps, ' | base:', base)
   return defineConfig({
     base: base, 
