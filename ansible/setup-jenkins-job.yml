@@ -141,6 +141,13 @@
       until: jenkins_cli_download is succeeded
       ignore_errors: yes
       
+    - name: Ensure Jenkins job directory exists (fix for atomic write failure)
+      shell: |
+        docker exec jenkins mkdir -p /var/jenkins_home/jobs/{{ jenkins_job_name }}
+        docker exec jenkins chown -R root:root /var/jenkins_home/jobs/{{ jenkins_job_name }}
+      become: yes
+      ignore_errors: yes
+      
     - name: Create Jenkins job using CLI
       shell: |
         java -jar /tmp/jenkins-cli.jar -s {{ jenkins_url }} \
@@ -159,20 +166,18 @@
           -auth {{ jenkins_user }}:{{ jenkins_password }} \
           update-job {{ jenkins_job_name }} < {{ jenkins_job_config }}
       when: create_job_result.rc != 0
+      register: update_job_result
       ignore_errors: yes
       
-    - name: Alternative - Create job directory manually
+    - name: Fallback - Copy config directly and reload if CLI failed
       block:
-        - name: Create job directory
-          file:
-            path: "{{ jenkins_home }}/jobs/{{ jenkins_job_name }}"
-            state: directory
-            mode: '0755'
-            
-        - name: Copy job configuration
+        - name: Copy job configuration directly
           copy:
             src: "{{ jenkins_job_config }}"
             dest: "{{ jenkins_home }}/jobs/{{ jenkins_job_name }}/config.xml"
+            remote_src: yes
+            owner: root
+            group: root
             mode: '0644'
             
         - name: Reload Jenkins configuration
@@ -184,7 +189,7 @@
             force_basic_auth: yes
             status_code: [200, 302]
           ignore_errors: yes
-      when: jenkins_cli_download is failed
+      when: update_job_result is failed or (create_job_result is failed and 'already exists' not in create_job_result.stderr)
       
     - name: Get Jenkins crumb for API calls
       uri:

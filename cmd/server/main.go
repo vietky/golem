@@ -75,11 +75,10 @@ func main() {
 	staticDir := filepath.Join(".", "web", "static")
 	imagesDir := filepath.Join(staticDir, "images")
 	if _, err := os.Stat(imagesDir); err == nil {
-		// Serve at /images/ (legacy path)
-		http.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(imagesDir))))
-		// Also serve at /static/images/ (for Vite proxy)
-		http.Handle("/static/images/", http.StripPrefix("/static/images/", http.FileServer(http.Dir(imagesDir))))
-		log.Info("Serving images from ./web/static/images at /images/ and /static/images/")
+		mux.Handle("/static/images/", http.StripPrefix("/static/images/", http.FileServer(http.Dir(imagesDir))))
+		log.Info("Serving images from ./web/static/images")
+	} else {
+		log.Error("Images directory does not exist or is inaccessible", zap.String("path", imagesDir), zap.Error(err))
 	}
 
 	// Serve static files - try React build first, fallback to vanilla JS
@@ -89,14 +88,14 @@ func main() {
 	// Check if React build exists and has content (index.html exists), otherwise serve vanilla JS
 	if _, err := os.Stat(reactIndexPath); err == nil {
 		// Serve React build
-		http.Handle("/", http.FileServer(http.Dir("./web/react")))
+		mux.Handle("/", http.FileServer(http.Dir("./web/react")))
 		log.Info("Serving React frontend from ./web/react")
 	} else {
 		// Fallback to vanilla JS
 		if _, err := os.Stat(staticDir); os.IsNotExist(err) {
 			os.MkdirAll(staticDir, 0755)
 		}
-		http.Handle("/", http.FileServer(http.Dir("./web/static")))
+		mux.Handle("/", http.FileServer(http.Dir("./web/static")))
 		log.Info("Serving vanilla JS frontend from ./web/static")
 	}
 
