@@ -106,38 +106,17 @@ const Card = ({
     }
   }, [invalidAction, card?.name, controls])
 
-  // Click animation
+  // Click animation - disabled
   useEffect(() => {
     if (isClicked) {
-      controls.start({
-        scale: [1, 0.95, 1],
-        rotateY: [0, 180, 360],
-        transition: { duration: 0.3, ease: "easeInOut" }
-      })
-      setTimeout(() => setIsClicked(false), 300)
+      setTimeout(() => setIsClicked(false), 100)
     }
-  }, [isClicked, controls])
+  }, [isClicked])
 
-  // Playing animation (pulse effect)
+  // Playing animation - disabled for simplicity
   useEffect(() => {
-    if (isPlaying) {
-      controls.start({
-        scale: [1, 1.03, 1],
-        boxShadow: [
-          "0 0 0px rgba(40, 167, 69, 0)",
-          "0 0 20px rgba(40, 167, 69, 0.8)",
-          "0 0 0px rgba(40, 167, 69, 0)"
-        ],
-        transition: {
-          duration: 1,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }
-      })
-    } else {
-      controls.start({ scale: 1, boxShadow: "0 0 0px rgba(40, 167, 69, 0)" })
-    }
-  }, [isPlaying, controls])
+    // No animation needed
+  }, [isPlaying])
 
   const handleClick = () => {
     if (onClick && cost && !isAffordable) {
@@ -468,35 +447,7 @@ const Card = ({
         />
       )}
 
-      {/* Click Ripple Effect */}
-      {isClicked && (
-        <motion.div
-          className="absolute inset-0 rounded-xl pointer-events-none"
-          initial={{ 
-            background: "radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 70%)",
-            scale: 0,
-            opacity: 1
-          }}
-          animate={{ scale: 2, opacity: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-        />
-      )}
 
-      {/* Playable Pulse Effect */}
-      {isPlayable && (
-        <motion.div
-          className="absolute inset-0 rounded-xl border-2 border-green-400 pointer-events-none"
-          animate={{
-            opacity: [0.5, 1, 0.5],
-            scale: [1, 1.02, 1]
-          }}
-          transition={{
-            duration: 1.5,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-      )}
     </motion.div>
   )
 }

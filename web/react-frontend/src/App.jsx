@@ -6,6 +6,7 @@ import PlayerHand from './components/PlayerHand'
 import ResourcePanel from './components/ResourcePanel'
 import ActionLog from './components/ActionLog'
 import DiscardModal from './components/DiscardModal'
+import AcquiredCardOverlay from './components/AcquiredCardOverlay'
 import useGameStore from './store/gameStore'
 import useOrientation from './hooks/useOrientation'
 import { MobileLayoutProvider } from './contexts/MobileLayoutContext'
@@ -115,6 +116,9 @@ function App() {
 
           {/* Discard Modal (when crystals exceed max) */}
           <DiscardModal />
+
+          {/* Overlay when other players acquire or play cards */}
+          <AcquiredCardOverlay />
 
           {/* Game Over Modal */}
           {gameState?.gameOver && (

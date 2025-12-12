@@ -11,6 +11,7 @@ const useGameStore = create((set, get) => ({
 
   // Game state
   gameState: null,
+  previousGameState: null, // Track previous state to detect opponent actions
   currentPlayer: null,
   myPlayer: null,
   opponents: [],
@@ -25,6 +26,8 @@ const useGameStore = create((set, get) => ({
   upgradeModalCardIndex: null, // Card index for upgrade modal
   tradeModalCard: null, // Card for which trade modal is shown
   tradeModalCardIndex: null, // Card index for trade modal
+  acquiringCardIds: [], // Array of card IDs that are being acquired (for animation)
+  acquiredCardOverlay: null, // { card, type: 'market'|'golem', playerName } for overlay animation
 
   // Actions
   connectWebSocket: (sessionId, playerName, playerAvatar) => {
@@ -57,6 +60,9 @@ const useGameStore = create((set, get) => ({
         const myPlayer = message.players.find((p) => p.id === get().playerId);
         const opponents = message.players.filter((p) => p.id !== get().playerId);
         const currentPlayer = message.players.find((p) => p.id === message.currentPlayer);
+        const previousState = get().gameState;
+        const previousOpponents = get().opponents || [];
+        const previousMyPlayer = get().myPlayer;
 
         // Debug: log deposits on market cards
         if (message.market?.actionCards) {
@@ -85,8 +91,117 @@ const useGameStore = create((set, get) => ({
           });
         }
 
+        // Detect when cards are acquired (by anyone) to show animation and overlay
+        // Set acquiringCardIds BEFORE updating state so animation can run
+        if (previousState && previousState.market) {
+          const prevActionCards = previousState.market.actionCards || []
+          const currentActionCards = message.market?.actionCards || []
+          
+          // Find cards that were removed (acquired)
+          // Create maps of card identifiers to card data
+          const prevActionCardMap = new Map(
+            prevActionCards.map((card, idx) => [card.id || card.name || `action-${idx}`, card])
+          )
+          const currentActionCardIds = new Set(
+            currentActionCards.map((card, idx) => card.id || card.name || `action-${idx}`)
+          )
+          
+          // Find which player acquired the card by comparing hand sizes
+          let acquiringPlayer = null
+          if (previousOpponents && opponents) {
+            // Check each player's hand to see who gained a card
+            const allPrevPlayers = previousMyPlayer ? [...previousOpponents, previousMyPlayer] : previousOpponents
+            const allCurrentPlayers = myPlayer ? [...opponents, myPlayer] : opponents
+            
+            for (const currentP of allCurrentPlayers) {
+              const prevP = allPrevPlayers.find(p => p.id === currentP.id)
+              if (prevP && currentP.hand?.length > prevP.hand?.length) {
+                acquiringPlayer = currentP
+                break
+              }
+            }
+          }
+          
+          // Find cards that exist in previous but not in current
+          prevActionCardMap.forEach((card, cardId) => {
+            if (!currentActionCardIds.has(cardId)) {
+              // Card was acquired - trigger animation BEFORE state update
+              get().addAcquiringCard(cardId)
+              // Only show overlay if someone else acquired the card (not the current player)
+              const currentPlayerId = get().playerId
+              if (acquiringPlayer && acquiringPlayer.id !== currentPlayerId) {
+                const playerName = acquiringPlayer?.name || 'A player'
+                get().showAcquiredCard(card, 'market', playerName)
+              }
+            }
+          })
+          
+          const prevPointCards = previousState.market.pointCards || []
+          const currentPointCards = message.market?.pointCards || []
+          
+          // Find point cards that were removed (claimed)
+          const prevPointCardMap = new Map(
+            prevPointCards.map((card, idx) => [card.id || card.name || `point-${idx}`, card])
+          )
+          const currentPointCardIds = new Set(
+            currentPointCards.map((card, idx) => card.id || card.name || `point-${idx}`)
+          )
+          
+          // Find which player claimed the point card by comparing point card counts
+          let claimingPlayer = null
+          if (previousOpponents && opponents) {
+            const allPrevPlayers = previousMyPlayer ? [...previousOpponents, previousMyPlayer] : previousOpponents
+            const allCurrentPlayers = myPlayer ? [...opponents, myPlayer] : opponents
+            
+            for (const currentP of allCurrentPlayers) {
+              const prevP = allPrevPlayers.find(p => p.id === currentP.id)
+              if (prevP && (currentP.pointCards?.length || 0) > (prevP.pointCards?.length || 0)) {
+                claimingPlayer = currentP
+                break
+              }
+            }
+          }
+          
+          // Find cards that exist in previous but not in current
+          prevPointCardMap.forEach((card, cardId) => {
+            if (!currentPointCardIds.has(cardId)) {
+              // Point card was claimed - trigger animation BEFORE state update
+              get().addAcquiringCard(cardId)
+              // Only show overlay if someone else claimed the card (not the current player)
+              const currentPlayerId = get().playerId
+              if (claimingPlayer && claimingPlayer.id !== currentPlayerId) {
+                const playerName = claimingPlayer?.name || 'A player'
+                get().showAcquiredCard(card, 'golem', playerName)
+              }
+            }
+          })
+        }
+
+        // Detect when opponents play cards
+        const currentPlayerId = get().playerId
+        if (previousOpponents && previousOpponents.length > 0 && opponents) {
+          for (const currentOpponent of opponents) {
+            const prevOpponent = previousOpponents.find(p => p.id === currentOpponent.id)
+            if (prevOpponent) {
+              const prevPlayedCount = prevOpponent.playedCards?.length || 0
+              const currentPlayedCount = currentOpponent.playedCards?.length || 0
+              
+              // If opponent played a new card
+              if (currentPlayedCount > prevPlayedCount && currentOpponent.id !== currentPlayerId) {
+                // Get the newly played card (last card in playedCards)
+                const playedCard = currentOpponent.playedCards[currentPlayedCount - 1]
+                if (playedCard) {
+                  get().showAcquiredCard(playedCard, 'played', currentOpponent.name)
+                }
+              }
+            }
+          }
+        }
+
+        // Update state immediately - we'll keep acquiring cards visible in render
         set({
           gameState: message,
+          previousGameState: previousState,
           myPlayer,
           opponents,
           currentPlayer,
@@ -186,7 +301,7 @@ const useGameStore = create((set, get) => ({
   },
 
   discardCrystals: (discard) => {
-    const { ws } = get()
+    const { ws, myPlayer } = get()
     if (!ws || ws.readyState !== WebSocket.OPEN) return
 
     const message = {
@@ -202,6 +317,23 @@ const useGameStore = create((set, get) => ({
 
     ws.send(JSON.stringify(message))
     get().addToLog(`Discarding ${Object.values(discard).reduce((a, b) => a + b, 0)} crystals`)
+    
+    // Optimistically update crystals and reset pendingDiscard to close modal immediately
+    if (myPlayer) {
+      const newCaravan = {
+        yellow: Math.max(0, (myPlayer.caravan?.yellow || 0) - (discard.yellow || 0)),
+        green: Math.max(0, (myPlayer.caravan?.green || 0) - (discard.green || 0)),
+        blue: Math.max(0, (myPlayer.caravan?.blue || 0) - (discard.blue || 0)),
+        pink: Math.max(0, (myPlayer.caravan?.pink || 0) - (discard.pink || 0))
+      }
+      set({ 
+        myPlayer: { 
+          ...myPlayer, 
+          pendingDiscard: 0,
+          caravan: newCaravan
+        } 
+      })
+    }
   },
 
   depositCrystals: (cardIndex, deposits, targetPosition) => {
@@ -266,6 +398,34 @@ const useGameStore = create((set, get) => ({
     set({
       collectAnimations: [...animations, { type, from: fromPos, to: toPos }],
     });
+  },
+
+  // Card acquire animation
+  addAcquiringCard: (cardId) => {
+    const acquiring = get().acquiringCardIds || []
+    if (!acquiring.includes(cardId)) {
+      set({ acquiringCardIds: [...acquiring, cardId] })
+      
+      // Remove after animation completes (0.8s)
+      setTimeout(() => {
+        const current = get().acquiringCardIds || []
+        set({ acquiringCardIds: current.filter(id => id !== cardId) })
+      }, 800)
+    }
+  },
+
+  // Show acquired card overlay
+  showAcquiredCard: (card, type, playerName) => {
+    set({ acquiredCardOverlay: { card, type, playerName } })
+    // Auto-dismiss after 2 seconds
+    setTimeout(() => {
+      set({ acquiredCardOverlay: null })
+    }, 2000)
+  },
+
+  // Clear acquired card overlay
+  clearAcquiredCardOverlay: () => {
+    set({ acquiredCardOverlay: null })
   },
 }));
 

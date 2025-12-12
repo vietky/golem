@@ -21,8 +21,10 @@ const CompactCard = ({
   isPlayable = false, 
   isAffordable = false, 
   onClick,
-  size = 'normal', // 'small', 'sm', 'normal'
-  showDetails = false
+  size = 'normal', // 'small', 'sm', 'normal', 'flexible'
+  showDetails = false,
+  position = null, // Position number to show on card
+  badge = null // Badge element to show (e.g. deposit count, coin)
 }) => {
   const [showHover, setShowHover] = useState(false)
   
@@ -33,7 +35,10 @@ const CompactCard = ({
   const sizeClasses = {
     small: 'w-14 h-20',   // Very small for played cards
     sm: 'w-[100px] h-[150px]',  // Mobile size
-    normal: 'w-28 h-44'   // Desktop size
+    normal: 'w-28 h-44',   // Desktop size (112px x 176px)
+    large: 'w-36 h-56',   // Larger desktop size (144px x 224px)
+    flexible: 'w-full h-full',  // Flexible size - scale to fill container
+    responsive: 'w-full max-w-[144px] aspect-[2/3]'  // Responsive - scales with container, max 144px, maintains aspect ratio
   }
 
   const handleClick = () => {
@@ -58,24 +63,59 @@ const CompactCard = ({
   // Get upgrade level for upgrade cards
   const upgradeLevel = card.actionType === 1 ? (card.upgradeLevel || 1) : null
 
+  // Calculate card size for flexible mode
+  let flexibleStyle = {}
+  if (size === 'flexible') {
+    flexibleStyle = {
+      aspectRatio: '2/3',
+      maxWidth: '100%',
+      maxHeight: '100%'
+    }
+  } else if (size === 'responsive') {
+    flexibleStyle = {
+      aspectRatio: '2/3'
+    }
+  }
+
   return (
     <div
       onClick={handleClick}
       onMouseEnter={() => setShowHover(true)}
       onMouseLeave={() => setShowHover(false)}
-      className={`card-base ${sizeClasses[size]} relative overflow-hidden cursor-pointer transition-all`} // use card-base for shared styling
+      className={`
+        ${sizeClasses[size]} relative overflow-hidden cursor-pointer
+        rounded-lg shadow-md
+        transition-all duration-200
+        ${canInteract ? 'hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]' : 'opacity-80'}
+      `}
       style={{
         backgroundImage: imagePath ? `url(${encodeURI(imagePath)})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        backgroundSize: 'cover',
+        backgroundSize: size === 'flexible' ? 'contain' : 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
-        backgroundColor: '#222' // fallback background to ensure visibility
+        backgroundColor: '#222',
+        ...flexibleStyle
       }}
     >
       {/* Provide a real image element with alt text for accessibility and to satisfy "alt" requirement */}
       {imagePath && (
         <img src={imagePath} alt={`card #${card.id || index}`} className="sr-only" />
       )}
+      
+      {/* Position Badge */}
+      {position !== null && (
+        <div className="absolute top-1 left-1 z-20 bg-orange-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow">
+          {position}
+        </div>
+      )}
+      
+      {/* Custom Badge (deposit, coin, etc) */}
+      {badge && (
+        <div className="absolute top-1 right-1 z-20">
+          {badge}
+        </div>
+      )}
+      
       {/* Upgrade Icon - Center */}
       {upgradeLevel !== null && (
         <div className="card-upgrade z-10">
@@ -91,7 +131,7 @@ const CompactCard = ({
 
       {/* Hover Details - Enhanced Tooltip */}
       {showHover && (
-        <div className="absolute -top-32 left-1/2 transform -translate-x-1/2 bg-black/95 backdrop-blur-md text-white p-3 rounded-lg text-xs whitespace-nowrap z-50 border border-white/30 shadow-xl min-w-[200px]">
+        <div className="absolute -top-36 left-1/2 transform -translate-x-1/2 bg-slate-900/95 backdrop-blur-xl text-white p-4 rounded-2xl text-xs whitespace-nowrap z-50 border border-white/20 shadow-2xl min-w-[220px]">
           <div className="font-bold mb-2">{card.name}</div>
           <div className="text-gray-400 text-[10px] mb-2">ID: #{card.id || index}</div>
           

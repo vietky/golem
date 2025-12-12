@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import { motion } from 'framer-motion'
 import Card from './Card'
 import DepositModal from './DepositModal'
 import useGameStore from '../store/gameStore'
@@ -129,24 +128,11 @@ const MarketArea = () => {
               const isDragOver = dragOverIndex === `action-${index}`;
 
               return (
-                <motion.div
+                <div
                   key={`action-${index}`}
-                  initial={{ opacity: 0, scale: 0.8, rotateY: -90 }}
-                  animate={{
-                    opacity: 1,
-                    scale: isDragOver ? 1.05 : 1,
-                    rotateY: 0,
-                  }}
                   style={{
                     border: isDragOver ? "2px solid #10b981" : "2px solid transparent",
                   }}
-                  transition={{
-                    delay: index * 0.05,
-                    type: "spring",
-                    stiffness: 200,
-                    damping: 15,
-                  }}
-                  whileHover={{ y: -4 }}
                   onDragOver={() => handleDragOver(index, "action")}
                   onDragLeave={handleDragLeave}
                   className={`
@@ -177,7 +163,7 @@ const MarketArea = () => {
                       }
                     }}
                   />
-                </motion.div>
+                </div>
               );
             })}
           </div>
@@ -212,24 +198,11 @@ const MarketArea = () => {
               const isDragOver = dragOverIndex === `point-${index}`;
 
               return (
-                <motion.div
+                <div
                   key={`point-${index}`}
-                  initial={{ opacity: 0, scale: 0.8, rotateY: -90 }}
-                  animate={{
-                    opacity: 1,
-                    scale: isDragOver ? 1.05 : 1,
-                    rotateY: 0,
-                  }}
                   style={{
                     border: isDragOver ? "2px solid #10b981" : "2px solid transparent",
                   }}
-                  transition={{
-                    delay: index * 0.05,
-                    type: "spring",
-                    stiffness: 200,
-                    damping: 15,
-                  }}
-                  whileHover={{ y: -4 }}
                   onDragOver={() => handleDragOver(index, "point")}
                   onDragLeave={handleDragLeave}
                   className={`
@@ -245,7 +218,7 @@ const MarketArea = () => {
                     isPlaying={canClaim && myPlayer?.id === currentPlayer?.id}
                     onClick={() => canClaim && claimPointCard(index)}
                   />
-                </motion.div>
+                </div>
               );
             })}
           </div>

@@ -16,8 +16,8 @@ const CollapsibleInfo = ({ sessionId }) => {
     <div className={`
       fixed z-50
       ${isMobile 
-        ? 'bottom-2 right-2' 
-        : 'bottom-4 right-4'
+        ? 'top-2 right-2' 
+        : 'top-4 right-4'
       }
     `}>
       {/* Collapsed State - Icon Button */}
@@ -47,7 +47,7 @@ const CollapsibleInfo = ({ sessionId }) => {
         </button>
       )}
 
-      {/* Expanded State - Show Room ID and Action Log */}
+      {/* Expanded State - Show Room ID and Action Log (drops down) */}
       {isExpanded && (
         <div className={`
           bg-black/90 backdrop-blur-md rounded-lg border border-white/20 shadow-2xl overflow-hidden

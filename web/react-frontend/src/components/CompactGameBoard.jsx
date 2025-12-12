@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useRef } from 'react'
 import useGameStore from '../store/gameStore'
 import useOrientation from '../hooks/useOrientation'
 import CompactCard from './CompactCard'
@@ -7,32 +7,17 @@ import { showToast } from '../utils/toast'
 
 const CompactGameBoard = () => {
   const { gameState, myPlayer, currentPlayer, acquireCard, claimPointCard } = useGameStore()
-  const { isMobile, isTablet, isPortrait, isLandscape } = useOrientation()
+  const { isMobile, isPortrait } = useOrientation()
   const [depositModal, setDepositModal] = useState({ show: false, card: null, index: null })
-  const [turnTimeRemaining, setTurnTimeRemaining] = useState(60)
-  
+  const containerRef = useRef(null)
 
   if (!gameState?.market) return null
 
-  const { actionCards, pointCards, coins } = gameState.market
+  // Get cards directly from current state
+  const actionCards = gameState.market.actionCards || []
+  const pointCards = gameState.market.pointCards || []
+  const { coins } = gameState.market
   const isMyTurn = currentPlayer?.id === myPlayer?.id
-  const turnTimeLimit = 60 // seconds
-
-  // Timer effect - reset when current player changes
-  useEffect(() => {
-    setTurnTimeRemaining(turnTimeLimit)
-    
-    const timer = setInterval(() => {
-      setTurnTimeRemaining((prev) => {
-        if (prev <= 0) return 0
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [gameState?.currentPlayer])
-
-  const turnProgress = Math.max(0, Math.min(100, (turnTimeRemaining / turnTimeLimit) * 100))
 
   const canAfford = (cost) => {
     if (!cost || !myPlayer?.caravan) return false
@@ -54,7 +39,7 @@ const CompactGameBoard = () => {
     )
   }
 
-  const handleAcquireCard = (index) => {
+  const handleAcquireCard = (index, event) => {
     if (!isMyTurn) {
       showToast("Not your turn!", 'error')
       return
@@ -112,50 +97,37 @@ const CompactGameBoard = () => {
   }
 
   return (
-    <div className={`
-      w-full mx-auto
-      ${isMobile ? 'px-1 py-2 space-y-2' : 'px-4 py-6 space-y-4 max-w-6xl'}
-    `}>
-      {/* Turn Info and Timer - Compact and Centered */}
-      <div className="flex justify-center">
-        <div className={`
-          bg-black/40 backdrop-blur-md rounded-full border border-white/30 shadow-lg 
-          inline-flex items-center
-          ${isMobile ? 'px-3 py-1.5 gap-2' : 'px-6 py-2 gap-4'}
-        `}>
-          <div className={`text-white font-semibold ${isMobile ? 'text-xs' : 'text-sm'}`}>
-            {isMobile ? '' : 'Turn '}{gameState.turnNumber || 1} - <span className="text-yellow-300">{currentPlayer?.name || 'Waiting...'}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-white/90 text-sm font-semibold">⏱️ {turnTimeRemaining}s</span>
-            <div className="w-12 bg-white/20 rounded-full h-1.5 overflow-hidden">
-              <div 
-                className="bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 h-full transition-all duration-1000"
-                style={{ width: `${turnProgress}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div 
+      ref={containerRef}
+      className={`
+        w-full mx-auto flex flex-col h-full
+        ${isMobile && isPortrait 
+          ? 'px-2 py-2 gap-2' 
+          : isMobile 
+            ? 'flex-1 px-2 py-3 gap-3' 
+            : 'flex-1 px-4 py-4 gap-4 max-w-6xl'
+        }
+      `}
+    >
       {/* Action Cards Market */}
       <div className={`
-        bg-black/40 backdrop-blur-md rounded-xl border border-white/30 shadow-2xl
-        ${isMobile ? 'p-2 pt-3' : 'p-5'}
+        bg-black/40 rounded-xl flex flex-col flex-1 min-h-0 overflow-hidden
+        ${isMobile && isPortrait ? 'p-2' : isMobile ? 'p-3' : 'p-4'}
       `}>
-        <div className={`flex items-center justify-between ${isMobile ? 'mb-2' : 'mb-3'}`}>
-          <h3 className={`text-white font-bold ${isMobile ? 'text-xs' : 'text-sm'}`}>
-            {isMobile ? 'Action Cards' : 'Merchant Cards'}
+        <div className={`flex items-center justify-between ${isMobile && isPortrait ? 'mb-1' : 'mb-2'}`}>
+          <h3 className={`text-white/60 font-medium ${isMobile && isPortrait ? 'text-[10px]' : isMobile ? 'text-xs' : 'text-sm'}`}>
+            Market
           </h3>
-          <span className={`text-white/60 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
+          <span className={`text-white/40 ${isMobile && isPortrait ? 'text-[9px]' : 'text-[10px]'}`}>
             {gameState.market.actionDeck || 0} left
           </span>
         </div>
         
         <div className={`
+          grid flex-1 min-h-0
           ${isMobile && isPortrait 
-            ? 'flex gap-3 overflow-x-auto scrollbar-none pb-2 px-1' 
-            : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3'
+            ? 'grid-cols-3 grid-rows-2 gap-1' 
+            : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2'
           }
         `}>
           {actionCards.map((cardData, index) => {
@@ -167,41 +139,23 @@ const CompactGameBoard = () => {
             )
 
             return (
-              <div key={`action-${index}`} className={`
-                relative
-                ${isMobile && isPortrait ? 'flex-shrink-0 w-[100px]' : ''}
-              `}>
-                {/* Position Badge */}
-                <div className={`
-                  absolute bg-purple-600 text-white rounded-full flex items-center justify-center 
-                  font-bold z-20 shadow-lg border border-white
-                  ${isMobile ? 'top-0 left-0 w-4 h-4 text-[8px]' : '-top-2 -left-2 w-5 h-5 text-[10px]'}
-                `}>
-                  {index + 1}
-                </div>
-                
-                {/* Deposit Count Badge */}
-                {depositCount > 0 && (
-                  <div className={`
-                    absolute bg-green-500 text-white rounded-full flex items-center justify-center 
-                    font-bold z-20 shadow-lg border border-white
-                    ${isMobile ? 'top-0 right-0 w-4 h-4 text-[8px]' : '-top-2 -right-2 w-5 h-5 text-[10px]'}
-                  `}>
+              <CompactCard
+                key={`action-${index}`}
+                card={cardData}
+                type="action"
+                index={index}
+                cost={cost}
+                isAffordable={isAffordable}
+                onClick={(e) => handleAcquireCard(index, e)}
+                size="flexible"
+                showDetails={!isMobile}
+                position={index + 1}
+                badge={depositCount > 0 ? (
+                  <div className="bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow">
                     +{depositCount}
                   </div>
-                )}
-                
-                <CompactCard
-                  card={cardData}
-                  type="action"
-                  index={index}
-                  cost={cost}
-                  isAffordable={isAffordable}
-                  onClick={() => handleAcquireCard(index)}
-                  size={isMobile ? 'sm' : 'normal'}
-                  showDetails={!isMobile}
-                />
-              </div>
+                ) : null}
+              />
             )
           })}
         </div>
@@ -209,20 +163,23 @@ const CompactGameBoard = () => {
 
       {/* Point Cards Market */}
       <div className={`
-        bg-black/40 backdrop-blur-md rounded-xl border border-white/30 shadow-2xl
-        ${isMobile ? 'p-2 pt-3' : 'p-5'}
+        bg-black/40 rounded-xl flex flex-col flex-1 min-h-0 overflow-hidden
+        ${isMobile && isPortrait ? 'p-2' : isMobile ? 'p-3' : 'p-4'}
       `}>
-        <div className={`flex items-center justify-between ${isMobile ? 'mb-2' : 'mb-3'}`}>
-          <h3 className={`text-white font-bold ${isMobile ? 'text-xs' : 'text-sm'}`}>Point Cards</h3>
-          <span className={`text-white/60 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
+        <div className={`flex items-center justify-between ${isMobile && isPortrait ? 'mb-1' : 'mb-2'}`}>
+          <h3 className={`text-white/60 font-medium ${isMobile && isPortrait ? 'text-[10px]' : isMobile ? 'text-xs' : 'text-sm'}`}>
+            Golems
+          </h3>
+          <span className={`text-white/40 ${isMobile && isPortrait ? 'text-[9px]' : 'text-[10px]'}`}>
             {gameState.market.pointDeck || 0} left
           </span>
         </div>
         
         <div className={`
+          grid flex-1 min-h-0
           ${isMobile && isPortrait 
-            ? 'flex gap-3 overflow-x-auto scrollbar-none pb-2 px-1' 
-            : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3'
+            ? 'grid-cols-3 grid-rows-2 gap-1' 
+            : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2'
           }
         `}>
           {pointCards.map((cardData, index) => {
@@ -230,40 +187,22 @@ const CompactGameBoard = () => {
             const coinBonus = index <= 1 && coins && coins[index] && coins[index].amount > 0
 
             return (
-              <div key={`point-${index}`} className={`
-                relative
-                ${isMobile && isPortrait ? 'flex-shrink-0 w-[100px]' : ''}
-              `}>
-                {/* Position Badge */}
-                <div className={`
-                  absolute bg-yellow-600 text-white rounded-full flex items-center justify-center 
-                  font-bold z-20 shadow-lg border border-white
-                  ${isMobile ? 'top-0 left-0 w-4 h-4 text-[8px]' : '-top-2 -left-2 w-5 h-5 text-[10px]'}
-                `}>
-                  {index + 1}
-                </div>
-                
-                {/* Coin Bonus Badge */}
-                {coinBonus && (
-                  <div className={`
-                    absolute bg-amber-500 text-white rounded-full flex items-center justify-center 
-                    z-20 shadow-lg border border-white
-                    ${isMobile ? 'top-0 right-0 w-4 h-4 text-[10px]' : '-top-2 -right-2 w-5 h-5 text-xs'}
-                  `} title={index === 0 ? "Copper Token (3 pts)" : "Silver Token (1 pt)"}>
+              <CompactCard
+                key={`point-${index}`}
+                card={cardData}
+                type="point"
+                index={index}
+                isAffordable={canClaim}
+                onClick={() => handleClaimPointCard(index)}
+                size="flexible"
+                showDetails={!isMobile}
+                position={index + 1}
+                badge={coinBonus ? (
+                  <div className="text-base drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" title={index === 0 ? "Copper Token (3 pts)" : "Silver Token (1 pt)"}>
                     🪙
                   </div>
-                )}
-                
-                <CompactCard
-                  card={cardData}
-                  type="point"
-                  index={index}
-                  isAffordable={canClaim}
-                  onClick={() => handleClaimPointCard(index)}
-                  size={isMobile ? 'sm' : 'normal'}
-                  showDetails={!isMobile}
-                />
-              </div>
+                ) : null}
+              />
             )
           })}
         </div>

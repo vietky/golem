@@ -5,9 +5,8 @@ import useGameStore from '../store/gameStore'
 import useOrientation from '../hooks/useOrientation'
 
 const DepositModal = ({ card, cardIndex, isHandCard = false, onClose }) => {
-  const { myPlayer, depositCrystals, gameState, acquireCard, connected } = useGameStore()
-  const { isMobile, isPortrait } = useOrientation()
-  const [isDepositing, setIsDepositing] = useState(false)
+  const { myPlayer, acquireCard } = useGameStore()
+  const { isMobile } = useOrientation()
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -16,6 +15,7 @@ const DepositModal = ({ card, cardIndex, isHandCard = false, onClose }) => {
       document.body.style.overflow = '';
     };
   }, []);
+
   // Target position = card index + 1 (card 0 = position 1, card 1 = position 2, etc.)
   const targetPosition = isHandCard ? null : cardIndex + 1
   const [deposits, setDeposits] = useState({
@@ -35,13 +35,6 @@ const DepositModal = ({ card, cardIndex, isHandCard = false, onClose }) => {
     return null
   }
 
-  // Calculate actual card index for backend
-  const getActualCardIndex = () => {
-    // Market card: add hand length to distinguish from hand cards
-    const handLength = myPlayer?.hand?.length || 0
-    return handLength + cardIndex
-  }
-
   // Required positions to deposit: from 1 to (targetPosition - 1)
   const requiredPositions = targetPosition > 1 
     ? Array.from({ length: targetPosition - 1 }, (_, i) => i + 1)
@@ -55,10 +48,10 @@ const DepositModal = ({ card, cardIndex, isHandCard = false, onClose }) => {
   ]
 
   const availableCrystals = {
-    yellow: myPlayer.resources?.yellow || 0,
-    green: myPlayer.resources?.green || 0,
-    blue: myPlayer.resources?.blue || 0,
-    pink: myPlayer.resources?.pink || 0
+    yellow: myPlayer.caravan?.yellow || 0,
+    green: myPlayer.caravan?.green || 0,
+    blue: myPlayer.caravan?.blue || 0,
+    pink: myPlayer.caravan?.pink || 0
   }
 
   const handleSelectCrystal = (position, crystalType) => {
@@ -73,42 +66,30 @@ const DepositModal = ({ card, cardIndex, isHandCard = false, onClose }) => {
   }
 
   const handleConfirm = () => {
-    console.log(`[DEBUG DepositModal] handleConfirm: cardIndex=${cardIndex}, targetPosition=${targetPosition}, requiredPositions=`, requiredPositions)
     if (requiredPositions.length === 0) {
       // Card position 1, no deposit needed, just acquire
-      console.log(`[DEBUG DepositModal] No deposits required, acquiring card index ${cardIndex} directly`)
-      acquireCard(cardIndex)
+      acquireCard(cardIndex, [])
       onClose()
       return
     }
 
     // Must deposit to all required positions
-    const validDeposits = {}
     let allPositionsFilled = true
     for (const pos of requiredPositions) {
       if (deposits[pos] === null) {
         allPositionsFilled = false
         break
       }
-      validDeposits[pos] = deposits[pos]
     }
 
     if (allPositionsFilled) {
-      const actualIndex = getActualCardIndex()
-      console.log('[DEBUG DepositModal] Depositing and acquiring:', {
-        actualIndex,
-        validDeposits,
-        targetPosition,
-        cardIndex
-      })
-      setIsDepositing(true)
-      depositCrystals(actualIndex, validDeposits, targetPosition)
-      setTimeout(() => {
-        console.log('[DEBUG DepositModal] Auto-acquiring card index:', cardIndex)
-        const { sendAction } = useGameStore.getState()
-        sendAction('acquireCard', cardIndex)
-        setIsDepositing(false)
-      }, 800)
+      // Convert deposits object { 1: 'yellow', 2: 'green' } to array format
+      // Backend expects: [{ crystal: 'yellow' }, { crystal: 'green' }]
+      const depositArray = requiredPositions.map(pos => ({
+        crystal: deposits[pos]
+      }))
+      
+      acquireCard(cardIndex, depositArray)
       onClose()
     }
   }
@@ -168,11 +149,14 @@ const DepositModal = ({ card, cardIndex, isHandCard = false, onClose }) => {
                       const usedCount = Object.values(deposits).filter(v => v === key).length
                       const remaining = availableCrystals[key] - usedCount
 
+                      // If already selected, always allow click to deselect
+                      const canClick = isSelected || (isAvailable && remaining > 0)
+
                       return (
                         <motion.button
                           key={key}
                           onClick={() => handleSelectCrystal(position, key)}
-                          disabled={!isAvailable || remaining <= 0}
+                          disabled={!canClick}
                           className={`
                             relative rounded-lg border-2 transition-all
                             ${isMobile ? 'p-2' : 'p-4'}
@@ -180,13 +164,13 @@ const DepositModal = ({ card, cardIndex, isHandCard = false, onClose }) => {
                               ? 'border-purple-500 bg-purple-100 shadow-lg scale-105' 
                               : 'border-gray-300 bg-white hover:border-purple-300'
                             }
-                            ${!isAvailable || remaining <= 0 
+                            ${!canClick
                               ? 'opacity-50 cursor-not-allowed' 
                               : 'cursor-pointer'
                             }
                           `}
-                          whileHover={isAvailable && remaining > 0 ? { scale: 1.05 } : {}}
-                          whileTap={isAvailable && remaining > 0 ? { scale: 0.95 } : {}}
+                          whileHover={canClick ? { scale: 1.05 } : {}}
+                          whileTap={canClick ? { scale: 0.95 } : {}}
                         >
                           <img
                             src={image}
