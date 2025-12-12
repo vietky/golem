@@ -31,12 +31,14 @@ const DiscardModal = () => {
   const pending = myPlayer.pendingDiscard
   const currentTotal = discardCounts.yellow + discardCounts.green + discardCounts.blue + discardCounts.pink
   const remaining = pending - currentTotal
+  const canConfirm = currentTotal === pending
 
   const updateDiscard = (type, delta) => {
     setDiscardCounts(prev => {
       const newCounts = { ...prev }
       const current = newCounts[type] || 0
-      const available = myPlayer.resources[type] || 0
+      // Use caravan (same as CompactGameBoard)
+      const available = (myPlayer.caravan && myPlayer.caravan[type]) || 0
       const newValue = Math.max(0, Math.min(available, current + delta))
       newCounts[type] = newValue
       return newCounts
@@ -44,7 +46,8 @@ const DiscardModal = () => {
   }
 
   const handleConfirm = () => {
-    if (currentTotal === pending) {
+    const total = discardCounts.yellow + discardCounts.green + discardCounts.blue + discardCounts.pink
+    if (total === pending && total > 0) {
       discardCrystals(discardCounts)
       setDiscardCounts({ yellow: 0, green: 0, blue: 0, pink: 0 })
     }
@@ -64,6 +67,10 @@ const DiscardModal = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
+        onClick={(e) => {
+          // Don't close on backdrop click for discard modal - user must confirm
+          e.stopPropagation()
+        }}
       >
         <motion.div
           className={`
@@ -91,7 +98,8 @@ const DiscardModal = () => {
 
           <div className={`space-y-2 ${isMobile ? 'mb-3' : 'space-y-4 mb-6'}`}>
             {crystalTypes.map(({ key, label, color }) => {
-              const available = myPlayer.resources[key] || 0
+              // Use caravan (same as CompactGameBoard)
+              const available = (myPlayer.caravan && myPlayer.caravan[key]) || 0
               const selected = discardCounts[key] || 0
               
               return (
@@ -179,15 +187,23 @@ const DiscardModal = () => {
           </div>
 
           <motion.button
-            onClick={handleConfirm}
-            disabled={currentTotal !== pending}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              handleConfirm()
+            }}
+            disabled={!canConfirm}
             className={`
               w-full bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold 
-              rounded-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl
+              rounded-lg shadow-lg transition-all relative z-10
               ${isMobile ? 'py-3 px-4 text-sm' : 'py-4 px-6'}
+              ${canConfirm 
+                ? 'cursor-pointer hover:shadow-xl opacity-100' 
+                : 'cursor-not-allowed opacity-50'
+              }
             `}
-            whileHover={currentTotal === pending ? { scale: 1.05 } : {}}
-            whileTap={currentTotal === pending ? { scale: 0.95 } : {}}
+            whileHover={canConfirm ? { scale: 1.05 } : {}}
+            whileTap={canConfirm ? { scale: 0.95 } : {}}
           >
             {currentTotal === pending 
               ? 'Confirm Discard' 

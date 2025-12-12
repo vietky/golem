@@ -1,132 +1,94 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import useGameStore from '../store/gameStore'
-import useOrientation from '../hooks/useOrientation'
+
+// Timer Ring around avatar
+const TimerRing = ({ duration = 60 }) => {
+  const [timeLeft, setTimeLeft] = useState(duration)
+  const { gameState } = useGameStore()
+  
+  useEffect(() => {
+    setTimeLeft(duration)
+  }, [gameState?.currentPlayer, duration])
+  
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => Math.max(0, prev - 1))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [gameState?.currentPlayer])
+  
+  const progress = (timeLeft / duration) * 100
+  const color = timeLeft > 30 ? '#22c55e' : timeLeft > 10 ? '#eab308' : '#ef4444'
+  
+  return (
+    <div 
+      className="absolute inset-[-3px] rounded-full"
+      style={{
+        background: `conic-gradient(${color} ${progress}%, transparent ${progress}%)`,
+      }}
+    />
+  )
+}
 
 const PlayersInfoBar = () => {
-  const { gameState, myPlayer, currentPlayer, rest } = useGameStore()
-  const { isMobile } = useOrientation()
+  const { gameState, myPlayer, currentPlayer } = useGameStore()
 
   if (!gameState?.players) return null
 
-  const allPlayers = gameState.players
-
-  const handleRest = (playerId) => {
-    if (currentPlayer?.id === playerId && myPlayer?.id === playerId) {
-      rest()
-    }
-  }
+  const otherPlayers = gameState.players.filter(p => p.id !== myPlayer?.id)
+  if (otherPlayers.length === 0) return null
 
   return (
-    <div className={`
-      w-full bg-gradient-to-b from-black/50 to-transparent backdrop-blur-sm 
-      border-b border-white/10 overflow-x-auto scrollbar-none
-      ${isMobile ? 'py-1 px-1' : 'py-3 px-4'}
-    `}>
-      <div className={`
-        flex items-center
-        ${isMobile ? 'gap-1.5 justify-start' : 'gap-4 max-w-7xl mx-auto justify-center'}
-      `}>
-        {allPlayers.map((player) => {
-          const isCurrentPlayer = currentPlayer?.id === player.id
-          const isMe = myPlayer?.id === player.id
-
+    <div data-players-info-bar className="w-full flex-shrink-0 py-1.5 px-2 bg-black/60">
+      <div className="flex items-center justify-center gap-2 flex-wrap">
+        {otherPlayers.map((player) => {
+          const isCurrentTurn = currentPlayer?.id === player.id
+          
           return (
             <div
               key={player.id}
-              className={`
-                relative flex items-center flex-shrink-0
-                ${isMobile ? 'gap-1 px-1.5 py-1 rounded-md' : 'gap-3 px-4 py-2 rounded-lg'}
-                ${isCurrentPlayer 
-                  ? 'bg-yellow-500/30 ring-2 ring-yellow-400' 
-                  : 'bg-white/10'
-                }
-              `}
+              className={`flex items-center gap-2 px-2 py-1 rounded-xl ${isCurrentTurn ? 'bg-yellow-500/20' : 'bg-white/5'}`}
             >
-              {/* Player Avatar */}
-              <div className={`
-                rounded-full flex items-center justify-center font-bold 
-                border-2 border-white shadow-lg flex-shrink-0
-                ${isMobile ? 'w-6 h-6 text-[10px]' : 'w-10 h-10 text-lg'}
-                ${isCurrentPlayer ? 'bg-yellow-500 text-black' : 'bg-purple-600 text-white'}
-              `}>
-                {player.isAI ? '🤖' : player.name?.charAt(0)?.toUpperCase() || '?'}
+              {/* Avatar with timer ring for current turn */}
+              <div className="relative">
+                {isCurrentTurn && <TimerRing duration={60} />}
+                <div className={`
+                  relative w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold
+                  ${isCurrentTurn ? 'bg-yellow-500 text-black' : 'bg-purple-600 text-white'}
+                `}>
+                  {player.isAI ? '🤖' : player.name?.charAt(0)?.toUpperCase() || '?'}
+                </div>
               </div>
 
-              {/* Player Info */}
-              <div className="flex flex-col">
-                <div className={`text-white font-bold whitespace-nowrap ${isMobile ? 'text-[9px]' : 'text-sm'}`}>
-                  {player.name || 'Player'}
+              {/* Info */}
+              <div className="flex flex-col text-[10px]">
+                {/* Row 1: Name + Points */}
+                <div className="flex items-center gap-1">
+                  <span className="text-white font-medium">{player.name}</span>
+                  <span className="text-yellow-400 font-bold">★{player.points || 0}</span>
                 </div>
                 
-                {/* Stats row */}
-                <div className={`flex flex-col ${isMobile ? 'gap-0.5' : 'gap-1'}`}>
-                  {/* First row: Points, Point Cards, Hand Cards */}
-                  <div className={`flex items-center ${isMobile ? 'gap-1' : 'gap-2'}`}>
-                    {/* Score */}
-                    <span className={`text-yellow-400 font-bold ${isMobile ? 'text-[9px]' : 'text-xs'}`}>
-                      ★{player.points || 0}
-                    </span>
-                    
-                    {/* Point Cards Count */}
-                    <span className={`text-blue-400 font-semibold ${isMobile ? 'text-[9px]' : 'text-xs'}`}>
-                      📄{(player.pointCards?.length || 0)}
-                    </span>
-                    
-                    {/* Hand Cards Count */}
-                    <span className={`text-green-400 font-semibold ${isMobile ? 'text-[9px]' : 'text-xs'}`}>
-                      🃏{(player.hand?.length || 0)}
-                    </span>
-                  </div>
+                {/* Row 2: Crystals + Counts */}
+                <div className="flex items-center gap-1.5">
+                  {/* Crystals */}
+                  {['yellow', 'green', 'blue', 'pink'].map((color) => {
+                    const count = player.caravan?.[color] || 0
+                    const bg = { yellow: 'bg-yellow-400', green: 'bg-green-500', blue: 'bg-blue-500', pink: 'bg-pink-400' }[color]
+                    return (
+                      <div key={color} className="flex items-center gap-0.5">
+                        <div className={`w-2.5 h-2.5 rounded-full ${bg}`}/>
+                        <span className="text-white/80">{count}</span>
+                      </div>
+                    )
+                  })}
                   
-                  {/* Second row: Crystals - Only show if count > 0 */}
-                  <div className={`flex items-center ${isMobile ? 'gap-0.5' : 'gap-1'}`}>
-                    {['yellow', 'green', 'blue', 'pink'].map((color) => {
-                      const count = player.caravan?.[color] || 0
-                      if (count === 0) return null // Don't show if 0
-                      
-                      const bgClass = {
-                        yellow: 'bg-yellow-400',
-                        green: 'bg-green-500',
-                        blue: 'bg-blue-500',
-                        pink: 'bg-pink-400'
-                      }[color]
-                      
-                      return (
-                        <div key={color} className={`flex items-center ${isMobile ? 'gap-0.5' : 'gap-0.5'}`}>
-                          <div className={`${isMobile ? 'w-2.5 h-2.5' : 'w-4 h-4'} rounded-full ${bgClass}`}/>
-                          <span className={`text-white/90 ${isMobile ? 'text-[8px]' : 'text-xs'}`}>{count}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
+                  <span className="text-white/30">|</span>
+                  
+                  {/* Counts */}
+                  <span className="text-blue-300">🎭{player.pointCards?.length || 0}</span>
+                  <span className="text-green-300">🃏{player.playedCards?.length || 0}</span>
                 </div>
               </div>
-
-              {/* Rest Button - Only show if current player */}
-              {isCurrentPlayer && isMe && (player.playedCards?.length || 0) > 0 && (
-                <button
-                  onClick={() => handleRest(player.id)}
-                  className={`
-                    bg-green-600 text-white font-bold rounded-full shadow-lg flex-shrink-0
-                    ${isMobile ? 'text-[8px] px-1.5 py-0.5' : 'text-xs px-3 py-1'}
-                  `}
-                >
-                  Rest
-                </button>
-              )}
-
-              {/* Current Turn Indicator */}
-              {isCurrentPlayer && (
-                <div className={`
-                  absolute bg-yellow-500 text-black font-bold rounded-full animate-pulse
-                  ${isMobile 
-                    ? '-top-1 -right-1 text-[6px] w-3 h-3 flex items-center justify-center' 
-                    : '-top-1 -right-1 text-[10px] px-2 py-0.5'
-                  }
-                `}>
-                  {isMobile ? '!' : 'TURN'}
-                </div>
-              )}
             </div>
           )
         })}

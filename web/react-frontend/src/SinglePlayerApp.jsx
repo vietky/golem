@@ -6,7 +6,9 @@ import CompactGameBoard from './components/CompactGameBoard'
 import CompactPlayerHand from './components/CompactPlayerHand'
 import CollapsibleInfo from './components/CollapsibleInfo'
 import DiscardModal from './components/DiscardModal'
+import AcquiredCardOverlay from './components/AcquiredCardOverlay'
 import Toast from './components/Toast'
+import WebGameLayout from './components/WebGameLayout'
 import useGameStore from './store/gameStore'
 import useOrientation from './hooks/useOrientation'
 import { MobileLayoutProvider } from './contexts/MobileLayoutContext'
@@ -186,6 +188,9 @@ function SinglePlayerApp() {
     )
   }
 
+  // Use new WebGameLayout for desktop/tablet, old layout for mobile
+  const useWebLayout = !isMobile
+
   return (
     <MobileLayoutProvider>
       {/* Blurred Background Layer */}
@@ -199,63 +204,90 @@ function SinglePlayerApp() {
         }}
       />
       
-      <div className={`
-        min-h-screen min-h-[100dvh] flex flex-col relative z-10
-        ${isMobile ? (isPortrait ? 'mobile-portrait' : 'mobile-landscape') : ''}
-        ${isTablet ? 'tablet' : ''}
-      `}>
-        {/* Players Info Bar - Top */}
-        <PlayersInfoBar />
+      {useWebLayout ? (
+        /* Desktop/Tablet - New WebGameLayout */
+        <div className="h-screen h-[100dvh] relative z-10">
+          <WebGameLayout />
+          
+          {/* Collapsible Info (Room ID + Action Log) - Bottom Right */}
+          <CollapsibleInfo sessionId={sessionId} />
 
-        {/* Central Game Board - Scrollable */}
-        <div className={`
-          flex-1 overflow-y-auto
-          ${isMobile && isPortrait ? 'pb-32' : 'pb-24'}
-        `}>
-          <CompactGameBoard />
+          {/* Discard Modal (when crystals exceed max) */}
+          <DiscardModal />
         </div>
+      ) : (
+        /* Mobile - Original Layout */
+        <div className={`
+          ${isPortrait 
+            ? 'h-screen h-[100dvh] flex flex-col relative z-10 overflow-hidden' 
+            : 'min-h-screen min-h-[100dvh] flex flex-col relative z-10'
+          }
+          ${isPortrait ? 'mobile-portrait' : 'mobile-landscape'}
+        `}>
+          {/* Players Info Bar - Top */}
+          <PlayersInfoBar />
 
-        {/* Player Hand - Bottom (Fixed) */}
-        <CompactPlayerHand />
-
-        {/* Collapsible Info (Room ID + Action Log) - Bottom Right */}
-        {!isMobile && <CollapsibleInfo sessionId={sessionId} />}
-
-        {/* Discard Modal (when crystals exceed max) */}
-        <DiscardModal />
-
-        {/* Game Over Modal */}
-        {gameState?.gameOver && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className={`
-              bg-white rounded-2xl text-center
-              ${isMobile ? 'p-4 max-w-[300px]' : 'p-8 max-w-md mx-4'}
-            `}>
-              <h2 className={`font-bold mb-4 ${isMobile ? 'text-2xl' : 'text-3xl'}`}>Game Over!</h2>
-              <p className={`mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
-                Winner: {gameState.winner?.name || 'Unknown'}
-              </p>
-              <p className={`text-gray-600 mb-6 ${isMobile ? 'text-base' : 'text-lg'}`}>
-                Final Score: {gameState.winner?.points || 0} points
-              </p>
-              <button
-                onClick={() => {
-                  setInGame(false)
-                  setGameMode(null)
-                  window.location.reload()
-                }}
-                className={`
-                  bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold 
-                  rounded-lg hover:from-purple-600 hover:to-pink-600 touch-target
-                  ${isMobile ? 'py-2 px-4 text-sm' : 'py-3 px-6'}
-                `}
-              >
-                Back to Menu
-              </button>
-            </div>
+          {/* Central Game Board */}
+          <div 
+            className={`
+            ${isPortrait 
+              ? 'flex-1 overflow-hidden relative z-10 min-h-0 pb-[130px]' 
+              : 'flex-1 overflow-y-auto pb-24 relative z-10 min-h-0'
+            }
+          `}
+          >
+            <CompactGameBoard />
           </div>
-        )}
-      </div>
+
+          {/* Player Hand - Bottom (Fixed on mobile, relative on desktop) */}
+          {!isPortrait && (
+            <div className="flex-shrink-0 relative z-30">
+              <CompactPlayerHand />
+            </div>
+          )}
+          
+          {/* Player Hand - Fixed on mobile portrait */}
+          {isPortrait && <CompactPlayerHand />}
+
+          {/* Discard Modal (when crystals exceed max) */}
+          <DiscardModal />
+          
+          {/* Overlay when other players acquire or play cards */}
+          <AcquiredCardOverlay />
+        </div>
+      )}
+
+      {/* Game Over Modal */}
+      {gameState?.gameOver && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className={`
+            bg-white rounded-2xl text-center
+            ${isMobile ? 'p-4 max-w-[300px]' : 'p-8 max-w-md mx-4'}
+          `}>
+            <h2 className={`font-bold mb-4 ${isMobile ? 'text-2xl' : 'text-3xl'}`}>Game Over!</h2>
+            <p className={`mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
+              Winner: {gameState.winner?.name || 'Unknown'}
+            </p>
+            <p className={`text-gray-600 mb-6 ${isMobile ? 'text-base' : 'text-lg'}`}>
+              Final Score: {gameState.winner?.points || 0} points
+            </p>
+            <button
+              onClick={() => {
+                setInGame(false)
+                setGameMode(null)
+                window.location.reload()
+              }}
+              className={`
+                bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold 
+                rounded-lg hover:from-purple-600 hover:to-pink-600 touch-target
+                ${isMobile ? 'py-2 px-4 text-sm' : 'py-3 px-6'}
+              `}
+            >
+              Back to Menu
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Global Toast Notifications */}
       <Toast />
