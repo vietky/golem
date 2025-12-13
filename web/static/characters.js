@@ -99,7 +99,7 @@ const vietnameseCardNames = {
     'trade_1000_0103': 'Hối Đoái Pháp - Hỏa Thủy',
     'trade_1000_0111': 'Ngũ Hành Dịch Vật Pháp',
     'trade_1000_0200': 'Giao Dịch Thuật - Hỏa Mộc',
-    'trade_1002_2000': 'Cực Hỏa Dịch Vật Pháp',
+    'trade_0102_2000': 'Cực Hỏa Dịch Vật Pháp',
     'trade_2000_0230': 'Dịch Vật Pháp - Song Hỏa Thủy',
     'trade_2000_0311': 'Hối Đoái Pháp - Song Hỏa Thủy',
     

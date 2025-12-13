@@ -537,7 +537,7 @@ func CreateDefaultActionCards() []*Card {
 		"trade_1000_0103", // Trade 1 Pink for 1 Blue, 3 Yellow
 		"trade_1000_0111", // Trade 1 Pink for 1 Blue, 1 Green, 1 Yellow
 		"trade_1000_0200", // Trade 1 Pink for 2 Blue
-		"trade_1002_2000", // Trade 1 Pink, 2 Green for 2 Pink
+		"trade_0102_2000", // Trade 1 Pink, 2 Green for 2 Pink
 		"trade_2000_0230", // Trade 2 Pink for 2 Green, 3 Blue
 		"trade_2000_0311", // Trade 2 Pink for 3 Blue, 1 Green, 1 Yellow
 	}
