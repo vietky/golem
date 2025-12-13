@@ -277,7 +277,7 @@ func (gs *GameSession) RunGameLoop() {
 			if currentPlayer.IsAI && gs.Engine.AI != nil {
 				// AI turn - execute AI action with delay for better observation
 				// Delay must be longer than frontend animation (2000ms) to prevent overlap
-				time.Sleep(2500 * time.Millisecond)
+				time.Sleep(500 * time.Millisecond)
 
 				aiAction := gs.Engine.AI.ChooseAction(currentPlayer, gs.GameState.Market, gs.GameState)
 				if err := gs.GameState.ExecuteAction(aiAction); err == nil {
