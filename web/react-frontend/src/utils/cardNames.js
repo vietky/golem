@@ -80,7 +80,7 @@ export const vietnameseCardNames = {
   'trade_1000_0103': 'Huyền Giao Thủy Thạch',
   'trade_1000_0111': 'Huyền Giao Thủy Thạch',
   'trade_1000_0200': 'Giao Dịch Song Thạch',
-  'trade_1002_2000': 'Giao Dịch Hỏa Thạch',
+  'trade_0102_2000': 'Giao Dịch Hỏa Thạch',
   'trade_2000_0230': 'Giao Dịch Tam Thạch',
   'trade_2000_0311': 'Giao Dịch Tam Thạch',
   
