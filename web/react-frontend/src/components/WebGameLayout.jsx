@@ -4,9 +4,11 @@ import CompactCard from './CompactCard'
 import PlayerCard from './PlayerCard'
 import GraveyardPanel from './GraveyardPanel'
 import MyGolemsPanel from './MyGolemsPanel'
+import HistorySection from './HistorySection'
 import UpgradeModal from './UpgradeModal'
 import TradeModal from './TradeModal'
 import DepositModal from './DepositModal'
+import ConfirmGolemModal from './ConfirmGolemModal'
 import AcquiredCardOverlay from './AcquiredCardOverlay'
 import { showToast } from '../utils/toast'
 
@@ -26,6 +28,7 @@ const WebGameLayout = () => {
   const [depositModal, setDepositModal] = useState({ show: false, card: null, index: null })
   const [upgradeModal, setUpgradeModal] = useState({ show: false, card: null, index: null })
   const [tradeModal, setTradeModal] = useState({ show: false, card: null, index: null })
+  const [confirmGolem, setConfirmGolem] = useState({ show: false, golem: null, index: null })
   
   // Timer state
   const [turnTimeRemaining, setTurnTimeRemaining] = useState(60)
@@ -53,6 +56,7 @@ const WebGameLayout = () => {
   // Get cards directly from current state
   const actionCards = gameState.market.actionCards || []
   const pointCards = gameState.market.pointCards || []
+  const coins = gameState.market.coins || []
 
   const isMyTurn = currentPlayer?.id === myPlayer.id
   const hand = myPlayer.hand || []
@@ -94,7 +98,7 @@ const WebGameLayout = () => {
 
     // Card at index 0 (position 1) is always FREE - no deposits needed
     if (index === 0) {
-      acquireCard(index, {})
+      acquireCard(index, {}, card)
       return
     }
 
@@ -139,7 +143,15 @@ const WebGameLayout = () => {
       return
     }
 
-    claimPointCard(index)
+    // Show confirmation modal
+    setConfirmGolem({ show: true, golem: card, index })
+  }
+
+  const handleConfirmClaim = () => {
+    if (confirmGolem.index !== null && confirmGolem.golem) {
+      claimPointCard(confirmGolem.index, confirmGolem.golem)
+    }
+    setConfirmGolem({ show: false, golem: null, index: null })
   }
 
   const handleCardClick = (card, index) => {
@@ -154,7 +166,7 @@ const WebGameLayout = () => {
     } else if (card.actionType === 2) {
       setTradeModal({ show: true, card, index })
     } else {
-      playCard(index)
+      playCard(index, card)
     }
   }
 
@@ -194,9 +206,20 @@ const WebGameLayout = () => {
               const cost = card.cost || {}
               const isAffordable = isMyTurn && canAfford(cost)
               const deposits = card.deposits || {}
-              const depositCount = Object.values(deposits).reduce((a, b) => 
-                parseInt(a || 0) + parseInt(b || 0), 0
-              )
+
+              // Build crystal badges array
+              const crystalBadges = []
+              const crystalImages = {
+                yellow: '/images/stone_yellow.JPG',
+                green: '/images/stone_green.JPG',
+                blue: '/images/stone_blue.JPG',
+                pink: '/images/stone_pink.JPG'
+              }
+              Object.entries(deposits).forEach(([type, count]) => {
+                for (let i = 0; i < parseInt(count || 0); i++) {
+                  crystalBadges.push({ type, src: crystalImages[type] || crystalImages.yellow })
+                }
+              })
 
               return (
                 <div 
@@ -209,10 +232,18 @@ const WebGameLayout = () => {
                     {index + 1}
                   </div>
                   
-                  {/* Deposit Count Badge */}
-                  {depositCount > 0 && (
-                    <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-4 h-4 flex items-center justify-center font-bold text-[9px] z-20 shadow-lg border border-white pointer-events-none">
-                      +{depositCount}
+                  {/* Deposit Crystals Badge */}
+                  {crystalBadges.length > 0 && (
+                    <div className="absolute -top-1 -right-1 z-20 flex flex-wrap gap-0.5 max-w-[40px] justify-end pointer-events-none">
+                      {crystalBadges.map((crystal, i) => (
+                        <img
+                          key={i}
+                          src={crystal.src}
+                          alt={crystal.type}
+                          className="w-3.5 h-3.5 rounded-full object-cover border border-white shadow"
+                          onError={(e) => { e.target.src = '/images/stone_yellow.JPG' }}
+                        />
+                      ))}
                     </div>
                   )}
                   
@@ -232,9 +263,29 @@ const WebGameLayout = () => {
 
       {/* Row 3 - Golems (Point Cards) */}
       <div className="bg-black/30 backdrop-blur-md rounded-xl border border-white/20 p-2 flex flex-col min-h-0 overflow-hidden">
-        <div className="text-white/70 text-xs font-semibold mb-1">Golems</div>
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-white/70 text-xs font-semibold">Golems</div>
+          {/* Coins remaining info */}
+          <div className="flex items-center gap-2 text-[10px]">
+            {coins[0]?.amount > 0 && (
+              <span className="text-orange-400" title="Copper coins (3pts each)">
+                🥉{coins[0].amount}
+              </span>
+            )}
+            {coins[1]?.amount > 0 && (
+              <span className="text-gray-300" title="Silver coins (1pt each)">
+                🥈{coins[1].amount}
+              </span>
+            )}
+          </div>
+        </div>
         <div className="flex-1 grid grid-cols-5 gap-1 place-items-center min-h-0">
             {pointCards.slice(0, 5).map((card, index) => {
+              const coinBonus = index <= 1 && coins && coins[index] && coins[index].amount > 0
+              const coinAmount = coins && coins[index] ? coins[index].amount : 0
+              const isCopperCoin = index === 0
+              const coinEmoji = isCopperCoin ? '🥉' : '🥈'
+
               return (
                 <div 
                   key={`point-${index}`}
@@ -245,6 +296,17 @@ const WebGameLayout = () => {
                   <div className="absolute -top-1 -left-1 bg-purple-600 text-white rounded-full w-4 h-4 flex items-center justify-center font-bold text-[9px] z-20 shadow-lg border border-white pointer-events-none">
                     {index + 1}
                   </div>
+                  
+                  {/* Coin Bonus Badge */}
+                  {coinBonus && (
+                    <div 
+                      className="absolute -top-1 -right-1 z-20 flex items-center gap-0.5 bg-black/70 backdrop-blur-sm rounded-full px-1 py-0.5 border border-white/30 pointer-events-none"
+                      title={`${isCopperCoin ? 'Copper (3pts)' : 'Silver (1pt)'} - ${coinAmount} left`}
+                    >
+                      <span className="text-xs">{coinEmoji}</span>
+                      <span className="text-[8px] text-white font-bold">{coinAmount}</span>
+                    </div>
+                  )}
                   
                   <CompactCard
                     card={card}
@@ -259,8 +321,13 @@ const WebGameLayout = () => {
         </div>
       </div>
 
-      {/* Row 4 - Bottom Row: Graveyard | My Hand + Crystals + Timer | My Golems */}
+      {/* Row 4 - Bottom Row: History | Graveyard | My Hand + Crystals + Timer | My Golems */}
       <div className="flex gap-3 min-h-0 overflow-hidden">
+        {/* History */}
+        <div className="w-44 flex-shrink-0 bg-black/30 backdrop-blur-md rounded-xl border border-white/20 flex flex-col min-h-0 overflow-hidden">
+          <HistorySection />
+        </div>
+
         {/* Graveyard */}
         <div className="w-28 flex-shrink-0 bg-black/30 backdrop-blur-md rounded-xl border border-white/20 py-2 flex flex-col min-h-0">
           <GraveyardPanel playedCards={playedCards} />
@@ -397,7 +464,7 @@ const WebGameLayout = () => {
           playerResources={myPlayer?.resources}
           maxTurnUpgrade={upgradeModal.card?.turnUpgrade || 1}
           onConfirm={(inputResources, outputResources) => {
-            playCardWithUpgrade(upgradeModal.index, inputResources, outputResources)
+            playCardWithUpgrade(upgradeModal.index, inputResources, outputResources, upgradeModal.card)
             setUpgradeModal({ show: false, card: null, index: null })
           }}
           onCancel={() => setUpgradeModal({ show: false, card: null, index: null })}
@@ -410,12 +477,20 @@ const WebGameLayout = () => {
           cardIndex={tradeModal.index}
           playerResources={myPlayer?.resources}
           onConfirm={(multiplier) => {
-            playCardWithTrade(tradeModal.index, multiplier)
+            playCardWithTrade(tradeModal.index, multiplier, tradeModal.card)
             setTradeModal({ show: false, card: null, index: null })
           }}
           onCancel={() => setTradeModal({ show: false, card: null, index: null })}
         />
       )}
+
+      {/* Confirm Golem Modal */}
+      <ConfirmGolemModal
+        isOpen={confirmGolem.show}
+        golem={confirmGolem.golem}
+        onConfirm={handleConfirmClaim}
+        onCancel={() => setConfirmGolem({ show: false, golem: null, index: null })}
+      />
 
       {/* Card acquisition overlay animation */}
       <AcquiredCardOverlay />

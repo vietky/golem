@@ -89,7 +89,7 @@ const CompactPlayerHand = () => {
     if (!isMyTurn) return
 
     if (card.actionType === 0) {
-      playCard(index)
+      playCard(index, card)
     } else if (card.actionType === 1) {
       setUpgradeModal({ show: true, card, index })
     } else if (card.actionType === 2) {
@@ -323,7 +323,7 @@ const CompactPlayerHand = () => {
                       src={`/images/${card.name}.JPG`} 
                       alt={card.name}
                       className="w-full h-full object-cover"
-                      onError={(e) => { e.target.src = '/images/golem_bg.JPG' }}
+                      onError={(e) => { e.target.style.display = 'none' }}
                     />
                   </div>
                 ))}
@@ -363,7 +363,7 @@ const CompactPlayerHand = () => {
                       src={`/images/${card.name}.JPG`} 
                       alt={card.name}
                       className="w-full h-full object-cover"
-                      onError={(e) => { e.target.src = '/images/golem_bg.JPG' }}
+                      onError={(e) => { e.target.style.display = 'none' }}
                     />
                   </div>
                 ))}
@@ -389,7 +389,7 @@ const CompactPlayerHand = () => {
           playerResources={myPlayer?.resources}
           maxTurnUpgrade={upgradeModal.card?.turnUpgrade || 1}
           onConfirm={(inputResources, outputResources) => {
-            playCardWithUpgrade(upgradeModal.index, inputResources, outputResources)
+            playCardWithUpgrade(upgradeModal.index, inputResources, outputResources, upgradeModal.card)
             setUpgradeModal({ show: false, card: null, index: null })
           }}
           onCancel={() => setUpgradeModal({ show: false, card: null, index: null })}
@@ -403,7 +403,7 @@ const CompactPlayerHand = () => {
           cardIndex={tradeModal.index}
           playerResources={myPlayer?.resources}
           onConfirm={(multiplier) => {
-            playCardWithTrade(tradeModal.index, multiplier)
+            playCardWithTrade(tradeModal.index, multiplier, tradeModal.card)
             setTradeModal({ show: false, card: null, index: null })
           }}
           onCancel={() => setTradeModal({ show: false, card: null, index: null })}

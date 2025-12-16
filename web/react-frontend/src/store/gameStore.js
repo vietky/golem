@@ -19,6 +19,7 @@ const useGameStore = create((set, get) => ({
   // UI state
   selectedCard: null,
   actionLog: [],
+  actionHistory: [], // Rich action history with card details
   isDragging: false,
   invalidAction: null, // Card name that triggered invalid action
   collectAnimations: [], // Array of {type, from, to} for flying crystals (initialized as empty array)
@@ -132,6 +133,14 @@ const useGameStore = create((set, get) => ({
               if (acquiringPlayer && acquiringPlayer.id !== currentPlayerId) {
                 const playerName = acquiringPlayer?.name || 'A player'
                 get().showAcquiredCard(card, 'market', playerName)
+                // Add to action history for opponents
+                get().addActionToHistory({
+                  type: 'acquire',
+                  playerName: playerName,
+                  playerAvatar: acquiringPlayer?.avatar,
+                  card: card,
+                  isOpponent: true,
+                })
               }
             }
           })
@@ -172,12 +181,20 @@ const useGameStore = create((set, get) => ({
               if (claimingPlayer && claimingPlayer.id !== currentPlayerId) {
                 const playerName = claimingPlayer?.name || 'A player'
                 get().showAcquiredCard(card, 'golem', playerName)
+                // Add to action history for opponents
+                get().addActionToHistory({
+                  type: 'claim',
+                  playerName: playerName,
+                  playerAvatar: claimingPlayer?.avatar,
+                  card: card,
+                  isOpponent: true,
+                })
               }
             }
           })
         }
 
-        // Detect when opponents play cards
+        // Detect when opponents play cards or rest
         const currentPlayerId = get().playerId
         if (previousOpponents && previousOpponents.length > 0 && opponents) {
           for (const currentOpponent of opponents) {
@@ -185,6 +202,8 @@ const useGameStore = create((set, get) => ({
             if (prevOpponent) {
               const prevPlayedCount = prevOpponent.playedCards?.length || 0
               const currentPlayedCount = currentOpponent.playedCards?.length || 0
+              const prevHandCount = prevOpponent.hand?.length || 0
+              const currentHandCount = currentOpponent.hand?.length || 0
               
               // If opponent played a new card
               if (currentPlayedCount > prevPlayedCount && currentOpponent.id !== currentPlayerId) {
@@ -192,7 +211,27 @@ const useGameStore = create((set, get) => ({
                 const playedCard = currentOpponent.playedCards[currentPlayedCount - 1]
                 if (playedCard) {
                   get().showAcquiredCard(playedCard, 'played', currentOpponent.name)
+                  // Add to action history
+                  get().addActionToHistory({
+                    type: 'play',
+                    playerName: currentOpponent.name,
+                    playerAvatar: currentOpponent.avatar,
+                    card: playedCard,
+                    isOpponent: true,
+                  })
                 }
+              }
+              
+              // Detect rest: hand increased significantly and playedCards is now empty
+              if (currentPlayedCount === 0 && prevPlayedCount > 0 && 
+                  currentHandCount > prevHandCount && currentOpponent.id !== currentPlayerId) {
+                get().addActionToHistory({
+                  type: 'rest',
+                  playerName: currentOpponent.name,
+                  playerAvatar: currentOpponent.avatar,
+                  card: null,
+                  isOpponent: true,
+                })
               }
             }
           }
@@ -256,23 +295,50 @@ const useGameStore = create((set, get) => ({
     ws.send(JSON.stringify(message));
   },
 
-  playCard: (cardIndex) => {
+  playCard: (cardIndex, card = null) => {
+    const { myPlayer } = get();
+    const cardData = card || myPlayer?.hand?.[cardIndex];
     get().sendAction("playCard", cardIndex);
     get().addToLog(`Playing card from hand`);
+    get().addActionToHistory({
+      type: 'play',
+      playerName: myPlayer?.name || 'You',
+      playerAvatar: myPlayer?.avatar,
+      card: cardData,
+    });
   },
 
-  playCardWithUpgrade: (cardIndex, inputResources, outputResources) => {
+  playCardWithUpgrade: (cardIndex, inputResources, outputResources, card = null) => {
+    const { myPlayer } = get();
+    const cardData = card || myPlayer?.hand?.[cardIndex];
     get().sendAction("playCard", cardIndex, inputResources, outputResources);
     get().addToLog(`Playing upgrade card`);
+    get().addActionToHistory({
+      type: 'upgrade',
+      playerName: myPlayer?.name || 'You',
+      playerAvatar: myPlayer?.avatar,
+      card: cardData,
+      input: inputResources,
+      output: outputResources,
+    });
     set({
       upgradeModalCard: null,
       upgradeModalCardIndex: null,
     });
   },
 
-  playCardWithTrade: (cardIndex, multiplier) => {
+  playCardWithTrade: (cardIndex, multiplier, card = null) => {
+    const { myPlayer } = get();
+    const cardData = card || myPlayer?.hand?.[cardIndex];
     get().sendAction("playCard", cardIndex, null, null, multiplier);
     get().addToLog(`Playing trade card (x${multiplier})`);
+    get().addActionToHistory({
+      type: 'trade',
+      playerName: myPlayer?.name || 'You',
+      playerAvatar: myPlayer?.avatar,
+      card: cardData,
+      multiplier,
+    });
     set({
       tradeModalCard: null,
       tradeModalCardIndex: null,
@@ -285,19 +351,42 @@ const useGameStore = create((set, get) => ({
   showTradeModal: (card, cardIndex) => set({ tradeModalCard: card, tradeModalCardIndex: cardIndex }),
   hideTradeModal: () => set({ tradeModalCard: null, tradeModalCardIndex: null }),
 
-  acquireCard: (cardIndex, deposits = []) => {
+  acquireCard: (cardIndex, deposits = [], card = null) => {
+    const { myPlayer, gameState } = get();
+    const cardData = card || gameState?.market?.actionCards?.[cardIndex];
     get().sendAction("acquireCard", cardIndex, null, null, null, deposits);
     get().addToLog(`Acquiring card from market`);
+    get().addActionToHistory({
+      type: 'acquire',
+      playerName: myPlayer?.name || 'You',
+      playerAvatar: myPlayer?.avatar,
+      card: cardData,
+    });
   },
 
-  claimPointCard: (cardIndex) => {
+  claimPointCard: (cardIndex, card = null) => {
+    const { myPlayer, gameState } = get();
+    const cardData = card || gameState?.market?.pointCards?.[cardIndex];
     get().sendAction("claimPointCard", cardIndex);
     get().addToLog(`Claiming point card`);
+    get().addActionToHistory({
+      type: 'claim',
+      playerName: myPlayer?.name || 'You',
+      playerAvatar: myPlayer?.avatar,
+      card: cardData,
+    });
   },
 
   rest: () => {
+    const { myPlayer } = get();
     get().sendAction("rest");
     get().addToLog(`Resting - returning cards to hand`);
+    get().addActionToHistory({
+      type: 'rest',
+      playerName: myPlayer?.name || 'You',
+      playerAvatar: myPlayer?.avatar,
+      card: null,
+    });
   },
 
   discardCrystals: (discard) => {
@@ -388,6 +477,16 @@ const useGameStore = create((set, get) => ({
     const log = get().actionLog;
     const newLog = [message, ...log].slice(0, 3); // Keep last 3
     set({ actionLog: newLog });
+  },
+
+  // Add rich action to history
+  addActionToHistory: (action) => {
+    const history = get().actionHistory;
+    const newHistory = [
+      { ...action, timestamp: Date.now() },
+      ...history
+    ].slice(0, 4); // Keep last 4
+    set({ actionHistory: newHistory });
   },
 
   setIsDragging: (isDragging) => set({ isDragging }),
