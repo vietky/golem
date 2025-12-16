@@ -176,11 +176,6 @@ func (gs *GameState) ExecuteAction(action Action) error {
 			}
 		}
 
-		// Check max crystals limit BEFORE acquiring
-		if collectedFromTarget.Total()+player.Resources.Total() > MaxCrystals {
-			return fmt.Errorf("cannot acquire card: would exceed max crystals")
-		}
-
 		// Remove the card from market FIRST
 		card := gs.Market.AcquireActionCard(action.CardIndex)
 		if card == nil {
@@ -275,12 +270,17 @@ func (gs *GameState) ExecuteAction(action Action) error {
 }
 
 // CheckGameOver checks if the game is over
+// Game ends after the round is completed (all players have equal turns)
 func (gs *GameState) CheckGameOver() {
 	if gs.LastRound {
-		gs.GameOver = true
-		for _, player := range gs.Players {
-			if gs.Winner == nil || player.GetFinalPoints() > gs.Winner.GetFinalPoints() {
-				gs.Winner = player
+		// Only end game when the current round is complete
+		// (i.e., we're back to player 0, meaning all players have had equal turns)
+		if gs.CurrentTurn%len(gs.Players) == len(gs.Players)-1 {
+			gs.GameOver = true
+			for _, player := range gs.Players {
+				if gs.Winner == nil || player.GetFinalPoints() > gs.Winner.GetFinalPoints() {
+					gs.Winner = player
+				}
 			}
 		}
 	}

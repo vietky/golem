@@ -99,21 +99,21 @@ const PlayerHand = () => {
       // 2 = Trade action type
       showTradeModal(card, cardIndex);
     } else {
-      playCard(cardIndex);
+      playCard(cardIndex, card);
     }
   };
 
   // Handle upgrade confirmation
   const handleUpgradeConfirm = (inputResources, outputResources) => {
-    if (upgradeModalCardIndex !== null) {
-      playCardWithUpgrade(upgradeModalCardIndex, inputResources, outputResources);
+    if (upgradeModalCardIndex !== null && upgradeModalCard) {
+      playCardWithUpgrade(upgradeModalCardIndex, inputResources, outputResources, upgradeModalCard);
     }
   };
 
   // Handle trade confirmation
   const handleTradeConfirm = (multiplier) => {
-    if (tradeModalCardIndex !== null) {
-      playCardWithTrade(tradeModalCardIndex, multiplier);
+    if (tradeModalCardIndex !== null && tradeModalCard) {
+      playCardWithTrade(tradeModalCardIndex, multiplier, tradeModalCard);
     }
   };
 

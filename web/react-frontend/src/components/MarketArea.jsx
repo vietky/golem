@@ -1,14 +1,17 @@
 import React, { useState } from 'react'
 import Card from './Card'
 import DepositModal from './DepositModal'
+import ConfirmGolemModal from './ConfirmGolemModal'
 import useGameStore from '../store/gameStore'
 import useOrientation from '../hooks/useOrientation'
+import { showToast } from '../utils/toast'
 
 const MarketArea = () => {
   const { gameState, myPlayer, currentPlayer, acquireCard, claimPointCard, collectAllCrystals } = useGameStore()
   const { isMobile, isTablet, isPortrait, isLandscape, isDesktop } = useOrientation()
   const [dragOverIndex, setDragOverIndex] = useState(null)
   const [depositModal, setDepositModal] = useState({ show: false, card: null, index: null })
+  const [confirmGolem, setConfirmGolem] = useState({ show: false, golem: null, index: null })
 
   // Show loading state if market data not ready
   if (!gameState?.market) {
@@ -41,6 +44,38 @@ const MarketArea = () => {
 
   const handleDragLeave = () => {
     setDragOverIndex(null);
+  };
+
+  const isMyTurn = currentPlayer?.id === myPlayer?.id;
+
+  const handleClaimPointCard = (card, index) => {
+    if (!isMyTurn) {
+      showToast("Not your turn!", 'error')
+      return
+    }
+    
+    const canClaim =
+      myPlayer?.resources && card.requirement
+        ? (card.requirement.yellow || 0) <= myPlayer.resources.yellow &&
+          (card.requirement.green || 0) <= myPlayer.resources.green &&
+          (card.requirement.blue || 0) <= myPlayer.resources.blue &&
+          (card.requirement.pink || 0) <= myPlayer.resources.pink
+        : false;
+    
+    if (!canClaim) {
+      showToast("Not enough crystals!", 'error')
+      return
+    }
+    
+    // Show confirmation modal
+    setConfirmGolem({ show: true, golem: card, index })
+  };
+
+  const handleConfirmClaim = () => {
+    if (confirmGolem.index !== null && confirmGolem.golem) {
+      claimPointCard(confirmGolem.index, confirmGolem.golem)
+    }
+    setConfirmGolem({ show: false, golem: null, index: null })
   };
 
   // Determine card grid classes based on device
@@ -153,13 +188,13 @@ const MarketArea = () => {
                         const hasDeposits = cardData.deposits && Object.keys(cardData.deposits).length > 0
                         // Card position 1 (index 0) doesn't need deposit, acquire directly
                         if (index === 0) {
-                          acquireCard(index)
+                          acquireCard(index, [], cardData)
                         } else {
                           // For cards index > 0, open deposit modal
                           setDepositModal({ show: true, card: cardData, index: index })
                         }
                       } else if (isAffordable) {
-                        acquireCard(index)
+                        acquireCard(index, [], cardData)
                       }
                     }}
                   />
@@ -216,7 +251,7 @@ const MarketArea = () => {
                     index={index}
                     isPlayable={canClaim}
                     isPlaying={canClaim && myPlayer?.id === currentPlayer?.id}
-                    onClick={() => canClaim && claimPointCard(index)}
+                    onClick={() => handleClaimPointCard(cardData, index)}
                   />
                 </div>
               );
@@ -233,6 +268,14 @@ const MarketArea = () => {
           onClose={() => setDepositModal({ show: false, card: null, index: null })}
         />
       )}
+
+      {/* Confirm Golem Modal */}
+      <ConfirmGolemModal
+        isOpen={confirmGolem.show}
+        golem={confirmGolem.golem}
+        onConfirm={handleConfirmClaim}
+        onCancel={() => setConfirmGolem({ show: false, golem: null, index: null })}
+      />
     </div>
   );
 };

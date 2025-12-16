@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { setToastListener, clearToastListener } from '../utils/toast'
@@ -6,22 +6,26 @@ import { setToastListener, clearToastListener } from '../utils/toast'
 const Toast = () => {
   const [toasts, setToasts] = useState([])
 
+  const removeToast = useCallback((id) => {
+    setToasts(prev => prev.filter(t => t.id !== id))
+  }, [])
+
   useEffect(() => {
     console.log('[Toast] Component mounted, setting up listener')
     setToastListener((toast) => {
       console.log('[Toast] Received toast:', toast)
       setToasts(prev => [...prev, toast])
       
-      // Auto remove after 3 seconds
+      // Auto remove after 5 seconds (longer to give time to read)
       setTimeout(() => {
-        setToasts(prev => prev.filter(t => t.id !== toast.id))
-      }, 3000)
+        removeToast(toast.id)
+      }, 5000)
     })
 
     return () => {
       clearToastListener()
     }
-  }, [])
+  }, [removeToast])
 
   // Always render portal container
   return createPortal(
@@ -48,7 +52,14 @@ const Toast = () => {
               <span>
                 {toast.type === 'error' ? '❌' : toast.type === 'success' ? '✅' : 'ℹ️'}
               </span>
-              <span>{toast.message}</span>
+              <span className="flex-1">{toast.message}</span>
+              <button
+                onClick={() => removeToast(toast.id)}
+                className="ml-2 w-5 h-5 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/40 transition-colors text-xs font-bold"
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
           </motion.div>
         ))}
