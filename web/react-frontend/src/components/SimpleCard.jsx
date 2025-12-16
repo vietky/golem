@@ -173,12 +173,35 @@ const SimpleCard = ({
         </div>
       )}
 
-      {/* Deposits indicator */}
-      {card.deposits && Object.keys(card.deposits).length > 0 && (
-        <div className="text-center text-[10px] text-green-400 mt-1">
-          +{Object.values(card.deposits).reduce((a, b) => parseInt(a) + parseInt(b), 0)} 💎
-        </div>
-      )}
+      {/* Deposits indicator - show actual crystals */}
+      {card.deposits && Object.keys(card.deposits).length > 0 && (() => {
+        const crystalImages = {
+          yellow: '/images/stone_yellow.JPG',
+          green: '/images/stone_green.JPG',
+          blue: '/images/stone_blue.JPG',
+          pink: '/images/stone_pink.JPG'
+        }
+        const crystalBadges = []
+        Object.entries(card.deposits).forEach(([type, count]) => {
+          for (let i = 0; i < parseInt(count || 0); i++) {
+            crystalBadges.push({ type, src: crystalImages[type] || crystalImages.yellow })
+          }
+        })
+        
+        return crystalBadges.length > 0 ? (
+          <div className="flex justify-center gap-0.5 flex-wrap mt-1">
+            {crystalBadges.map((crystal, i) => (
+              <img
+                key={i}
+                src={crystal.src}
+                alt={crystal.type}
+                className="w-4 h-4 rounded-full object-cover border border-white/50 shadow"
+                onError={(e) => { e.target.src = '/images/stone_yellow.JPG' }}
+              />
+            ))}
+          </div>
+        ) : null
+      })()}
     </div>
   )
 }

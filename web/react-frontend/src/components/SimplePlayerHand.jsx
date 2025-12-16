@@ -29,7 +29,7 @@ const SimplePlayerHand = ({ showDetailed = false }) => {
     }
 
     // Produce card can be played directly
-    playCard(index)
+    playCard(index, card)
   }
 
   return (

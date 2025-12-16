@@ -380,6 +380,7 @@ func TestExecuteAction_AcquireCard_InsufficientResources(t *testing.T) {
 }
 
 // TestExecuteAction_AcquireCard_ExceedMaxCrystals tests acquiring card that would exceed max crystals
+// New behavior: allow acquisition but set PendingDiscard for excess crystals
 func TestExecuteAction_AcquireCard_ExceedMaxCrystals(t *testing.T) {
 	gs := NewGameState(2, 42)
 	player := gs.GetCurrentPlayer()
@@ -387,10 +388,12 @@ func TestExecuteAction_AcquireCard_ExceedMaxCrystals(t *testing.T) {
 	// Set player resources to max
 	player.Resources.Yellow = MaxCrystals
 
-	// Add deposits to target card
+	// Add deposits to target card (1 yellow crystal)
 	gs.Market.ActionCards[0].Deposits = &Resources{Yellow: 1}
 
-	// Try to acquire card with deposits (would exceed max)
+	initialHandSize := len(player.Hand)
+
+	// Acquire card with deposits (would exceed max by 1)
 	action := Action{
 		Type:        AcquireCard,
 		CardIndex:   0,
@@ -398,8 +401,25 @@ func TestExecuteAction_AcquireCard_ExceedMaxCrystals(t *testing.T) {
 	}
 
 	err := gs.ExecuteAction(action)
-	if err == nil {
-		t.Fatal("Expected error for exceeding max crystals, got nil")
+	if err != nil {
+		t.Fatalf("Expected acquire to succeed, got error: %v", err)
+	}
+
+	// Verify card was added to hand
+	if len(player.Hand) != initialHandSize+1 {
+		t.Errorf("Expected hand size to increase by 1, got %d (was %d)", len(player.Hand), initialHandSize)
+	}
+
+	// Verify crystals were collected (now has 11 yellow)
+	expectedTotal := MaxCrystals + 1
+	if player.Resources.Total() != expectedTotal {
+		t.Errorf("Expected %d total crystals, got %d", expectedTotal, player.Resources.Total())
+	}
+
+	// Verify PendingDiscard is set correctly
+	expectedPending := 1
+	if player.PendingDiscard != expectedPending {
+		t.Errorf("Expected pending discard to be %d, got %d", expectedPending, player.PendingDiscard)
 	}
 }
 

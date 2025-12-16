@@ -255,7 +255,12 @@ func (gs *GameSession) RunGameLoop() {
 					}
 
 					gs.GameState.CheckGameOver()
-					if !gs.GameState.GameOver {
+					// Only advance turn if:
+					// 1. Game is not over
+					// 2. Player has no pending discard (must discard before turn ends)
+					// For Discard action: advance turn after discarding (completing the previous action)
+					currentPlayer := gs.GameState.GetCurrentPlayer()
+					if !gs.GameState.GameOver && currentPlayer.PendingDiscard == 0 {
 						gs.GameState.NextTurn()
 					}
 					gs.BroadcastState()
@@ -275,9 +280,31 @@ func (gs *GameSession) RunGameLoop() {
 			// Check if current player is AI
 			currentPlayer := gs.GameState.GetCurrentPlayer()
 			if currentPlayer.IsAI && gs.Engine.AI != nil {
-				// AI turn - execute AI action with delay for better observation
-				// Delay must be longer than frontend animation (2000ms) to prevent overlap
+				// AI turn - execute AI action with a small delay for UX
 				time.Sleep(500 * time.Millisecond)
+
+				// If AI has pending discard, handle it first
+				if currentPlayer.PendingDiscard > 0 {
+					// AI auto-discards: prefer discarding yellow, then green, then blue, then pink
+					discardResources := game.NewResources()
+					remaining := currentPlayer.PendingDiscard
+					for _, crystalType := range []game.CrystalType{game.Yellow, game.Green, game.Blue, game.Pink} {
+						available := currentPlayer.Resources.Get(crystalType)
+						toDiscard := min(available, remaining)
+						discardResources.Add(crystalType, toDiscard)
+						remaining -= toDiscard
+						if remaining <= 0 {
+							break
+						}
+					}
+					discardAction := game.Action{
+						Type:             game.Discard,
+						DiscardResources: discardResources,
+					}
+					gs.GameState.ExecuteAction(discardAction)
+					gs.BroadcastState()
+					continue
+				}
 
 				aiAction := gs.Engine.AI.ChooseAction(currentPlayer, gs.GameState.Market, gs.GameState)
 				if err := gs.GameState.ExecuteAction(aiAction); err == nil {
@@ -296,7 +323,8 @@ func (gs *GameSession) RunGameLoop() {
 					}
 
 					gs.GameState.CheckGameOver()
-					if !gs.GameState.GameOver {
+					// Only advance turn if game is not over and no pending discard
+					if !gs.GameState.GameOver && currentPlayer.PendingDiscard == 0 {
 						gs.GameState.NextTurn()
 					}
 					gs.BroadcastState()
@@ -304,7 +332,7 @@ func (gs *GameSession) RunGameLoop() {
 					// If AI action fails, try rest
 					gs.GameState.ExecuteAction(game.Action{Type: game.Rest})
 					gs.GameState.CheckGameOver()
-					if !gs.GameState.GameOver {
+					if !gs.GameState.GameOver && currentPlayer.PendingDiscard == 0 {
 						gs.GameState.NextTurn()
 					}
 					gs.BroadcastState()
