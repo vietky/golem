@@ -1,16 +1,9 @@
 import React, { useState } from 'react'
 
-const getCardImagePath = (card, type) => {
-//   if (type === 'point' || card?.points !== undefined) {
-//     const pointValue = card.points || 0
-//     return `/images/golem_${pointValue.toString().padStart(4, '0')}.JPG`
-//   }
-  
-  if (card?.name) {
-    return `/images/${card.name}.JPG`
-  }
-  
-  return null
+// Get card image path - uses individual image files
+const getCardImagePath = (card) => {
+  if (!card?.name) return null
+  return `/images/${card.name}.JPG`
 }
 
 const CompactCard = ({ 
@@ -30,7 +23,7 @@ const CompactCard = ({
   
   if (!card) return null
 
-  const imagePath = getCardImagePath(card, type)
+  const imagePath = getCardImagePath(card)
   
   const sizeClasses = {
     small: 'w-14 h-20',   // Very small for played cards
@@ -97,10 +90,8 @@ const CompactCard = ({
         ...flexibleStyle
       }}
     >
-      {/* Provide a real image element with alt text for accessibility and to satisfy "alt" requirement */}
-      {imagePath && (
-        <img src={imagePath} alt={`card #${card.id || index}`} className="sr-only" />
-      )}
+      {/* Card name for accessibility */}
+      {imagePath && <img src={imagePath} alt={card.name} className="sr-only" />}
       
       {/* Position Badge */}
       {position !== null && (

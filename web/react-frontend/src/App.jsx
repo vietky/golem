@@ -7,11 +7,13 @@ import ResourcePanel from './components/ResourcePanel'
 import ActionLog from './components/ActionLog'
 import DiscardModal from './components/DiscardModal'
 import AcquiredCardOverlay from './components/AcquiredCardOverlay'
+import GameOverModal from './components/GameOverModal'
 import useGameStore from './store/gameStore'
 import useOrientation from './hooks/useOrientation'
 import { MobileLayoutProvider } from './contexts/MobileLayoutContext'
 
 function App() {
+
   const [inGame, setInGame] = useState(false)
   const { connectWebSocket, gameState, connected } = useGameStore()
   const { isPortrait, isLandscape, isMobile, isTablet, isDesktop } = useOrientation()
@@ -121,86 +123,16 @@ function App() {
           <AcquiredCardOverlay />
 
           {/* Game Over Modal */}
-          {gameState?.gameOver && (
-            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-modal p-4 overflow-y-auto">
-              <div className="bg-gradient-to-br from-purple-900 to-pink-900 rounded-2xl p-4 sm:p-6 md:p-8 max-w-4xl w-full mx-auto my-4 sm:my-8 max-h-[90vh] overflow-y-auto">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 text-center text-yellow-300">
-                  🏆 Game Over! 🏆
-                </h2>
-                
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
-                  <h3 className="text-xl sm:text-2xl font-bold text-center mb-2 sm:mb-4 text-yellow-200">
-                    Winner: {gameState.winner?.name || 'Unknown'}
-                  </h3>
-                  <p className="text-lg sm:text-xl text-center text-white">
-                    Total Points: {gameState.winner?.points || 0}
-                  </p>
-                </div>
-
-                <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
-                  <h3 className="text-lg sm:text-xl font-bold text-white mb-2 sm:mb-3">Final Scores</h3>
-                  {gameState.players?.map((player, idx) => {
-                    const pointCardPoints = player.pointCards?.reduce((sum, card) => sum + (card.points || 0), 0) || 0
-                    const coinPoints = player.coins?.reduce((sum, coin) => sum + (coin.points || 0), 0) || 0
-                    const copperCount = player.coins?.filter(c => c.points === 3).length || 0
-                    const silverCount = player.coins?.filter(c => c.points === 1).length || 0
-                    const crystalPoints = (player.resources?.green || 0) + (player.resources?.blue || 0) + (player.resources?.pink || 0)
-                    const totalPoints = pointCardPoints + coinPoints + crystalPoints
-                    const isWinner = player.id === gameState.winner?.id
-
-                    return (
-                      <div key={player.id} className={`p-3 sm:p-4 rounded-lg ${
-                        isWinner ? 'bg-yellow-500/30 border-2 border-yellow-300' : 'bg-white/10'
-                      }`}>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            {isWinner && <span className="text-xl sm:text-2xl">👑</span>}
-                            <span className="font-bold text-white text-base sm:text-lg">{player.name}</span>
-                          </div>
-                          <span className="text-xl sm:text-2xl font-bold text-yellow-300">{totalPoints} pts</span>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mt-2 sm:mt-3 text-xs sm:text-sm">
-                          <div className="bg-black/20 rounded p-2">
-                            <div className="text-gray-300 mb-1">Point Cards</div>
-                            <div className="text-white font-semibold">
-                              {player.pointCards?.length || 0} cards = {pointCardPoints} pts
-                            </div>
-                          </div>
-                          
-                          <div className="bg-black/20 rounded p-2">
-                            <div className="text-gray-300 mb-1">Bonus Coins</div>
-                            <div className="text-white font-semibold">
-                              {copperCount > 0 && `${copperCount}🥉(${copperCount * 3}pts) `}
-                              {silverCount > 0 && `${silverCount}🥈(${silverCount * 1}pts)`}
-                              {copperCount === 0 && silverCount === 0 && 'None'}
-                            </div>
-                          </div>
-                          
-                          <div className="bg-black/20 rounded p-2">
-                            <div className="text-gray-300 mb-1">Crystals</div>
-                            <div className="text-white font-semibold">
-                              🟢{player.resources?.green || 0} 🔵{player.resources?.blue || 0} 🟣{player.resources?.pink || 0} = {crystalPoints} pts
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                <button
-                  onClick={() => {
-                    setInGame(false)
-                    window.location.reload()
-                  }}
-                  className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold py-3 px-6 rounded-lg hover:from-yellow-600 hover:to-orange-600 touch-target shadow-lg text-base sm:text-lg"
-                >
-                  🎮 New Game
-                </button>
-              </div>
-            </div>
-          )}
+          <GameOverModal 
+            onNewGame={() => {
+              setInGame(false)
+              window.location.reload()
+            }}
+            onBackToMenu={() => {
+              setInGame(false)
+              window.location.reload()
+            }}
+          />
         </div>
       </div>
     </MobileLayoutProvider>

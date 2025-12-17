@@ -299,7 +299,7 @@ const Card = ({
             className="w-full h-auto object-contain"
             style={{ maxHeight: '100%' }}
             onError={(e) => {
-              e.target.src = '/images/golem_bg.JPG'
+              e.target.style.display = 'none'
             }}
             whileHover={!isMobile ? { 
               filter: "brightness(1.1) saturate(1.2)",

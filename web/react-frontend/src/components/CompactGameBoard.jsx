@@ -3,12 +3,14 @@ import useGameStore from '../store/gameStore'
 import useOrientation from '../hooks/useOrientation'
 import CompactCard from './CompactCard'
 import DepositModal from './DepositModal'
+import ConfirmGolemModal from './ConfirmGolemModal'
 import { showToast } from '../utils/toast'
 
 const CompactGameBoard = () => {
   const { gameState, myPlayer, currentPlayer, acquireCard, claimPointCard } = useGameStore()
   const { isMobile, isPortrait } = useOrientation()
   const [depositModal, setDepositModal] = useState({ show: false, card: null, index: null })
+  const [confirmGolem, setConfirmGolem] = useState({ show: false, golem: null, index: null })
   const containerRef = useRef(null)
 
   if (!gameState?.market) return null
@@ -48,7 +50,7 @@ const CompactGameBoard = () => {
     
     // Card at index 0 (position 1) is always FREE - no deposits needed
     if (index === 0) {
-      acquireCard(index, {})
+      acquireCard(index, {}, card)
       return
     }
     
@@ -93,7 +95,15 @@ const CompactGameBoard = () => {
       return
     }
     
-    claimPointCard(index)
+    // Show confirmation modal
+    setConfirmGolem({ show: true, golem: card, index })
+  }
+
+  const handleConfirmClaim = () => {
+    if (confirmGolem.index !== null && confirmGolem.golem) {
+      claimPointCard(confirmGolem.index, confirmGolem.golem)
+    }
+    setConfirmGolem({ show: false, golem: null, index: null })
   }
 
   return (
@@ -138,6 +148,20 @@ const CompactGameBoard = () => {
               parseInt(a || 0) + parseInt(b || 0), 0
             )
 
+            // Build crystal badges array
+            const crystalBadges = []
+            const crystalImages = {
+              yellow: '/images/stone_yellow.JPG',
+              green: '/images/stone_green.JPG',
+              blue: '/images/stone_blue.JPG',
+              pink: '/images/stone_pink.JPG'
+            }
+            Object.entries(deposits).forEach(([type, count]) => {
+              for (let i = 0; i < parseInt(count || 0); i++) {
+                crystalBadges.push({ type, src: crystalImages[type] || crystalImages.yellow })
+              }
+            })
+
             return (
               <CompactCard
                 key={`action-${index}`}
@@ -150,9 +174,17 @@ const CompactGameBoard = () => {
                 size="flexible"
                 showDetails={!isMobile}
                 position={index + 1}
-                badge={depositCount > 0 ? (
-                  <div className="bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow">
-                    +{depositCount}
+                badge={crystalBadges.length > 0 ? (
+                  <div className="flex flex-wrap gap-0.5 max-w-[60px] justify-end">
+                    {crystalBadges.map((crystal, i) => (
+                      <img
+                        key={i}
+                        src={crystal.src}
+                        alt={crystal.type}
+                        className="w-4 h-4 rounded-full object-cover border border-white/50 shadow"
+                        onError={(e) => { e.target.src = '/images/stone_yellow.JPG' }}
+                      />
+                    ))}
                   </div>
                 ) : null}
               />
@@ -170,9 +202,22 @@ const CompactGameBoard = () => {
           <h3 className={`text-white/60 font-medium ${isMobile && isPortrait ? 'text-[10px]' : isMobile ? 'text-xs' : 'text-sm'}`}>
             Golems
           </h3>
-          <span className={`text-white/40 ${isMobile && isPortrait ? 'text-[9px]' : 'text-[10px]'}`}>
-            {gameState.market.pointDeck || 0} left
-          </span>
+          <div className={`flex items-center gap-2 ${isMobile && isPortrait ? 'text-[9px]' : 'text-[10px]'}`}>
+            {/* Coins remaining info */}
+            {coins && coins[0]?.amount > 0 && (
+              <span className="text-orange-400" title="Copper coins (3pts each)">
+                🥉{coins[0].amount}
+              </span>
+            )}
+            {coins && coins[1]?.amount > 0 && (
+              <span className="text-gray-300" title="Silver coins (1pt each)">
+                🥈{coins[1].amount}
+              </span>
+            )}
+            <span className="text-white/40">
+              {gameState.market.pointDeck || 0} left
+            </span>
+          </div>
         </div>
         
         <div className={`
@@ -185,6 +230,10 @@ const CompactGameBoard = () => {
           {pointCards.map((cardData, index) => {
             const canClaim = isMyTurn && canClaimPointCard(cardData)
             const coinBonus = index <= 1 && coins && coins[index] && coins[index].amount > 0
+            const coinAmount = coins && coins[index] ? coins[index].amount : 0
+            const isCopperCoin = index === 0
+            const coinEmoji = isCopperCoin ? '🥉' : '🥈'
+            const coinLabel = isCopperCoin ? 'Copper (3pts)' : 'Silver (1pt)'
 
             return (
               <CompactCard
@@ -198,8 +247,12 @@ const CompactGameBoard = () => {
                 showDetails={!isMobile}
                 position={index + 1}
                 badge={coinBonus ? (
-                  <div className="text-base drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" title={index === 0 ? "Copper Token (3 pts)" : "Silver Token (1 pt)"}>
-                    🪙
+                  <div 
+                    className="flex items-center gap-0.5 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-0.5 border border-white/20"
+                    title={`${coinLabel} - ${coinAmount} remaining`}
+                  >
+                    <span className="text-sm">{coinEmoji}</span>
+                    <span className="text-[10px] text-white font-bold">{coinAmount}</span>
                   </div>
                 ) : null}
               />
@@ -216,6 +269,14 @@ const CompactGameBoard = () => {
           onClose={() => setDepositModal({ show: false, card: null, index: null })}
         />
       )}
+
+      {/* Confirm Golem Modal */}
+      <ConfirmGolemModal
+        isOpen={confirmGolem.show}
+        golem={confirmGolem.golem}
+        onConfirm={handleConfirmClaim}
+        onCancel={() => setConfirmGolem({ show: false, golem: null, index: null })}
+      />
     </div>
   )
 }

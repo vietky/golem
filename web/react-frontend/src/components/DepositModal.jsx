@@ -68,7 +68,7 @@ const DepositModal = ({ card, cardIndex, isHandCard = false, onClose }) => {
   const handleConfirm = () => {
     if (requiredPositions.length === 0) {
       // Card position 1, no deposit needed, just acquire
-      acquireCard(cardIndex, [])
+      acquireCard(cardIndex, [], card)
       onClose()
       return
     }
@@ -89,7 +89,7 @@ const DepositModal = ({ card, cardIndex, isHandCard = false, onClose }) => {
         crystal: deposits[pos]
       }))
       
-      acquireCard(cardIndex, depositArray)
+      acquireCard(cardIndex, depositArray, card)
       onClose()
     }
   }

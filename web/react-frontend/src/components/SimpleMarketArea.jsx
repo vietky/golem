@@ -1,13 +1,16 @@
 import React, { useState } from 'react'
 import SimpleCard from './SimpleCard'
 import DepositModal from './DepositModal'
+import ConfirmGolemModal from './ConfirmGolemModal'
 import useGameStore from '../store/gameStore'
 import useOrientation from '../hooks/useOrientation'
+import { showToast } from '../utils/toast'
 
 const SimpleMarketArea = () => {
   const { gameState, myPlayer, currentPlayer, acquireCard, claimPointCard } = useGameStore()
   const { isMobile, isPortrait } = useOrientation()
   const [depositModal, setDepositModal] = useState({ show: false, card: null, index: null })
+  const [confirmGolem, setConfirmGolem] = useState({ show: false, golem: null, index: null })
 
   if (!gameState?.market) {
     return (
@@ -40,7 +43,7 @@ const SimpleMarketArea = () => {
     
     // If this is position 0, just acquire (free)
     if (index === 0) {
-      acquireCard(index);
+      acquireCard(index, [], card);
       return;
     }
 
@@ -49,8 +52,26 @@ const SimpleMarketArea = () => {
   };
 
   const handleClaimPointCard = (index) => {
-    if (!isMyTurn) return;
-    claimPointCard(index);
+    if (!isMyTurn) {
+      showToast("Not your turn!", 'error')
+      return
+    }
+    
+    const card = pointCards[index]
+    if (!canClaimPointCard(card)) {
+      showToast("Not enough crystals!", 'error')
+      return
+    }
+    
+    // Show confirmation modal
+    setConfirmGolem({ show: true, golem: card, index })
+  };
+
+  const handleConfirmClaim = () => {
+    if (confirmGolem.index !== null && confirmGolem.golem) {
+      claimPointCard(confirmGolem.index, confirmGolem.golem)
+    }
+    setConfirmGolem({ show: false, golem: null, index: null })
   };
 
   const canClaimPointCard = (card) => {
@@ -88,9 +109,20 @@ const SimpleMarketArea = () => {
               const cost = cardData.cost || {};
               const isAffordable = isMyTurn && canAfford(cost);
               const deposits = cardData.deposits || {};
-              const depositCount = Object.values(deposits).reduce((a, b) => 
-                parseInt(a || 0) + parseInt(b || 0), 0
-              );
+
+              // Build crystal badges array
+              const crystalBadges = []
+              const crystalImages = {
+                yellow: '/images/stone_yellow.JPG',
+                green: '/images/stone_green.JPG',
+                blue: '/images/stone_blue.JPG',
+                pink: '/images/stone_pink.JPG'
+              }
+              Object.entries(deposits).forEach(([type, count]) => {
+                for (let i = 0; i < parseInt(count || 0); i++) {
+                  crystalBadges.push({ type, src: crystalImages[type] || crystalImages.yellow })
+                }
+              })
 
               return (
                 <div key={`action-${index}`} className="relative">
@@ -99,10 +131,18 @@ const SimpleMarketArea = () => {
                     {index + 1}
                   </div>
                   
-                  {/* Deposit Count Badge */}
-                  {depositCount > 0 && (
-                    <div className="absolute -top-2 -right-2 bg-green-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10 shadow-lg">
-                      +{depositCount}
+                  {/* Deposit Crystals Badge */}
+                  {crystalBadges.length > 0 && (
+                    <div className="absolute -top-2 -right-2 z-10 flex flex-wrap gap-0.5 max-w-[50px] justify-end">
+                      {crystalBadges.map((crystal, i) => (
+                        <img
+                          key={i}
+                          src={crystal.src}
+                          alt={crystal.type}
+                          className="w-5 h-5 rounded-full object-cover border-2 border-white shadow-lg"
+                          onError={(e) => { e.target.src = '/images/stone_yellow.JPG' }}
+                        />
+                      ))}
                     </div>
                   )}
                   
@@ -127,14 +167,29 @@ const SimpleMarketArea = () => {
             <h2 className="text-white font-bold text-sm">
               Point Cards
             </h2>
-            <span className="text-white/60 text-xs">
-              {gameState.market.pointDeck || 0} remaining
-            </span>
+            <div className="flex items-center gap-3 text-xs">
+              {/* Coins remaining info */}
+              {coins[0]?.amount > 0 && (
+                <span className="text-orange-400" title="Copper coins (3pts each)">
+                  🥉{coins[0].amount}/10
+                </span>
+              )}
+              {coins[1]?.amount > 0 && (
+                <span className="text-gray-300" title="Silver coins (1pt each)">
+                  🥈{coins[1].amount}/10
+                </span>
+              )}
+              <span className="text-white/60">
+                {gameState.market.pointDeck || 0} cards
+              </span>
+            </div>
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 justify-items-center">
             {pointCards.map((cardData, index) => {
               const canClaim = isMyTurn && canClaimPointCard(cardData);
-              const coinBonus = index <= 1 && coins && coins[index] && coins[index].amount > 0;
+              const badge = getCoinBadgeInfo(index);
+              const isCopperCoin = index === 0;
+              const coinEmoji = isCopperCoin ? '🥉' : '🥈';
 
               return (
                 <div key={`point-${index}`} className="relative">
@@ -143,16 +198,16 @@ const SimpleMarketArea = () => {
                     {index + 1}
                   </div>
                   
-                      {/* Coin Bonus Badge */}
-                      {(() => {
-                        const badge = getCoinBadgeInfo(index)
-                        if (!badge) return null
-                        return (
-                          <div className="absolute -top-2 -right-2 bg-amber-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10 shadow-lg" title={badge.label}>
-                            🪙
-                          </div>
-                        )
-                      })()}
+                  {/* Coin Bonus Badge */}
+                  {badge && (
+                    <div 
+                      className="absolute -top-2 -right-2 z-10 flex items-center gap-0.5 bg-black/70 backdrop-blur-sm rounded-full px-1.5 py-0.5 border border-white/30 shadow-lg"
+                      title={`${badge.label} - ${badge.amount} remaining`}
+                    >
+                      <span className="text-sm">{coinEmoji}</span>
+                      <span className="text-[10px] text-white font-bold">{badge.amount}</span>
+                    </div>
+                  )}
                   
                   <SimpleCard
                     card={cardData}
@@ -177,6 +232,14 @@ const SimpleMarketArea = () => {
           onClose={() => setDepositModal({ show: false, card: null, index: null })}
         />
       )}
+
+      {/* Confirm Golem Modal */}
+      <ConfirmGolemModal
+        isOpen={confirmGolem.show}
+        golem={confirmGolem.golem}
+        onConfirm={handleConfirmClaim}
+        onCancel={() => setConfirmGolem({ show: false, golem: null, index: null })}
+      />
     </div>
   );
 };
