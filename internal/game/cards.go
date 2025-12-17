@@ -392,10 +392,7 @@ func getBonusPoints(requirement *Resources) int {
 	if differentColors >= 4 {
 		bonusPoints += 1
 	}
-	if requirement.Pink+requirement.Blue+requirement.Green+requirement.Yellow == 6 {
-		bonusPoints += 1
-	}
-	return int(math.Max(float64(bonusPoints), 2))
+	return int(math.Min(float64(bonusPoints), 2))
 }
 
 // CreateCardFromName creates a card from a name string using the new naming convention
