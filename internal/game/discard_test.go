@@ -166,7 +166,7 @@ func TestDepositAnyTypeOfCrystal(t *testing.T) {
 }
 
 // TestCoinPointCalculation tests that coins are correctly added to player points
-func TestCoinPointCalculation(t *testing.T) {
+func TestCardPointCalculation(t *testing.T) {
 	gs := NewGameState(2, 42)
 	player := gs.GetCurrentPlayer()
 
@@ -256,5 +256,55 @@ func TestFinalPointsCalculation(t *testing.T) {
 	expectedRegularPoints := actualCardPoints + 3
 	if regularPoints != expectedRegularPoints {
 		t.Errorf("Expected %d regular points (card %d + copper 3), got %d", expectedRegularPoints, actualCardPoints, regularPoints)
+	}
+}
+
+
+// TestCoinPointCalculation tests that coins are correctly added to player points
+func TestCoinPointCalculation_4differentColors(t *testing.T) {
+	gs := NewGameState(2, 42)
+	player := gs.GetCurrentPlayer()
+
+	pointCard := CreateCardFromName("golem_1234", 100)
+	player.PointCards = append(player.PointCards, pointCard)
+
+	cardPoint := 4 * 1 + 2 * 3 + 3 * 2 + 4 * 1
+	_4ColorsBonus := 2
+	expectedPoints := cardPoint + _4ColorsBonus
+
+	if player.GetPoints() != expectedPoints {
+		t.Errorf("Expected %d points, got %d", expectedPoints, player.GetPoints())
+	}
+}
+
+func TestCoinPointCalculation_3differentColors(t *testing.T) {
+	gs := NewGameState(2, 42)
+	player := gs.GetCurrentPlayer()
+
+	pointCard := CreateCardFromName("golem_1230", 100)
+	player.PointCards = append(player.PointCards, pointCard)
+
+	cardPoint := 4 * 1 + 2 * 3 + 3 * 2
+	_3ColorsBonus := 1
+	expectedPoints := cardPoint + _3ColorsBonus
+
+	if player.GetPoints() != expectedPoints {
+		t.Errorf("Expected %d points, got %d", expectedPoints, player.GetPoints())
+	}
+}
+
+func TestCoinPointCalculation_2differentColors(t *testing.T) {
+	gs := NewGameState(2, 42)
+	player := gs.GetCurrentPlayer()
+
+	pointCard := CreateCardFromName("golem_1100", 100)
+	player.PointCards = append(player.PointCards, pointCard)
+
+	cardPoint := 4 * 1 + 3 * 1
+	_2ColorsBonus := 0
+	expectedPoints := cardPoint + _2ColorsBonus
+
+	if player.GetPoints() != expectedPoints {
+		t.Errorf("Expected %d points, got %d", expectedPoints, player.GetPoints())
 	}
 }
