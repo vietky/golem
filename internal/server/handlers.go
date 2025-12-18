@@ -289,7 +289,7 @@ func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if req.NumPlayers < 2 || req.NumPlayers > 4 {
+	if req.NumPlayers < 2 || req.NumPlayers > 5 {
 		sendJSONError(w, http.StatusBadRequest, "Invalid number of players")
 		return
 	}
