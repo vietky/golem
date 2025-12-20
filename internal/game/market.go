@@ -17,7 +17,7 @@ type Market struct {
 }
 
 // NewMarket creates a new market with shuffled decks
-func NewMarket(actionCards, pointCards []*Card, coins []*Card, maxActionVisible int, maxPointVisible int, rng *rand.Rand) *Market {
+func NewMarket(actionCards, pointCards []*Card, coins []*Card, maxActionVisible int, maxPointVisible int, numPlayers int, rng *rand.Rand) *Market {
 	// Shuffle decks
 	shuffledActions := make([]*Card, len(actionCards))
 	copy(shuffledActions, actionCards)
@@ -47,7 +47,7 @@ func NewMarket(actionCards, pointCards []*Card, coins []*Card, maxActionVisible 
 	// Draw initial cards
 	market.RefillActionCards()
 	market.RefillPointCards()
-	market.RefillCoins()
+	market.RefillCoins(numPlayers)
 
 	return market
 }
@@ -68,9 +68,9 @@ func (m *Market) RefillPointCards() {
 	}
 }
 
-func (m *Market) RefillCoins() {
+func (m *Market) RefillCoins(numPlayers int) {
 	for i := range m.Coins {
-		m.Coins[i].Amount = 10
+		m.Coins[i].Amount = numPlayers * 2
 	}
 }
 

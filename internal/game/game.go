@@ -92,7 +92,7 @@ func NewGameState(numPlayers int, seed int64) *GameState {
 	actionCards := CreateDefaultActionCards()
 	pointCards := CreateDefaultPointCards()
 	coins := CreateCoinCards()
-	market := NewMarket(actionCards, pointCards, coins, 6, 5, rng)
+	market := NewMarket(actionCards, pointCards, coins, 6, 5, len(players), rng)
 
 	return &GameState{
 		Players:     players,
