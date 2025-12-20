@@ -356,6 +356,10 @@ func (gs *GameSession) RunGameLoop() {
 			timeout := gs.TurnTimeout
 			gs.mu.RUnlock()
 
+			if gs.GameState.Round == 1 && gs.GameState.CurrentTurn == 0 {
+				// Skip timeout check for first turn to allow setup
+				continue
+			}
 			gs.logger.Debug("Checking turn timeout", zap.Bool("isAI", currentPlayer.IsAI), zap.Int("playerID", currentPlayer.ID), zap.Duration("turnDuration", turnDuration), zap.Duration("timeout", timeout))
 			if !currentPlayer.IsAI && turnDuration >= timeout {
 				gs.logger.Info("[1] AI taking action", zap.Duration("turnDuration", turnDuration), zap.Duration("timeout", timeout))
