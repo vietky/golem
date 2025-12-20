@@ -32,6 +32,8 @@ type GameSession struct {
 	CreatedAt     time.Time               // When session was created
 	LastActivity  time.Time               // Last time someone was in the room
 	EventStore    eventstore.EventStore   // Event store for recording actions
+	TurnTimeout   time.Duration           // Maximum time per turn (default 60s)
+	TurnStartTime time.Time               // When the current turn started
 	mu            sync.RWMutex
 	ActionChan    chan PlayerAction
 	BroadcastChan chan []byte
@@ -61,7 +63,9 @@ func NewGameSession(sessionID string, numPlayers int, seed int64) *GameSession {
 		PlayerAvatars: make(map[int]string),
 		CreatedAt:     now,
 		LastActivity:  now,
-		EventStore:    nil, // Will be set by GameServer
+		EventStore:    nil,              // Will be set by GameServer
+		TurnTimeout:   60 * time.Second, // Default 60s timeout
+		TurnStartTime: now,
 		ActionChan:    make(chan PlayerAction, 10),
 		BroadcastChan: make(chan []byte, 100),
 	}
@@ -227,10 +231,88 @@ func (gs *GameServer) GetSession(sessionID string) (*GameSession, bool) {
 	return session, ok
 }
 
+// handleAIDiscard handles the discard action when AI has pending discards
+func (gs *GameSession) handleAIDiscard(player *game.Player) {
+	discardResources := game.NewResources()
+	remaining := player.PendingDiscard
+	for _, crystalType := range []game.CrystalType{game.Yellow, game.Green, game.Blue, game.Pink} {
+		available := player.Resources.Get(crystalType)
+		toDiscard := min(available, remaining)
+		discardResources.Add(crystalType, toDiscard)
+		remaining -= toDiscard
+		if remaining <= 0 {
+			break
+		}
+	}
+	discardAction := game.Action{
+		Type:             game.Discard,
+		DiscardResources: discardResources,
+	}
+	gs.GameState.ExecuteAction(discardAction)
+	gs.BroadcastState()
+}
+
+// storeGameEvent stores an action in the event store
+func (gs *GameSession) storeGameEvent(playerID int, action game.Action) {
+	if gs.EventStore != nil {
+		req := eventstore.StoreEventRequest{
+			GameID:    gs.ID,
+			PlayerID:  playerID,
+			Action:    action,
+			GameState: gs.GameState,
+		}
+		resp := gs.EventStore.StoreEvent(req)
+		if resp.Error != nil {
+			// Don't fail the action if event store fails
+		}
+	}
+}
+
+// advanceTurn advances to the next turn and resets the timer
+func (gs *GameSession) advanceTurn() {
+	if !gs.GameState.GameOver {
+		currentPlayer := gs.GameState.GetCurrentPlayer()
+		if currentPlayer.PendingDiscard == 0 {
+			gs.GameState.NextTurn()
+			// Reset turn timer for next player
+			gs.mu.Lock()
+			gs.TurnStartTime = time.Now()
+			gs.mu.Unlock()
+		}
+	}
+}
+
+// executeAITurn executes a single AI turn with proper error handling
+func (gs *GameSession) executeAITurn(player *game.Player) {
+	aiAction := gs.Engine.AI.ChooseAction(player, gs.GameState.Market, gs.GameState)
+	if err := gs.GameState.ExecuteAction(aiAction); err == nil {
+		gs.storeGameEvent(player.ID, aiAction)
+		gs.GameState.CheckGameOver()
+		gs.advanceTurn()
+		gs.BroadcastState()
+	} else {
+		// If AI action fails, try rest
+		gs.GameState.ExecuteAction(game.Action{Type: game.Rest})
+		gs.GameState.CheckGameOver()
+		gs.advanceTurn()
+		gs.BroadcastState()
+	}
+}
+
 // RunGameLoop runs the game loop for a session
 func (gs *GameSession) RunGameLoop() {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
+
+	// Initialize AI for timeout handling
+	if gs.Engine.AI == nil {
+		gs.Engine.AI = game.NewAIPlayer(gs.GameState.RNG)
+	}
+
+	// Set the start time for the first turn
+	gs.mu.Lock()
+	gs.TurnStartTime = time.Now()
+	gs.mu.Unlock()
 
 	for !gs.GameState.GameOver {
 		select {
@@ -239,30 +321,9 @@ func (gs *GameSession) RunGameLoop() {
 			currentPlayer := gs.GameState.GetCurrentPlayer()
 			if action.PlayerID == currentPlayer.ID {
 				if err := gs.GameState.ExecuteAction(action.Action); err == nil {
-					// Store event if event store is available
-					if gs.EventStore != nil {
-						req := eventstore.StoreEventRequest{
-							GameID:    gs.ID,
-							PlayerID:  action.PlayerID,
-							Action:    action.Action,
-							GameState: gs.GameState,
-						}
-						resp := gs.EventStore.StoreEvent(req)
-						if resp.Error != nil {
-							// Don't fail the action if event store fails
-							// TODO: log here
-						}
-					}
-
+					gs.storeGameEvent(action.PlayerID, action.Action)
 					gs.GameState.CheckGameOver()
-					// Only advance turn if:
-					// 1. Game is not over
-					// 2. Player has no pending discard (must discard before turn ends)
-					// For Discard action: advance turn after discarding (completing the previous action)
-					currentPlayer := gs.GameState.GetCurrentPlayer()
-					if !gs.GameState.GameOver && currentPlayer.PendingDiscard == 0 {
-						gs.GameState.NextTurn()
-					}
+					gs.advanceTurn()
 					gs.BroadcastState()
 				} else {
 					// Send error to player
@@ -277,72 +338,67 @@ func (gs *GameSession) RunGameLoop() {
 			}
 
 		case <-ticker.C:
-			// Check if current player is AI
 			currentPlayer := gs.GameState.GetCurrentPlayer()
+
+			// Check for turn timeout (only for human players)
+			gs.mu.RLock()
+			turnDuration := time.Since(gs.TurnStartTime)
+			timeout := gs.TurnTimeout
+			gs.mu.RUnlock()
+
+			if !currentPlayer.IsAI && turnDuration >= timeout {
+				// Timeout! Let AI make the move
+				gs.handleTurnTimeout(currentPlayer)
+				continue
+			}
+
+			// Check if current player is AI
 			if currentPlayer.IsAI && gs.Engine.AI != nil {
 				// AI turn - execute AI action with a small delay for UX
 				time.Sleep(500 * time.Millisecond)
 
 				// If AI has pending discard, handle it first
 				if currentPlayer.PendingDiscard > 0 {
-					// AI auto-discards: prefer discarding yellow, then green, then blue, then pink
-					discardResources := game.NewResources()
-					remaining := currentPlayer.PendingDiscard
-					for _, crystalType := range []game.CrystalType{game.Yellow, game.Green, game.Blue, game.Pink} {
-						available := currentPlayer.Resources.Get(crystalType)
-						toDiscard := min(available, remaining)
-						discardResources.Add(crystalType, toDiscard)
-						remaining -= toDiscard
-						if remaining <= 0 {
-							break
-						}
-					}
-					discardAction := game.Action{
-						Type:             game.Discard,
-						DiscardResources: discardResources,
-					}
-					gs.GameState.ExecuteAction(discardAction)
-					gs.BroadcastState()
+					gs.handleAIDiscard(currentPlayer)
 					continue
 				}
 
-				aiAction := gs.Engine.AI.ChooseAction(currentPlayer, gs.GameState.Market, gs.GameState)
-				if err := gs.GameState.ExecuteAction(aiAction); err == nil {
-					// Store event if event store is available
-					if gs.EventStore != nil {
-						req := eventstore.StoreEventRequest{
-							GameID:    gs.ID,
-							PlayerID:  currentPlayer.ID,
-							Action:    aiAction,
-							GameState: gs.GameState,
-						}
-						resp := gs.EventStore.StoreEvent(req)
-						if resp.Error != nil {
-							// Don't fail the action if event store fails
-						}
-					}
-
-					gs.GameState.CheckGameOver()
-					// Only advance turn if game is not over and no pending discard
-					if !gs.GameState.GameOver && currentPlayer.PendingDiscard == 0 {
-						gs.GameState.NextTurn()
-					}
-					gs.BroadcastState()
-				} else {
-					// If AI action fails, try rest
-					gs.GameState.ExecuteAction(game.Action{Type: game.Rest})
-					gs.GameState.CheckGameOver()
-					if !gs.GameState.GameOver && currentPlayer.PendingDiscard == 0 {
-						gs.GameState.NextTurn()
-					}
-					gs.BroadcastState()
-				}
+				gs.executeAITurn(currentPlayer)
 			}
 		}
 	}
 
 	// Game over - send final state
 	gs.BroadcastState()
+}
+
+// handleTurnTimeout handles the case when a player's turn times out
+func (gs *GameSession) handleTurnTimeout(player *game.Player) {
+	// Send timeout notification to all clients
+	timeoutMsg := map[string]interface{}{
+		"type":     "turnTimeout",
+		"playerID": player.ID,
+		"message":  fmt.Sprintf("%s took too long. AI is making a move.", player.Name),
+	}
+	if data, err := json.Marshal(timeoutMsg); err == nil {
+		gs.Broadcast(data)
+	}
+
+	// Small delay so the notification is visible
+	time.Sleep(500 * time.Millisecond)
+
+	// If player has pending discard, handle it first
+	if player.PendingDiscard > 0 {
+		gs.handleAIDiscard(player)
+		// Reset timer after discard
+		gs.mu.Lock()
+		gs.TurnStartTime = time.Now()
+		gs.mu.Unlock()
+		return
+	}
+
+	// Let AI make the move
+	gs.executeAITurn(player)
 }
 
 // BroadcastState broadcasts the current game state to all players

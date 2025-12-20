@@ -279,9 +279,10 @@ func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request
 	}
 
 	var req struct {
-		NumPlayers int    `json:"numPlayers"`
-		Seed       int64  `json:"seed"`
-		SessionID  string `json:"sessionID"` // Optional custom session ID
+		NumPlayers  int    `json:"numPlayers"`
+		Seed        int64  `json:"seed"`
+		SessionID   string `json:"sessionID"`   // Optional custom session ID
+		TurnTimeout int    `json:"turnTimeout"` // Optional turn timeout in seconds (default 60)
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -298,6 +299,11 @@ func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request
 		req.Seed = time.Now().UnixNano()
 	}
 
+	// Default turn timeout to 60 seconds if not specified or invalid
+	if req.TurnTimeout <= 0 {
+		req.TurnTimeout = 60
+	}
+
 	// Use custom session ID if provided, otherwise generate one
 	var sessionID string
 	if req.SessionID != "" {
@@ -311,11 +317,17 @@ func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request
 		sessionID = fmt.Sprintf("session_%d", time.Now().UnixNano())
 	}
 
-	_ = gs.CreateSession(sessionID, req.NumPlayers, req.Seed)
+	session := gs.CreateSession(sessionID, req.NumPlayers, req.Seed)
+
+	// Set custom turn timeout if specified
+	session.mu.Lock()
+	session.TurnTimeout = time.Duration(req.TurnTimeout) * time.Second
+	session.mu.Unlock()
 
 	response := map[string]interface{}{
-		"sessionID":  sessionID,
-		"numPlayers": req.NumPlayers,
+		"sessionID":   sessionID,
+		"numPlayers":  req.NumPlayers,
+		"turnTimeout": req.TurnTimeout,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -412,9 +424,10 @@ func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Re
 	}
 
 	var req struct {
-		NumAI     int    `json:"numAI"` // Number of AI opponents (1-3)
-		Seed      int64  `json:"seed"`
-		SessionID string `json:"sessionID"` // Optional custom session ID
+		NumAI       int    `json:"numAI"` // Number of AI opponents (1-3)
+		Seed        int64  `json:"seed"`
+		SessionID   string `json:"sessionID"`   // Optional custom session ID
+		TurnTimeout int    `json:"turnTimeout"` // Optional turn timeout in seconds (default 60)
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -430,6 +443,11 @@ func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Re
 
 	if req.Seed == 0 {
 		req.Seed = time.Now().UnixNano()
+	}
+
+	// Default turn timeout to 60 seconds if not specified or invalid
+	if req.TurnTimeout <= 0 {
+		req.TurnTimeout = 60
 	}
 
 	// Use custom session ID if provided, otherwise generate one
@@ -449,6 +467,11 @@ func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Re
 	totalPlayers := 1 + req.NumAI
 	session := gs.CreateSession(sessionID, totalPlayers, req.Seed)
 
+	// Set custom turn timeout if specified
+	session.mu.Lock()
+	session.TurnTimeout = time.Duration(req.TurnTimeout) * time.Second
+	session.mu.Unlock()
+
 	// Mark AI players (all except first player which is human)
 	session.mu.Lock()
 	for i := 1; i < totalPlayers; i++ {
@@ -461,10 +484,11 @@ func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Re
 	session.Engine.AI = game.NewAIPlayer(session.GameState.RNG)
 
 	response := map[string]interface{}{
-		"sessionID":  sessionID,
-		"numPlayers": totalPlayers,
-		"numAI":      req.NumAI,
-		"mode":       "singlePlayer",
+		"sessionID":   sessionID,
+		"numPlayers":  totalPlayers,
+		"numAI":       req.NumAI,
+		"mode":        "singlePlayer",
+		"turnTimeout": req.TurnTimeout,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

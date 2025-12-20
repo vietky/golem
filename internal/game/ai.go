@@ -2,18 +2,32 @@ package game
 
 import "math/rand"
 
-// AIPlayer represents AI decision-making logic
-type AIPlayer struct {
+// BasicAI represents the basic AI decision-making logic
+// Implements the AIStrategy interface
+type BasicAI struct {
 	rng *rand.Rand
 }
 
-// NewAIPlayer creates a new AI player
+// NewBasicAI creates a new basic AI player
+func NewBasicAI(rng *rand.Rand) *BasicAI {
+	return &BasicAI{rng: rng}
+}
+
+// GetName returns the name of this AI strategy
+func (ai *BasicAI) GetName() string {
+	return "BasicAI"
+}
+
+// AIPlayer is an alias for BasicAI for backwards compatibility
+type AIPlayer = BasicAI
+
+// NewAIPlayer creates a new AI player (backwards compatibility)
 func NewAIPlayer(rng *rand.Rand) *AIPlayer {
-	return &AIPlayer{rng: rng}
+	return NewBasicAI(rng)
 }
 
 // ChooseAction selects an action for the AI player
-func (ai *AIPlayer) ChooseAction(player *Player, market *Market, gameState *GameState) Action {
+func (ai *BasicAI) ChooseAction(player *Player, market *Market, gameState *GameState) Action {
 	// Priority 1: Claim a point card if possible (win condition)
 	if claimable := player.CanClaimAny(market.PointCards); claimable != nil {
 		return Action{
@@ -46,7 +60,7 @@ func (ai *AIPlayer) ChooseAction(player *Player, market *Market, gameState *Game
 }
 
 // findPlayableAction finds a playable action (with all necessary parameters)
-func (ai *AIPlayer) findPlayableAction(player *Player) *Action {
+func (ai *BasicAI) findPlayableAction(player *Player) *Action {
 	// First pass: look for production cards
 	for i, card := range player.Hand {
 		if card.Type == ActionCard && card.ActionType == Produce {
@@ -84,7 +98,7 @@ func (ai *AIPlayer) findPlayableAction(player *Player) *Action {
 }
 
 // findUpgradeAction finds a valid upgrade action for an upgrade card
-func (ai *AIPlayer) findUpgradeAction(player *Player, card *Card, cardIndex int) *Action {
+func (ai *BasicAI) findUpgradeAction(player *Player, card *Card, cardIndex int) *Action {
 	if card.ActionType != Upgrade || card.TurnUpgrade == 0 {
 		return nil
 	}
@@ -158,7 +172,7 @@ func (ai *AIPlayer) findUpgradeAction(player *Player, card *Card, cardIndex int)
 }
 
 // findAffordableCard finds the cheapest affordable card in the market
-func (ai *AIPlayer) findAffordableCard(player *Player, market *Market) int {
+func (ai *BasicAI) findAffordableCard(player *Player, market *Market) int {
 	// Check from cheapest to most expensive
 	for i := 0; i < len(market.ActionCards); i++ {
 		cost := market.GetActionCardCost(i)
@@ -170,7 +184,7 @@ func (ai *AIPlayer) findAffordableCard(player *Player, market *Market) int {
 }
 
 // findPointCardIndex finds the index of a point card in the market
-func (ai *AIPlayer) findPointCardIndex(pointCards []*Card, target *Card) int {
+func (ai *BasicAI) findPointCardIndex(pointCards []*Card, target *Card) int {
 	for i, card := range pointCards {
 		if card.ID == target.ID {
 			return i

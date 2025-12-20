@@ -10,7 +10,7 @@ import (
 // Engine manages the game flow and turn execution
 type Engine struct {
 	GameState *GameState
-	AI        *AIPlayer
+	AI        AIStrategy
 }
 
 // NewEngine creates a new game engine
