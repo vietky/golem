@@ -1,6 +1,9 @@
 package logger
 
 import (
+	"os"
+	"strings"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -8,6 +11,22 @@ import (
 // Logger wraps zap.Logger for dependency injection
 type Logger struct {
 	*zap.Logger
+}
+
+func getLogLevel(levelStr string) zapcore.Level {
+	levelStr = strings.ToLower(levelStr)
+	switch levelStr {
+	case "debug":
+		return zap.DebugLevel
+	case "info":
+		return zap.InfoLevel
+	case "warn":
+		return zap.WarnLevel
+	case "error":
+		return zap.ErrorLevel
+	default:
+		return zap.InfoLevel
+	}
 }
 
 // NewLogger creates a new logger instance
@@ -20,6 +39,9 @@ func NewLogger(development bool) (*Logger, error) {
 	} else {
 		config = zap.NewProductionConfig()
 	}
+
+	logLevel := zap.NewAtomicLevelAt(getLogLevel(os.Getenv("LOG_LEVEL")))
+	config.Level = logLevel
 
 	zapLogger, err := config.Build()
 	if err != nil {
