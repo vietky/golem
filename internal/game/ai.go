@@ -28,6 +28,11 @@ func NewAIPlayer(rng *rand.Rand) *AIPlayer {
 
 // ChooseAction selects an action for the AI player
 func (ai *BasicAI) ChooseAction(player *Player, market *Market, gameState *GameState) Action {
+	// Priority 0: Handle pending discard (must discard before doing anything else)
+	if player.PendingDiscard > 0 {
+		return ai.chooseDiscardAction(player)
+	}
+
 	// Priority 1: Claim a point card if possible (win condition)
 	if claimable := player.CanClaimAny(market.PointCards); claimable != nil {
 		return Action{
@@ -57,6 +62,38 @@ func (ai *BasicAI) ChooseAction(player *Player, market *Market, gameState *GameS
 
 	// Default: Rest (shouldn't happen often)
 	return Action{Type: Rest}
+}
+
+// chooseDiscardAction intelligently chooses which crystals to discard
+// Strategy: discard lowest-value crystals first (Yellow < Green < Blue < Pink)
+func (ai *BasicAI) chooseDiscardAction(player *Player) Action {
+	discardResources := NewResources()
+	remaining := player.PendingDiscard
+
+	// Discard in order of crystal value (lowest first): Yellow → Green → Blue → Pink
+	crystalOrder := []struct {
+		crystal CrystalType
+	}{
+		{Yellow},
+		{Green},
+		{Blue},
+		{Pink},
+	}
+
+	for _, ct := range crystalOrder {
+		available := player.Resources.Get(ct.crystal)
+		toDiscard := min(available, remaining)
+		discardResources.Add(ct.crystal, toDiscard)
+		remaining -= toDiscard
+		if remaining <= 0 {
+			break
+		}
+	}
+
+	return Action{
+		Type:             Discard,
+		DiscardResources: discardResources,
+	}
 }
 
 // findPlayableAction finds a playable action (with all necessary parameters)
@@ -191,4 +228,48 @@ func (ai *BasicAI) findPointCardIndex(pointCards []*Card, target *Card) int {
 		}
 	}
 	return 0
+}
+
+// RestOnlyAI is a passive AI that only takes Rest actions
+// Used in multiplayer mode for placeholder players that shouldn't play actively
+type RestOnlyAI struct {
+}
+
+// NewRestOnlyAI creates a new rest-only AI player
+func NewRestOnlyAI() *RestOnlyAI {
+	return &RestOnlyAI{}
+}
+
+// GetName returns the name of this AI strategy
+func (ai *RestOnlyAI) GetName() string {
+	return "RestOnlyAI"
+}
+
+// ChooseAction always returns a Rest action
+// This AI is a placeholder for multiplayer games and doesn't actively play
+func (ai *RestOnlyAI) ChooseAction(player *Player, market *Market, gameState *GameState) Action {
+	// If player has pending discard, must handle it first
+	if player.PendingDiscard > 0 {
+		discardResources := NewResources()
+		remaining := player.PendingDiscard
+
+		// Discard in order: Yellow → Green → Blue → Pink
+		for _, crystalType := range []CrystalType{Yellow, Green, Blue, Pink} {
+			available := player.Resources.Get(crystalType)
+			toDiscard := min(available, remaining)
+			discardResources.Add(crystalType, toDiscard)
+			remaining -= toDiscard
+			if remaining <= 0 {
+				break
+			}
+		}
+
+		return Action{
+			Type:             Discard,
+			DiscardResources: discardResources,
+		}
+	}
+
+	// Otherwise, always rest
+	return Action{Type: Rest}
 }

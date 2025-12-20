@@ -10,6 +10,7 @@ import (
 	"golem_century/internal/game"
 
 	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 )
 
 // sendJSONError sends a JSON error response
@@ -301,7 +302,7 @@ func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request
 
 	// Default turn timeout to 60 seconds if not specified or invalid
 	if req.TurnTimeout <= 0 {
-		req.TurnTimeout = 60
+		req.TurnTimeout = gs.config.DefaultTurnTimeoutInSeconds
 	}
 
 	// Use custom session ID if provided, otherwise generate one
@@ -317,7 +318,7 @@ func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request
 		sessionID = fmt.Sprintf("session_%d", time.Now().UnixNano())
 	}
 
-	session := gs.CreateSession(sessionID, req.NumPlayers, req.Seed)
+	session := gs.CreateSession(sessionID, req.NumPlayers, req.Seed, game.NewRestOnlyAI())
 
 	// Set custom turn timeout if specified
 	session.mu.Lock()
@@ -446,8 +447,9 @@ func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Re
 	}
 
 	// Default turn timeout to 60 seconds if not specified or invalid
+	gs.Logger.Info("Default turn timeout:", zap.Int("turnTimeout", gs.config.DefaultTurnTimeoutInSeconds))
 	if req.TurnTimeout <= 0 {
-		req.TurnTimeout = 60
+		req.TurnTimeout = gs.config.DefaultTurnTimeoutInSeconds
 	}
 
 	// Use custom session ID if provided, otherwise generate one
@@ -465,7 +467,9 @@ func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Re
 
 	// Total players = 1 human + numAI
 	totalPlayers := 1 + req.NumAI
-	session := gs.CreateSession(sessionID, totalPlayers, req.Seed)
+
+	// Initialize AI in the engine
+	session := gs.CreateSession(sessionID, totalPlayers, req.Seed, nil)
 
 	// Set custom turn timeout if specified
 	session.mu.Lock()
@@ -480,9 +484,6 @@ func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Re
 	}
 	session.mu.Unlock()
 
-	// Initialize AI in the engine
-	session.Engine.AI = game.NewAIPlayer(session.GameState.RNG)
-
 	response := map[string]interface{}{
 		"sessionID":   sessionID,
 		"numPlayers":  totalPlayers,
@@ -490,6 +491,8 @@ func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Re
 		"mode":        "singlePlayer",
 		"turnTimeout": req.TurnTimeout,
 	}
+
+	gs.Logger.Info("Created single-player session", zap.String("sessionID", sessionID), zap.Int("numAI", req.NumAI), zap.Int("turnTimeout", req.TurnTimeout), zap.Any("response", response))
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"golem_century/internal/config"
 	"golem_century/internal/eventstore"
 	"golem_century/internal/game"
 	"golem_century/internal/logger"
@@ -37,6 +38,7 @@ type GameSession struct {
 	mu            sync.RWMutex
 	ActionChan    chan PlayerAction
 	BroadcastChan chan []byte
+	logger        *logger.Logger
 }
 
 // PlayerAction represents an action from a player
@@ -46,11 +48,14 @@ type PlayerAction struct {
 }
 
 // NewGameSession creates a new game session
-func NewGameSession(sessionID string, numPlayers int, seed int64) *GameSession {
+func NewGameSession(sessionID string, numPlayers int, seed int64, turnTimeoutInSecond int, aiPlayer game.AIStrategy, logger *logger.Logger) *GameSession {
 	gameState := game.NewGameState(numPlayers, seed)
+	if aiPlayer == nil {
+		aiPlayer = game.NewAIPlayer(gameState.RNG)
+	}
 	engine := &game.Engine{
 		GameState: gameState,
-		AI:        nil, // No AI players
+		AI:        aiPlayer,
 	}
 
 	now := time.Now()
@@ -63,11 +68,12 @@ func NewGameSession(sessionID string, numPlayers int, seed int64) *GameSession {
 		PlayerAvatars: make(map[int]string),
 		CreatedAt:     now,
 		LastActivity:  now,
-		EventStore:    nil,              // Will be set by GameServer
-		TurnTimeout:   60 * time.Second, // Default 60s timeout
+		EventStore:    nil,                                              // Will be set by GameServer
+		TurnTimeout:   time.Duration(turnTimeoutInSecond) * time.Second, // Default 60s timeout
 		TurnStartTime: now,
 		ActionChan:    make(chan PlayerAction, 10),
 		BroadcastChan: make(chan []byte, 100),
+		logger:        logger,
 	}
 }
 
@@ -132,12 +138,14 @@ type GameServer struct {
 	EventStore eventstore.EventStore
 	Logger     *logger.Logger
 	mu         sync.RWMutex
+	config     *config.Config
 }
 
 // NewGameServerRequest represents request to create a new game server
 type NewGameServerRequest struct {
 	EventStore eventstore.EventStore
 	Logger     *logger.Logger
+	Config     *config.Config
 }
 
 // NewGameServer creates a new game server
@@ -146,19 +154,24 @@ func NewGameServer(req NewGameServerRequest) *GameServer {
 	if log == nil {
 		log = logger.NewNopLogger()
 	}
+	if req.Config == nil {
+		cfg := config.LoadConfig()
+		req.Config = &cfg
+	}
 	return &GameServer{
 		Sessions:   make(map[string]*GameSession),
 		EventStore: req.EventStore,
 		Logger:     log,
+		config:     req.Config,
 	}
 }
 
 // CreateSession creates a new game session
-func (gs *GameServer) CreateSession(sessionID string, numPlayers int, seed int64) *GameSession {
+func (gs *GameServer) CreateSession(sessionID string, numPlayers int, seed int64, aiPlayer game.AIStrategy) *GameSession {
 	gs.mu.Lock()
 	defer gs.mu.Unlock()
 
-	session := NewGameSession(sessionID, numPlayers, seed)
+	session := NewGameSession(sessionID, numPlayers, seed, gs.config.DefaultTurnTimeoutInSeconds, aiPlayer, gs.Logger)
 	session.EventStore = gs.EventStore // Set event store
 	gs.Sessions[sessionID] = session
 
@@ -190,35 +203,32 @@ func (gs *GameServer) startCleanupTimer(sessionID string) {
 	ticker := time.NewTicker(30 * time.Second) // Check every 30 seconds
 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			session, exists := gs.GetSession(sessionID)
-			if !exists {
-				return // Session already deleted
-			}
+	for range ticker.C {
+		session, exists := gs.GetSession(sessionID)
+		if !exists {
+			return // Session already deleted
+		}
 
-			session.mu.RLock()
-			hasPlayers := len(session.Connections) > 0
-			lastActivity := session.LastActivity
-			session.mu.RUnlock()
+		session.mu.RLock()
+		hasPlayers := len(session.Connections) > 0
+		lastActivity := session.LastActivity
+		session.mu.RUnlock()
 
-			// If no players and last activity was more than 5 minutes ago, delete
-			if !hasPlayers {
-				timeSinceActivity := time.Since(lastActivity)
-				if timeSinceActivity >= 5*time.Minute {
-					gs.Logger.Info("Deleting empty room", zap.String("sessionID", sessionID))
-					gs.mu.Lock()
-					delete(gs.Sessions, sessionID)
-					gs.mu.Unlock()
-					return
-				}
-			} else {
-				// Update last activity if players are present
-				session.mu.Lock()
-				session.LastActivity = time.Now()
-				session.mu.Unlock()
+		// If no players and last activity was more than 5 minutes ago, delete
+		if !hasPlayers {
+			timeSinceActivity := time.Since(lastActivity)
+			if timeSinceActivity >= 5*time.Minute {
+				gs.Logger.Info("Deleting empty room", zap.String("sessionID", sessionID))
+				gs.mu.Lock()
+				delete(gs.Sessions, sessionID)
+				gs.mu.Unlock()
+				return
 			}
+		} else {
+			// Update last activity if players are present
+			session.mu.Lock()
+			session.LastActivity = time.Now()
+			session.mu.Unlock()
 		}
 	}
 }
@@ -346,7 +356,9 @@ func (gs *GameSession) RunGameLoop() {
 			timeout := gs.TurnTimeout
 			gs.mu.RUnlock()
 
+			gs.logger.Debug("Checking turn timeout", zap.Bool("isAI", currentPlayer.IsAI), zap.Int("playerID", currentPlayer.ID), zap.Duration("turnDuration", turnDuration), zap.Duration("timeout", timeout))
 			if !currentPlayer.IsAI && turnDuration >= timeout {
+				gs.logger.Info("[1] AI taking action", zap.Duration("turnDuration", turnDuration), zap.Duration("timeout", timeout))
 				// Timeout! Let AI make the move
 				gs.handleTurnTimeout(currentPlayer)
 				continue
@@ -354,15 +366,11 @@ func (gs *GameSession) RunGameLoop() {
 
 			// Check if current player is AI
 			if currentPlayer.IsAI && gs.Engine.AI != nil {
+				gs.logger.Info("[2] AI taking action", zap.Duration("turnDuration", turnDuration), zap.Duration("timeout", timeout))
 				// AI turn - execute AI action with a small delay for UX
 				time.Sleep(500 * time.Millisecond)
 
-				// If AI has pending discard, handle it first
-				if currentPlayer.PendingDiscard > 0 {
-					gs.handleAIDiscard(currentPlayer)
-					continue
-				}
-
+				// AI chooses action (including discard if needed)
 				gs.executeAITurn(currentPlayer)
 			}
 		}
@@ -387,17 +395,7 @@ func (gs *GameSession) handleTurnTimeout(player *game.Player) {
 	// Small delay so the notification is visible
 	time.Sleep(500 * time.Millisecond)
 
-	// If player has pending discard, handle it first
-	if player.PendingDiscard > 0 {
-		gs.handleAIDiscard(player)
-		// Reset timer after discard
-		gs.mu.Lock()
-		gs.TurnStartTime = time.Now()
-		gs.mu.Unlock()
-		return
-	}
-
-	// Let AI make the move
+	// Let AI make the move (it will handle discard if needed)
 	gs.executeAITurn(player)
 }
 

@@ -56,6 +56,7 @@ func main() {
 	gameServer := server.NewGameServer(server.NewGameServerRequest{
 		EventStore: store,
 		Logger:     log,
+		Config:     &cfg,
 	})
 
 	// Setup routes on a ServeMux so we can wrap with CORS middleware

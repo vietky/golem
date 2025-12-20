@@ -259,7 +259,6 @@ func TestFinalPointsCalculation(t *testing.T) {
 	}
 }
 
-
 // TestCoinPointCalculation tests that coins are correctly added to player points
 func TestCoinPointCalculation_4differentColors(t *testing.T) {
 	gs := NewGameState(2, 42)
@@ -268,7 +267,7 @@ func TestCoinPointCalculation_4differentColors(t *testing.T) {
 	pointCard := CreateCardFromName("golem_1234", 100)
 	player.PointCards = append(player.PointCards, pointCard)
 
-	cardPoint := 4 * 1 + 2 * 3 + 3 * 2 + 4 * 1
+	cardPoint := 4*1 + 2*3 + 3*2 + 4*1
 	_4ColorsBonus := 2
 	expectedPoints := cardPoint + _4ColorsBonus
 
@@ -284,7 +283,7 @@ func TestCoinPointCalculation_3differentColors(t *testing.T) {
 	pointCard := CreateCardFromName("golem_1230", 100)
 	player.PointCards = append(player.PointCards, pointCard)
 
-	cardPoint := 4 * 1 + 2 * 3 + 3 * 2
+	cardPoint := 4*1 + 2*3 + 3*2
 	_3ColorsBonus := 1
 	expectedPoints := cardPoint + _3ColorsBonus
 
@@ -300,7 +299,7 @@ func TestCoinPointCalculation_2differentColors(t *testing.T) {
 	pointCard := CreateCardFromName("golem_1100", 100)
 	player.PointCards = append(player.PointCards, pointCard)
 
-	cardPoint := 4 * 1 + 3 * 1
+	cardPoint := 4*1 + 3*1
 	_2ColorsBonus := 0
 	expectedPoints := cardPoint + _2ColorsBonus
 
