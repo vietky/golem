@@ -13,7 +13,7 @@ import (
 // TestTurnTimeoutBasic tests that the turn timer triggers correctly
 func TestTurnTimeoutBasic(t *testing.T) {
 	// Create a session with a short 2-second timeout for testing
-	session := server.NewGameSession("test-timeout", 2, 12345, 60, logger.NewNopLogger())
+	session := server.NewGameSession("test-timeout", 2, 12345, 60, nil, logger.NewNopLogger())
 	session.TurnTimeout = 2 * time.Second
 
 	// Mark player 1 as human (default), player 2 as AI for contrast
@@ -44,7 +44,7 @@ func TestTurnTimeoutBasic(t *testing.T) {
 
 // TestTurnTimeoutWithAction tests that manual action prevents timeout
 func TestTurnTimeoutWithAction(t *testing.T) {
-	session := server.NewGameSession("test-action", 2, 12345, 60, logger.NewNopLogger())
+	session := server.NewGameSession("test-action", 2, 12345, 60, nil, logger.NewNopLogger())
 	session.TurnTimeout = 3 * time.Second
 	session.Engine.AI = game.NewBasicAI(session.GameState.RNG)
 
@@ -159,7 +159,7 @@ func TestConfigurableTimeout(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			session := server.NewGameSession("test", 2, 12345, 60, logger.NewNopLogger())
+			session := server.NewGameSession("test", 2, 12345, 60, nil, logger.NewNopLogger())
 			session.TurnTimeout = tc.expectedTimeout
 
 			if session.TurnTimeout != tc.expectedTimeout {

@@ -12,7 +12,7 @@ import (
 // TestSerializeStateIncludesCaravan ensures serialized state includes both resources and caravan
 func TestSerializeStateIncludesCaravan(t *testing.T) {
 	gs := NewGameServer(NewGameServerRequest{Logger: logger.NewNopLogger()})
-	session := gs.CreateSession("test_session", 2, 42)
+	session := gs.CreateSession("test_session", 2, 42, game.NewRestOnlyAI())
 
 	state := session.SerializeState()
 	// Marshal/unmarshal to normalize to JSON types (slices -> []interface{})
@@ -47,7 +47,7 @@ func TestSerializeStateIncludesCaravan(t *testing.T) {
 // TestActionProcessingRoundTrip sends a Rest action and ensures the game loop processes it (current turn advances)
 func TestActionProcessingRoundTrip(t *testing.T) {
 	gs := NewGameServer(NewGameServerRequest{Logger: logger.NewNopLogger()})
-	session := gs.CreateSession("test_session_rt", 2, 99)
+	session := gs.CreateSession("test_session_rt", 2, 99, game.NewRestOnlyAI())
 
 	// Give the session a moment to start its goroutines
 	time.Sleep(50 * time.Millisecond)
