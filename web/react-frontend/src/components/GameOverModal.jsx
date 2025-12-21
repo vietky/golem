@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import useGameStore from '../store/gameStore'
 import useOrientation from '../hooks/useOrientation'
+import { getCardSpriteStyle, getCardImagePath } from '../utils/cardNames'
 
 const GameOverModal = ({ onNewGame, onBackToMenu }) => {
   const { gameState } = useGameStore()
@@ -242,19 +243,30 @@ const GameOverModal = ({ onNewGame, onBackToMenu }) => {
                         <span className={`text-white/60 ${isMobile ? 'text-xs w-16' : 'text-sm w-20'}`}>Golems:</span>
                         <div className="flex gap-1 flex-wrap flex-1">
                           {player.pointCards?.length > 0 ? (
-                            player.pointCards.map((card, i) => (
-                              <div key={i} className="relative group">
-                                <img
-                                  src={`/images/${card.name || `golem_${String(card.points).padStart(4, '0')}`}.JPG`}
-                                  alt={`Golem ${card.points}pts`}
-                                  className={`rounded object-cover border border-white/30 ${isMobile ? 'w-8 h-10' : 'w-10 h-12 sm:w-12 sm:h-14'}`}
-                                  onError={(e) => { e.target.style.display = 'none' }}
-                                />
-                                <span className={`absolute -bottom-1 -right-1 bg-yellow-500 text-black rounded-full font-bold ${isMobile ? 'text-[8px] w-4 h-4' : 'text-[10px] w-5 h-5'} flex items-center justify-center`}>
-                                  {card.points}
-                                </span>
-                              </div>
-                            ))
+                            player.pointCards.map((card, i) => {
+                              const cardName = card.name || `golem_${String(card.points).padStart(4, '0')}`
+                              const spriteStyle = getCardSpriteStyle(cardName)
+                              return (
+                                <div key={i} className="relative group">
+                                  {spriteStyle ? (
+                                    <div
+                                      className={`rounded border border-white/30 ${isMobile ? 'w-8 h-10' : 'w-10 h-12 sm:w-12 sm:h-14'}`}
+                                      style={spriteStyle}
+                                    />
+                                  ) : (
+                                    <img
+                                      src={getCardImagePath(cardName)}
+                                      alt={`Golem ${card.points}pts`}
+                                      className={`rounded object-cover border border-white/30 ${isMobile ? 'w-8 h-10' : 'w-10 h-12 sm:w-12 sm:h-14'}`}
+                                      onError={(e) => { e.target.style.display = 'none' }}
+                                    />
+                                  )}
+                                  <span className={`absolute -bottom-1 -right-1 bg-yellow-500 text-black rounded-full font-bold ${isMobile ? 'text-[8px] w-4 h-4' : 'text-[10px] w-5 h-5'} flex items-center justify-center`}>
+                                    {card.points}
+                                  </span>
+                                </div>
+                              )
+                            })
                           ) : (
                             <span className="text-white/40 text-xs">None</span>
                           )}

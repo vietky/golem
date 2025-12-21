@@ -15,6 +15,7 @@ const SinglePlayerLobby = ({ onStartGame }) => {
     { value: 1, label: isMobile ? '1 AI (2P)' : '1 AI Opponent (2 Players)' },
     { value: 2, label: isMobile ? '2 AI (3P)' : '2 AI Opponents (3 Players)' },
     { value: 3, label: isMobile ? '3 AI (4P)' : '3 AI Opponents (4 Players)' },
+    { value: 4, label: isMobile ? '4 AI (5P)' : '4 AI Opponents (5 Players)' },
   ]
 
   const startGame = async () => {

@@ -11,9 +11,128 @@ import MobileHistoryButton from './components/MobileHistoryButton'
 import GameOverModal from './components/GameOverModal'
 import Toast from './components/Toast'
 import WebGameLayout from './components/WebGameLayout'
+import ThemeToggleButton from './components/ThemeToggleButton'
+import FantasyGameLayout from './components/FantasyGameLayout'
 import useGameStore from './store/gameStore'
 import useOrientation from './hooks/useOrientation'
 import { MobileLayoutProvider } from './contexts/MobileLayoutContext'
+import { ThemeProvider, useTheme } from './contexts/ThemeContext'
+
+// Game Content with Theme Support
+function GameContentWithTheme({ useWebLayout, isMobile, isPortrait, sessionId, setInGame, setGameMode }) {
+  const { isFantasy } = useTheme()
+
+  const handleNewGame = () => {
+    setInGame(false)
+    setGameMode(null)
+    window.location.reload()
+  }
+
+  const handleBackToMenu = () => {
+    setInGame(false)
+    setGameMode(null)
+    window.location.reload()
+  }
+
+  // Fantasy Theme Layout
+  if (isFantasy) {
+    return (
+      <>
+        <ThemeToggleButton />
+        <FantasyGameLayout 
+          onNewGame={handleNewGame}
+          onBackToMenu={handleBackToMenu}
+        />
+        <Toast />
+      </>
+    )
+  }
+
+  // Default Theme Layout
+  return (
+    <>
+      {/* Theme Toggle Button - Always visible */}
+      <ThemeToggleButton />
+
+      {/* Blurred Background Layer */}
+      <div className="fixed inset-0 z-0"
+        style={{
+          backgroundImage: 'url(/images/background.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center center',
+          backgroundRepeat: 'no-repeat',
+          filter: isMobile ? 'blur(4px) brightness(0.8)' : 'blur(8px) brightness(0.7)',
+        }}
+      />
+      
+      {useWebLayout ? (
+        /* Desktop/Tablet - New WebGameLayout */
+        <div className="h-screen h-[100dvh] relative z-10">
+          <WebGameLayout />
+          
+          {/* Collapsible Info (Room ID + Action Log) - Bottom Right */}
+          <CollapsibleInfo sessionId={sessionId} />
+
+          {/* Discard Modal (when crystals exceed max) */}
+          <DiscardModal />
+
+        </div>
+      ) : (
+        /* Mobile - Original Layout */
+        <div className={`
+          ${isPortrait 
+            ? 'h-screen h-[100dvh] flex flex-col relative z-10 overflow-hidden' 
+            : 'min-h-screen min-h-[100dvh] flex flex-col relative z-10'
+          }
+          ${isPortrait ? 'mobile-portrait' : 'mobile-landscape'}
+        `}>
+          {/* Players Info Bar - Top */}
+          <PlayersInfoBar />
+
+          {/* Central Game Board */}
+          <div 
+            className={`
+            ${isPortrait 
+              ? 'flex-1 overflow-hidden relative z-10 min-h-0 pb-[130px]' 
+              : 'flex-1 overflow-y-auto pb-24 relative z-10 min-h-0'
+            }
+          `}
+          >
+            <CompactGameBoard />
+          </div>
+
+          {/* Player Hand - Bottom (Fixed on mobile, relative on desktop) */}
+          {!isPortrait && (
+            <div className="flex-shrink-0 relative z-30">
+              <CompactPlayerHand />
+            </div>
+          )}
+          
+          {/* Player Hand - Fixed on mobile portrait */}
+          {isPortrait && <CompactPlayerHand />}
+
+          {/* Discard Modal (when crystals exceed max) */}
+          <DiscardModal />
+          
+          {/* Overlay when other players acquire or play cards */}
+          <AcquiredCardOverlay />
+
+          {/* Mobile History Button */}
+          <MobileHistoryButton />
+        </div>
+      )}
+
+      {/* Game Over Modal */}
+      <GameOverModal 
+        onNewGame={handleNewGame}
+        onBackToMenu={handleBackToMenu}
+      />
+      
+      {/* Global Toast Notifications */}
+      <Toast />
+    </>
+  )
+}
 
 function SinglePlayerApp() {
   const [gameMode, setGameMode] = useState(null) // null, 'single', 'multi'
@@ -194,92 +313,18 @@ function SinglePlayerApp() {
   const useWebLayout = !isMobile
 
   return (
-    <MobileLayoutProvider>
-      {/* Blurred Background Layer */}
-      <div className="fixed inset-0 z-0"
-        style={{
-          backgroundImage: 'url(/images/background.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center center',
-          backgroundRepeat: 'no-repeat',
-          filter: isMobile ? 'blur(4px) brightness(0.8)' : 'blur(8px) brightness(0.7)',
-        }}
-      />
-      
-      {useWebLayout ? (
-        /* Desktop/Tablet - New WebGameLayout */
-        <div className="h-screen h-[100dvh] relative z-10">
-          <WebGameLayout />
-          
-          {/* Collapsible Info (Room ID + Action Log) - Bottom Right */}
-          <CollapsibleInfo sessionId={sessionId} />
-
-          {/* Discard Modal (when crystals exceed max) */}
-          <DiscardModal />
-
-        </div>
-      ) : (
-        /* Mobile - Original Layout */
-        <div className={`
-          ${isPortrait 
-            ? 'h-screen h-[100dvh] flex flex-col relative z-10 overflow-hidden' 
-            : 'min-h-screen min-h-[100dvh] flex flex-col relative z-10'
-          }
-          ${isPortrait ? 'mobile-portrait' : 'mobile-landscape'}
-        `}>
-          {/* Players Info Bar - Top */}
-          <PlayersInfoBar />
-
-          {/* Central Game Board */}
-          <div 
-            className={`
-            ${isPortrait 
-              ? 'flex-1 overflow-hidden relative z-10 min-h-0 pb-[130px]' 
-              : 'flex-1 overflow-y-auto pb-24 relative z-10 min-h-0'
-            }
-          `}
-          >
-            <CompactGameBoard />
-          </div>
-
-          {/* Player Hand - Bottom (Fixed on mobile, relative on desktop) */}
-          {!isPortrait && (
-            <div className="flex-shrink-0 relative z-30">
-              <CompactPlayerHand />
-            </div>
-          )}
-          
-          {/* Player Hand - Fixed on mobile portrait */}
-          {isPortrait && <CompactPlayerHand />}
-
-          {/* Discard Modal (when crystals exceed max) */}
-          <DiscardModal />
-          
-          {/* Overlay when other players acquire or play cards */}
-          <AcquiredCardOverlay />
-
-          {/* Mobile History Button */}
-          <MobileHistoryButton />
-        </div>
-      )}
-
-      {/* Game Over Modal */}
-      <GameOverModal 
-        onNewGame={() => {
-          setInGame(false)
-          setGameMode(null)
-          window.location.reload()
-        }}
-        onBackToMenu={() => {
-          setInGame(false)
-          setGameMode(null)
-          window.location.reload()
-        }}
-      />
-      
-      {/* Global Toast Notifications */}
-      <Toast />
-    </MobileLayoutProvider>
+    <ThemeProvider>
+      <MobileLayoutProvider>
+        <GameContentWithTheme 
+          useWebLayout={useWebLayout}
+          isMobile={isMobile}
+          isPortrait={isPortrait}
+          sessionId={sessionId}
+          setInGame={setInGame}
+          setGameMode={setGameMode}
+        />
+      </MobileLayoutProvider>
+    </ThemeProvider>
   )
 }
 

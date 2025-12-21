@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { motion, useAnimation } from 'framer-motion'
+// Removed framer-motion to fix animation issues
 import CrystalStack from './CrystalStack'
 import useGameStore from '../store/gameStore'
 import useOrientation from '../hooks/useOrientation'
-import { getVietnameseCardName, getCardImagePath } from '../utils/cardNames'
+import { getVietnameseCardName, getCardImagePath, getCardSpriteStyle } from '../utils/cardNames'
 
 const Card = ({ 
   card, 
@@ -27,7 +27,6 @@ const Card = ({
   const [isInvalidAction, setIsInvalidAction] = useState(false)
   const { setSelectedCard, selectedCard, invalidAction } = useGameStore()
   const { isMobile, isTablet, isPortrait, isLandscape } = useOrientation()
-  const controls = useAnimation()
 
   // Card type colors for glow effects
   const cardTypeGlowColors = {
@@ -91,20 +90,15 @@ const Card = ({
     return 'min-h-[220px] max-h-[300px]'
   }
 
-  // Invalid action shake animation
+  // Invalid action feedback
   useEffect(() => {
     if (invalidAction === card?.name) {
       setIsInvalidAction(true)
-      controls.start({
-        x: [0, -8, 8, -8, 8, 0],
-        transition: { duration: 0.3, ease: "easeInOut" }
-      })
       setTimeout(() => {
         setIsInvalidAction(false)
-        controls.start({ x: 0 })
       }, 300)
     }
-  }, [invalidAction, card?.name, controls])
+  }, [invalidAction, card?.name])
 
   // Click animation - disabled
   useEffect(() => {
@@ -121,13 +115,8 @@ const Card = ({
   const handleClick = () => {
     if (onClick && cost && !isAffordable) {
       setIsInvalidAction(true)
-      controls.start({
-        x: [0, -8, 8, -8, 8, 0],
-        transition: { duration: 0.3, ease: "easeInOut" }
-      })
       setTimeout(() => {
         setIsInvalidAction(false)
-        controls.start({ x: 0 })
       }, 300)
       return
     }
@@ -160,7 +149,7 @@ const Card = ({
   const glowColor = cardTypeGlowColors[actionType] || '#FFD966'
 
   return (
-    <motion.div
+    <div
       className={`
         card-base 
         ${cardTypeColors[actionType] || ''} 
@@ -168,37 +157,17 @@ const Card = ({
         ${isAffordable ? 'border-blue-500 ring-2 ring-blue-300' : ''} 
         ${isSelected ? 'ring-4 ring-yellow-400' : ''}
         ${getCardSizeClasses()}
+        !transition-none
       `}
-      onHoverStart={() => !isMobile && setIsHovered(true)}
-      onHoverEnd={() => !isMobile && setIsHovered(false)}
+      onMouseEnter={() => !isMobile && setIsHovered(true)}
+      onMouseLeave={() => !isMobile && setIsHovered(false)}
       onMouseDown={(e) => startLongPress(e)}
       onMouseUp={() => cancelLongPress()}
       onTouchStart={(e) => startLongPress(e)}
       onTouchEnd={() => cancelLongPress()}
       onClick={handleClick}
-      animate={controls}
-      whileHover={!isMobile ? {
-        y: -6,
-        transition: { duration: 0.15, ease: "easeOut" }
-      } : {}}
-      whileTap={{ 
-        scale: 0.97,
-        transition: { duration: 0.1 }
-      }}
-      drag={onDragStart && !isMobile ? true : false}
-      dragConstraints={dragConstraints}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      dragElastic={0.2}
-      whileDrag={{
-        scale: 1.05,
-        y: -10,
-        boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-        transition: { duration: 0.15 }
-      }}
       style={{ 
-        cursor: isDragging ? 'grabbing' : 'pointer',
-        willChange: 'transform'
+        cursor: 'pointer',
       }}
     >
       {/* Deposits Tooltip - Show on top of card */}
@@ -224,11 +193,8 @@ const Card = ({
         }
         
         return (
-          <motion.div
+          <div
             className="absolute top-0 left-0 right-0 bg-purple-600/95 backdrop-blur-sm rounded-t-xl p-1.5 sm:p-2 z-30"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
           >
             <div className="text-[8px] sm:text-[10px] font-bold text-white mb-1 text-center">
               💎 Deposits ({totalDeposits})
@@ -252,7 +218,7 @@ const Card = ({
                 </div>
               ))}
             </div>
-          </motion.div>
+          </div>
         )
       })()}
 
@@ -283,31 +249,37 @@ const Card = ({
       )}
 
       {/* Card Image */}
-      <motion.div 
+      <div 
         className={`
           w-full bg-gray-100 rounded-t-xl overflow-hidden 
-          flex items-center justify-center p-1 sm:p-2
           ${getImageHeightClasses()}
         `}
-        whileHover={!isMobile ? { scale: 1.02 } : {}}
-        transition={{ duration: 0.2 }}
       >
-        {card?.name && (
-          <motion.img
-            src={getCardImagePath(card.name)}
-            alt={getVietnameseCardName(card.name)}
-            className="w-full h-auto object-contain"
-            style={{ maxHeight: '100%' }}
-            onError={(e) => {
-              e.target.style.display = 'none'
-            }}
-            whileHover={!isMobile ? { 
-              filter: "brightness(1.1) saturate(1.2)",
-              transition: { duration: 0.2 }
-            } : {}}
-          />
-        )}
-      </motion.div>
+        {card?.name && (() => {
+          const spriteStyle = getCardSpriteStyle(card.name)
+          if (spriteStyle) {
+            // Use CSS sprite
+            return (
+              <div 
+                className="w-full h-full"
+                style={spriteStyle}
+                title={getVietnameseCardName(card.name)}
+              />
+            )
+          }
+          // Fallback to individual image
+          return (
+            <img
+              src={getCardImagePath(card.name)}
+              alt={getVietnameseCardName(card.name)}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.style.display = 'none'
+              }}
+            />
+          )
+        })()}
+      </div>
 
       {/* Card Info */}
       <div className="p-1.5 sm:p-2 space-y-0.5 sm:space-y-1 bg-white/95 rounded-b-xl">
@@ -382,18 +354,13 @@ const Card = ({
 
       {/* Hover Glow Effect - Desktop only */}
       {isHovered && !isInvalidAction && !isMobile && (
-        <motion.div
+        <div
           className="absolute inset-0 rounded-xl pointer-events-none"
-          initial={{ opacity: 0 }}
-          animate={{ 
-            opacity: 0.8,
-            boxShadow: `0 0 20px ${glowColor}, 0 0 40px ${glowColor}40`
-          }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
           style={{
             border: `2px solid ${glowColor}`,
-            borderRadius: '0.75rem'
+            borderRadius: '0.75rem',
+            boxShadow: `0 0 20px ${glowColor}, 0 0 40px ${glowColor}40`,
+            opacity: 0.8
           }}
         />
       )}
@@ -432,23 +399,16 @@ const Card = ({
 
       {/* Invalid Action Feedback */}
       {isInvalidAction && (
-        <motion.div
-          className="absolute inset-0 rounded-xl pointer-events-none border-2 border-red-500"
-          initial={{ opacity: 0 }}
-          animate={{ 
-            opacity: [0, 1, 0],
-            boxShadow: [
-              "0 0 0px rgba(239, 68, 68, 0)",
-              "0 0 30px rgba(239, 68, 68, 0.8)",
-              "0 0 0px rgba(239, 68, 68, 0)"
-            ]
+        <div
+          className="absolute inset-0 rounded-xl pointer-events-none border-2 border-red-500 animate-pulse"
+          style={{
+            boxShadow: "0 0 30px rgba(239, 68, 68, 0.8)"
           }}
-          transition={{ duration: 0.3 }}
         />
       )}
 
 
-    </motion.div>
+    </div>
   )
 }
 

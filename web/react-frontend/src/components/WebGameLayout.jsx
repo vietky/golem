@@ -223,7 +223,7 @@ const WebGameLayout = () => {
 
               return (
                 <div 
-                  key={`action-${index}`} 
+                  key={card.id || `action-${index}`} 
                   className="relative cursor-pointer h-full aspect-[2/3]"
                   onClick={() => handleAcquireCard(index)}
                 >
@@ -288,7 +288,7 @@ const WebGameLayout = () => {
 
               return (
                 <div 
-                  key={`point-${index}`}
+                  key={card.id || `point-${index}`}
                   className="relative cursor-pointer h-full aspect-[2/3]"
                   onClick={() => handleClaimPointCard(index)}
                 >
@@ -350,22 +350,14 @@ const WebGameLayout = () => {
                 <div className="text-white font-bold text-sm">{myPlayer.name || 'You'}</div>
               </div>
               
-              {/* Stats */}
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-yellow-400 font-bold">★{myPlayer.points || 0}</span>
-                <span className="text-blue-400">📄{myPlayer.pointCards?.length || 0}</span>
-                <span className="text-green-400">🃏{hand.length}</span>
-              </div>
-
-              {/* Crystals */}
+              {/* Crystals - always show all 4 colors */}
               <div className="flex items-center gap-1.5 ml-2">
                 {['yellow', 'green', 'blue', 'pink'].map((color) => {
                   const count = myPlayer.caravan?.[color] || 0
-                  if (count === 0) return null
                   return (
                     <div key={color} className="flex items-center gap-0.5">
-                      <div className={`w-3.5 h-3.5 rounded-full ${crystalColors[color]}`} />
-                      <span className="text-white text-xs font-bold">{count}</span>
+                      <div className={`w-4 h-4 rounded-full ${crystalColors[color]}`} />
+                      <span className="text-white text-sm font-bold">{count}</span>
                     </div>
                   )
                 })}
@@ -444,7 +436,7 @@ const WebGameLayout = () => {
 
         {/* My Golems */}
         <div className="w-28 flex-shrink-0 bg-black/30 backdrop-blur-md rounded-xl border border-white/20 py-2 flex flex-col min-h-0">
-          <MyGolemsPanel pointCards={myPlayer.pointCards || []} />
+          <MyGolemsPanel pointCards={myPlayer.pointCards || []} coins={myPlayer.coins || []} />
         </div>
       </div>
 
