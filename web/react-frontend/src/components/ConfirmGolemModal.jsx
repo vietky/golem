@@ -1,6 +1,7 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { getCardSpriteStyle, getCardImagePath } from '../utils/cardNames'
 
 const ConfirmGolemModal = ({ isOpen, golem, onConfirm, onCancel }) => {
   if (!isOpen || !golem) return null
@@ -39,12 +40,25 @@ const ConfirmGolemModal = ({ isOpen, golem, onConfirm, onCancel }) => {
               {/* Golem Preview */}
               <div className="flex items-center gap-4 mb-4">
                 <div className="relative">
-                  <img
-                    src={`/images/${golem.name}.JPG`}
-                    alt={golem.name}
-                    className="w-20 h-28 rounded-lg object-cover border-2 border-yellow-500/50 shadow-lg"
-                    onError={(e) => { e.target.style.display = 'none' }}
-                  />
+                  {(() => {
+                    const spriteStyle = getCardSpriteStyle(golem.name)
+                    if (spriteStyle) {
+                      return (
+                        <div
+                          className="w-20 h-28 rounded-lg border-2 border-yellow-500/50 shadow-lg"
+                          style={spriteStyle}
+                        />
+                      )
+                    }
+                    return (
+                      <img
+                        src={getCardImagePath(golem.name)}
+                        alt={golem.name}
+                        className="w-20 h-28 rounded-lg object-cover border-2 border-yellow-500/50 shadow-lg"
+                        onError={(e) => { e.target.style.display = 'none' }}
+                      />
+                    )
+                  })()}
                   <span className="absolute -bottom-2 -right-2 bg-yellow-500 text-black rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shadow-lg">
                     {golem.points}
                   </span>

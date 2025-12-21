@@ -1,10 +1,5 @@
 import React, { useState } from 'react'
-
-// Get card image path - uses individual image files
-const getCardImagePath = (card) => {
-  if (!card?.name) return null
-  return `/images/${card.name}.JPG`
-}
+import { getCardSpriteStyle, getCardImagePath } from '../utils/cardNames'
 
 const CompactCard = ({ 
   card, 
@@ -23,7 +18,9 @@ const CompactCard = ({
   
   if (!card) return null
 
-  const imagePath = getCardImagePath(card)
+  // Try sprite first, fallback to individual image
+  const spriteStyle = getCardSpriteStyle(card.name)
+  const imagePath = !spriteStyle ? getCardImagePath(card.name) : null
   
   const sizeClasses = {
     small: 'w-14 h-20',   // Very small for played cards
@@ -78,14 +75,16 @@ const CompactCard = ({
       className={`
         ${sizeClasses[size]} relative overflow-hidden cursor-pointer
         rounded-lg shadow-md
-        transition-all duration-200
-        ${canInteract ? 'hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]' : 'opacity-80'}
+        ${canInteract ? '' : 'opacity-80'}
       `}
       style={{
-        backgroundImage: imagePath ? `url(${encodeURI(imagePath)})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        backgroundSize: size === 'flexible' ? 'contain' : 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
+        // Use sprite if available, otherwise fallback to individual image
+        ...(spriteStyle || {
+          backgroundImage: imagePath ? `url(${encodeURI(imagePath)})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          backgroundSize: size === 'flexible' ? 'contain' : 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }),
         backgroundColor: '#222',
         ...flexibleStyle
       }}

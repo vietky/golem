@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import useGameStore from '../store/gameStore'
+import { getCardSpriteStyle, getCardImagePath } from '../utils/cardNames'
 
 const MobileHistoryButton = () => {
   const { actionHistory } = useGameStore()
@@ -106,12 +107,25 @@ const MobileHistoryButton = () => {
                   >
                     {/* Card Thumbnail */}
                     {action.card ? (
-                      <img
-                        src={`/images/${action.card.name}.JPG`}
-                        alt=""
-                        className="w-10 rounded border border-white/30 flex-shrink-0"
-                        onError={(e) => { e.target.style.display = 'none' }}
-                      />
+                      (() => {
+                        const spriteStyle = getCardSpriteStyle(action.card.name)
+                        if (spriteStyle) {
+                          return (
+                            <div
+                              className="w-10 aspect-[2/3] rounded border border-white/30 flex-shrink-0"
+                              style={spriteStyle}
+                            />
+                          )
+                        }
+                        return (
+                          <img
+                            src={getCardImagePath(action.card.name)}
+                            alt=""
+                            className="w-10 rounded border border-white/30 flex-shrink-0"
+                            onError={(e) => { e.target.style.display = 'none' }}
+                          />
+                        )
+                      })()
                     ) : (
                       <div className="w-10 aspect-[2/3] rounded bg-white/10 flex items-center justify-center flex-shrink-0">
                         <span className="text-base">💤</span>

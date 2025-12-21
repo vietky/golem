@@ -32,17 +32,26 @@
 }
 
 @layer components {
-  /* Card base styles */
+  /* Card base styles - NO TRANSITIONS */
   .card-base {
-    @apply relative rounded-lg shadow-md transition-all duration-200 cursor-pointer overflow-hidden;
-    background-size: cover;
-    background-position: center;
-    display: block;
+    @apply relative rounded-lg shadow-md cursor-pointer overflow-hidden;
+    transition: none !important;
+    animation: none !important;
+  }
+  
+  /* Disable all grid/flex item transitions */
+  .card-base * {
+    transition: none !important;
+    animation: none !important;
+  }
+  
+  /* Disable grid reflow animations in market */
+  [class*="grid"] > div {
+    transition: none !important;
   }
 
   .card-base:hover {
     @apply shadow-lg;
-    transform: scale(1.02);
     z-index: 10;
   }
 

@@ -2,6 +2,29 @@ import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import useGameStore from '../store/gameStore'
+import { getCardSpriteStyle, getCardImagePath } from '../utils/cardNames'
+
+// Helper component to render card image (sprite or fallback)
+const CardImage = ({ cardName, className, style = {} }) => {
+  const spriteStyle = getCardSpriteStyle(cardName)
+  if (spriteStyle) {
+    return (
+      <div 
+        className={className}
+        style={{ ...spriteStyle, ...style }}
+      />
+    )
+  }
+  return (
+    <img
+      src={getCardImagePath(cardName)}
+      alt=""
+      className={className}
+      style={style}
+      onError={(e) => { e.target.style.display = 'none' }}
+    />
+  )
+}
 
 const HistorySection = () => {
   const { actionHistory } = useGameStore()
@@ -75,11 +98,9 @@ const HistorySection = () => {
               {/* Top card */}
               <div className="relative z-10 w-24 group-hover:scale-105 transition-all">
                 {displayCard ? (
-                  <img
-                    src={`/images/${displayCard.name}.JPG`}
-                    alt=""
-                    className="w-full rounded-xl border border-white/30"
-                    onError={(e) => { e.target.style.display = 'none' }}
+                  <CardImage
+                    cardName={displayCard.name}
+                    className="w-full aspect-[2/3] rounded-xl border border-white/30"
                   />
                 ) : (
                   <div className="w-full aspect-[2/3] rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
@@ -140,11 +161,9 @@ const HistorySection = () => {
                   >
                     {/* Card Thumbnail */}
                     {action.card ? (
-                      <img
-                        src={`/images/${action.card.name}.JPG`}
-                        alt=""
-                        className="w-14 rounded border border-white/30 flex-shrink-0"
-                        onError={(e) => { e.target.style.display = 'none' }}
+                      <CardImage
+                        cardName={action.card.name}
+                        className="w-14 aspect-[2/3] rounded border border-white/30 flex-shrink-0"
                       />
                     ) : (
                       <div className="w-14 aspect-[2/3] rounded bg-white/10 flex items-center justify-center flex-shrink-0">
@@ -200,11 +219,9 @@ const HistorySection = () => {
           }}
         >
           <div className="bg-slate-900/95 backdrop-blur-md rounded-xl shadow-2xl border-2 border-white/30 overflow-hidden">
-            <img
-              src={`/images/${hoveredCard.name}.JPG`}
-              alt={hoveredCard.name}
-              className="w-40 rounded-lg"
-              onError={(e) => { e.target.style.display = 'none' }}
+            <CardImage
+              cardName={hoveredCard.name}
+              className="w-40 aspect-[2/3] rounded-lg"
             />
           </div>
         </div>,

@@ -3,11 +3,18 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import CompactCard from './CompactCard'
 
-const MyGolemsPanel = ({ pointCards = [] }) => {
+const MyGolemsPanel = ({ pointCards = [], coins = [] }) => {
   const [expanded, setExpanded] = useState(false)
   
   const hasCards = pointCards.length > 0
   const displayCard = hasCards ? pointCards[pointCards.length - 1] : null
+  
+  // Calculate points
+  const golemPoints = pointCards.reduce((sum, card) => sum + (card.points || 0), 0)
+  const coinPoints = coins.reduce((sum, c) => sum + (c.points || 0), 0)
+  const totalPoints = golemPoints + coinPoints
+  const copperCoins = coins.filter(c => c.points === 3).length
+  const silverCoins = coins.filter(c => c.points === 1).length
 
   return (
     <>
@@ -96,9 +103,41 @@ const MyGolemsPanel = ({ pointCards = [] }) => {
                 ))}
               </div>
               
-              {/* Total points */}
-              <div className="mt-4 text-center text-yellow-400 font-bold text-lg">
-                Total: ★{pointCards.reduce((sum, card) => sum + (card.points || 0), 0)} points
+              {/* Points Summary */}
+              <div className="mt-4 p-3 bg-black/40 rounded-xl border border-white/20">
+                <div className="flex flex-wrap items-center justify-center gap-4">
+                  {/* Golem Points */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-white/70 text-sm">Golems:</span>
+                    <span className="text-yellow-400 font-bold">★{golemPoints}</span>
+                  </div>
+                  
+                  {/* Coin Bonuses */}
+                  {coins.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-white/70 text-sm">Bonus:</span>
+                      {copperCoins > 0 && (
+                        <span className="flex items-center gap-0.5 text-orange-400">
+                          <span>🥉</span>
+                          <span className="font-bold">{copperCoins}</span>
+                        </span>
+                      )}
+                      {silverCoins > 0 && (
+                        <span className="flex items-center gap-0.5 text-gray-300">
+                          <span>🥈</span>
+                          <span className="font-bold">{silverCoins}</span>
+                        </span>
+                      )}
+                      <span className="text-yellow-400 font-bold">(+{coinPoints})</span>
+                    </div>
+                  )}
+                  
+                  {/* Total */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-white/70 text-sm">Total:</span>
+                    <span className="text-green-400 font-bold text-lg">★{totalPoints}</span>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -110,4 +149,5 @@ const MyGolemsPanel = ({ pointCards = [] }) => {
 }
 
 export default MyGolemsPanel
+
 

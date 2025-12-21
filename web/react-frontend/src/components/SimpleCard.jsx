@@ -66,7 +66,7 @@ const SimpleCard = ({
       onMouseUp={() => cancelLongPress()}
       onTouchStart={(e) => startLongPress(e)}
       onTouchEnd={() => cancelLongPress()}
-      className={`${sizeClasses[size]} ${borderColor} border-2 rounded-lg p-2 flex flex-col justify-between cursor-pointer hover:scale-105 transition-transform relative ${
+      className={`${sizeClasses[size]} ${borderColor} border-2 rounded-lg p-2 flex flex-col justify-between cursor-pointer relative ${
         canInteract ? 'opacity-100' : 'opacity-70'
       } ${canInteract ? 'ring-2 ring-white' : ''}`}
     >

@@ -555,42 +555,42 @@ func CreateDefaultActionCards() []*Card {
 func CreateDefaultPointCards() []*Card {
 	// Only include golem card names that have corresponding image files
 	golemNames := []string{
-		"golem_0022", // 2 Yellow, 2 Green = 6 points
-		"golem_0023", // 2 Yellow, 3 Green = 8 points
-		"golem_0032", // 3 Yellow, 2 Green = 7 points
-		"golem_0040", // 4 Green = 8 points
-		"golem_0050", // 5 Green = 10 points
-		"golem_0202", // 2 Blue, 2 Green = 10 points
-		"golem_0203", // 2 Blue, 3 Green = 12 points
-		"golem_0220", // 2 Blue, 2 Green = 10 points
-		"golem_0222", // 2 Blue, 2 Green, 2 Yellow = 12 points
-		"golem_0230", // 2 Blue, 3 Green = 12 points
-		"golem_0302", // 3 Blue, 2 Green = 13 points
-		"golem_0320", // 3 Blue, 2 Green = 13 points
-		"golem_0400", // 4 Blue = 12 points
-		"golem_0500", // 5 Blue = 15 points
-		"golem_1012", // 1 Pink, 1 Green, 2 Yellow = 9 points
-		"golem_1111", // 1 of each = 10 points (1*4 + 1*3 + 1*2 + 1*1 = 10)
-		"golem_1113", // 1 Pink, 1 Blue, 1 Green, 3 Yellow = 12 points
-		"golem_1120", // 1 Pink, 1 Blue, 2 Green = 11 points
-		"golem_1131", // 1 Pink, 1 Blue, 3 Green, 1 Yellow = 14 points
-		"golem_1201", // 1 Pink, 2 Blue, 1 Yellow = 11 points
-		"golem_1311", // 1 Pink, 3 Blue, 1 Green, 1 Yellow = 16 points
-		"golem_2002", // 2 Pink, 2 Green = 14 points
-		"golem_2003", // 2 Pink, 3 Green = 17 points
-		"golem_2020", // 2 Pink, 2 Green = 14 points
-		"golem_2022", // 2 Pink, 2 Green, 2 Yellow = 16 points
-		"golem_2030", // 2 Pink, 3 Green = 17 points
-		"golem_2200", // 2 Pink, 2 Blue = 14 points
-		"golem_2202", // 2 Pink, 2 Blue, 2 Yellow = 16 points
-		"golem_2220", // 2 Pink, 2 Blue, 2 Green = 16 points
-		"golem_2300", // 2 Pink, 3 Blue = 17 points (2*4 + 3*3 = 8+9 = 17)
-		"golem_3002", // 3 Pink, 2 Green = 16 points
-		"golem_3020", // 3 Pink, 2 Green = 16 points
-		"golem_3111", // 3 Pink, 1 Blue, 1 Green, 1 Yellow = 18 points
-		"golem_3200", // 3 Pink, 2 Blue = 18 points
-		"golem_4000", // 4 Pink = 16 points
-		"golem_5000", // 5 Pink = 20 points
+		"golem_0222",
+		"golem_2022",
+		"golem_0302",
+		"golem_0500",
+		"golem_3002",
+		"golem_2003",
+		"golem_3200",
+		"golem_0023",
+		"golem_1012",
+		"golem_0203",
+		"golem_0050",
+		"golem_0022",
+		"golem_4000",
+		"golem_3111",
+		"golem_1111",
+		"golem_2002",
+		"golem_2020",
+		"golem_2220",
+		"golem_2030",
+		"golem_2300",
+		"golem_1311",
+		"golem_0032",
+		"golem_3020",
+		"golem_2202",
+		"golem_0320",
+		"golem_5000",
+		"golem_1120",
+		"golem_1131",
+		"golem_0202",
+		"golem_2200",
+		"golem_0220",
+		"golem_0230",
+		"golem_0400",
+		"golem_1201",
+		"golem_0040",
+		"golem_1113",
 	}
 
 	cards := make([]*Card, 0, len(golemNames))

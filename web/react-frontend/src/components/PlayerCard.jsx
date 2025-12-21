@@ -28,7 +28,7 @@ const PlayerCard = ({ player, isCurrentPlayer }) => {
         <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
       )}
 
-      {/* Top row: Avatar + Name + Stats */}
+      {/* Row 1: Avatar + Name + Golems (top right) */}
       <div className="flex items-center gap-2 mb-1">
         {/* Avatar */}
         <div className={`
@@ -40,32 +40,26 @@ const PlayerCard = ({ player, isCurrentPlayer }) => {
         </div>
         
         {/* Name */}
-        <div className="text-white font-bold text-sm">{player.name || 'Player'}</div>
+        <div className="text-white font-bold text-sm flex-1">{player.name || 'Player'}</div>
         
-        {/* Points */}
-        <div className="text-yellow-300 text-xs ml-auto">★{player.points || 0}</div>
+        {/* Golems count (top right) */}
+        <div className="flex items-center gap-1 bg-purple-600/50 rounded-lg px-2 py-0.5">
+          <span className="text-base">🗿</span>
+          <span className="text-white font-bold text-sm">{golemsCount}</span>
+        </div>
       </div>
 
-      {/* Bottom row: Crystals + Hand + Golems */}
-      <div className="flex items-center justify-between">
-        {/* Crystals */}
-        <div className="flex items-center gap-1">
-          {['yellow', 'green', 'blue', 'pink'].map((color) => {
-            const count = player.caravan?.[color] || 0
-            return (
-              <div key={color} className="flex items-center">
-                <div className={`w-3.5 h-3.5 rounded-full ${crystalColors[color]}`} />
-                <span className="text-white text-xs font-bold">{count}</span>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Hand & Golems count */}
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-green-400">🃏{player.hand?.length || 0}</span>
-          <span className="text-purple-400">🏆{golemsCount}</span>
-        </div>
+      {/* Row 2: Crystals */}
+      <div className="flex items-center gap-1.5 justify-center">
+        {['yellow', 'green', 'blue', 'pink'].map((color) => {
+          const count = player.caravan?.[color] || 0
+          return (
+            <div key={color} className="flex items-center">
+              <div className={`w-4 h-4 rounded-full ${crystalColors[color]}`} />
+              <span className="text-white text-sm font-bold">{count}</span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
