@@ -437,7 +437,7 @@ func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Re
 	}
 
 	// Validate number of AI opponents (player + AI = 2-4 total)
-	if req.NumAI < 1 || req.NumAI > 3 {
+	if req.NumAI < 1 || req.NumAI > 4 {
 		sendJSONError(w, http.StatusBadRequest, "Number of AI opponents must be 1-3")
 		return
 	}
