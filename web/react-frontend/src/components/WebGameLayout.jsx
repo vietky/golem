@@ -51,7 +51,10 @@ const WebGameLayout = () => {
   if (!gameState?.market || !myPlayer) return null
 
   // Get ALL other players (not me) - show all in top row
-  const otherPlayers = gameState.players?.filter(p => p.id !== myPlayer.id) || []
+  // const otherPlayers = gameState.players?.filter(p => p.id !== myPlayer.id) || []
+
+  // display all players including myself
+  const otherPlayers = gameState.players || []
 
   // Get cards directly from current state
   const actionCards = gameState.market.actionCards || []

@@ -43,7 +43,7 @@ const PlayerCard = ({ player, isCurrentPlayer }) => {
         <div className="text-white font-bold text-sm flex-1">{player.name || 'Player'}</div>
         
         {/* Golems count (top right) */}
-        <div className="flex items-center gap-1 bg-purple-600/50 rounded-lg px-2 py-0.5">
+        <div className={`flex items-center gap-1 bg-purple-600/50 rounded-lg px-2 py-0.5 ${golemsCount >= 4 ? 'animate-bounce ring-2 ring-red-500' : ''}`}>
           <span className="text-base">🗿</span>
           <span className="text-white font-bold text-sm">{golemsCount}</span>
         </div>
