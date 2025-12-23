@@ -153,6 +153,9 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Notify all users (players and spectators) that a player joined
 	session.BroadcastPlayerJoined(playerID, playerName, playerAvatar, false)
 
+	// Broadcast updated state to all players so they see the new player's name
+	session.BroadcastState()
+
 	// Handle incoming messages
 	for {
 		_, message, err := conn.ReadMessage()
