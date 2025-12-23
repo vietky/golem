@@ -90,71 +90,126 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	// Regular player join logic
 	var playerID int
-	if playerIDStr != "" {
-		if _, err := fmt.Sscanf(playerIDStr, "%d", &playerID); err != nil {
+	var slotIndex int = -1
+
+	// Check if joining lobby or game in progress
+	session.mu.RLock()
+	isGameStarted := session.IsGameStarted
+	session.mu.RUnlock()
+
+	if !isGameStarted {
+		// Joining lobby - find an available slot
+		session.mu.RLock()
+		emptySlot := session.LobbyState.FindEmptySlot()
+		session.mu.RUnlock()
+
+		if emptySlot == nil {
+			sendJSONError(w, http.StatusForbidden, "Lobby is full")
+			return
+		}
+
+		slotIndex = emptySlot.Index
+		playerID = slotIndex + 1 // Temporary player ID based on slot
+
+		// Join the lobby slot
+		if playerName == "" {
+			playerName = fmt.Sprintf("Player %d", playerID)
+		}
+		playerAvatar := r.URL.Query().Get("avatar")
+
+		if err := session.JoinLobbySlot(slotIndex, playerName, playerAvatar, conn); err != nil {
+			sendJSONError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		// Send lobby assignment
+		assignedMsg := map[string]interface{}{
+			"type":      "lobbyAssigned",
+			"playerID":  playerID,
+			"slotIndex": slotIndex,
+			"isHost":    session.LobbyState.Slots[slotIndex].IsHost,
+		}
+		if data, err := json.Marshal(assignedMsg); err == nil {
+			conn.WriteMessage(websocket.TextMessage, data)
+		}
+
+		// Send initial lobby state
+		lobbyState := session.SerializeLobbyState()
+		if data, err := json.Marshal(lobbyState); err == nil {
+			conn.WriteMessage(websocket.TextMessage, data)
+		}
+
+		// Broadcast updated lobby state to all players
+		session.BroadcastLobbyState()
+
+	} else {
+		// Game already started - use existing logic
+		if playerIDStr != "" {
+			if _, err := fmt.Sscanf(playerIDStr, "%d", &playerID); err != nil {
+				sendJSONError(w, http.StatusBadRequest, "Invalid player ID")
+				return
+			}
+			// Check if this player ID is already taken
+			session.mu.RLock()
+			_, taken := session.Connections[playerID]
+			session.mu.RUnlock()
+			if taken {
+				playerID = 0 // Force auto-assign
+			}
+		}
+
+		// Auto-assign next available player ID
+		if playerID == 0 {
+			session.mu.RLock()
+			maxPlayers := len(session.GameState.Players)
+			for i := 1; i <= maxPlayers; i++ {
+				if _, exists := session.Connections[i]; !exists {
+					playerID = i
+					break
+				}
+			}
+			session.mu.RUnlock()
+
+			if playerID == 0 {
+				sendJSONError(w, http.StatusForbidden, "Game is full")
+				return
+			}
+		}
+
+		// Validate player ID is within bounds
+		if playerID < 1 || playerID > len(session.GameState.Players) {
 			sendJSONError(w, http.StatusBadRequest, "Invalid player ID")
 			return
 		}
-		// Check if this player ID is already taken
-		session.mu.RLock()
-		_, taken := session.Connections[playerID]
-		session.mu.RUnlock()
-		if taken {
-			playerID = 0 // Force auto-assign
+
+		// Add player to session
+		if playerName == "" {
+			playerName = fmt.Sprintf("Player %d", playerID)
 		}
-	}
+		playerAvatar := r.URL.Query().Get("avatar")
+		session.AddPlayer(playerID, playerName, playerAvatar, conn)
 
-	// Auto-assign next available player ID
-	if playerID == 0 {
-		session.mu.RLock()
-		maxPlayers := len(session.GameState.Players)
-		for i := 1; i <= maxPlayers; i++ {
-			if _, exists := session.Connections[i]; !exists {
-				playerID = i
-				break
-			}
+		// Send assigned player ID back to client
+		assignedMsg := map[string]interface{}{
+			"type":     "playerAssigned",
+			"playerID": playerID,
 		}
-		session.mu.RUnlock()
-
-		if playerID == 0 {
-			sendJSONError(w, http.StatusForbidden, "Game is full")
-			return
+		if data, err := json.Marshal(assignedMsg); err == nil {
+			conn.WriteMessage(websocket.TextMessage, data)
 		}
-	}
 
-	// Validate player ID is within bounds
-	if playerID < 1 || playerID > len(session.GameState.Players) {
-		sendJSONError(w, http.StatusBadRequest, "Invalid player ID")
-		return
-	}
+		// Send initial state
+		state := session.SerializeState()
+		if data, err := json.Marshal(state); err == nil {
+			conn.WriteMessage(websocket.TextMessage, data)
+		}
 
-	// Add player to session
-	if playerName == "" {
-		playerName = fmt.Sprintf("Player %d", playerID)
-	}
-	playerAvatar := r.URL.Query().Get("avatar")
-	session.AddPlayer(playerID, playerName, playerAvatar, conn)
+		// Notify all users (players and spectators) that a player joined
+		session.BroadcastPlayerJoined(playerID, playerName, playerAvatar, false)
 
-	// Send assigned player ID back to client
-	assignedMsg := map[string]interface{}{
-		"type":     "playerAssigned",
-		"playerID": playerID,
+		// Broadcast updated state to all players so they see the new player's name
+		// session.BroadcastState()
 	}
-	if data, err := json.Marshal(assignedMsg); err == nil {
-		conn.WriteMessage(websocket.TextMessage, data)
-	}
-
-	// Send initial state
-	state := session.SerializeState()
-	if data, err := json.Marshal(state); err == nil {
-		conn.WriteMessage(websocket.TextMessage, data)
-	}
-
-	// Notify all users (players and spectators) that a player joined
-	session.BroadcastPlayerJoined(playerID, playerName, playerAvatar, false)
-
-	// Broadcast updated state to all players so they see the new player's name
-	session.BroadcastState()
 
 	// Handle incoming messages
 	for {
@@ -176,6 +231,46 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 
 		switch actionType {
+		case "setSlotAI":
+			// Handle setting a slot to AI
+			slotIndexFloat, _ := actionMsg["slotIndex"].(float64)
+			aiTypeStr, _ := actionMsg["aiType"].(string)
+
+			slotIndex := int(slotIndexFloat)
+			aiType := AIType(aiTypeStr)
+
+			if err := session.SetSlotAI(slotIndex, aiType, playerID); err == nil {
+				session.BroadcastLobbyState()
+			}
+
+		case "clearSlot":
+			// Handle clearing a slot
+			slotIndexFloat, _ := actionMsg["slotIndex"].(float64)
+			slotIndex := int(slotIndexFloat)
+
+			if err := session.ClearSlot(slotIndex, playerID); err == nil {
+				session.BroadcastLobbyState()
+			}
+
+		case "startGame":
+			// Handle starting the game
+			if err := session.StartGame(); err == nil {
+				// Broadcast game started message
+				gameStartedMsg := map[string]interface{}{
+					"type":    "gameStarted",
+					"message": "Game has started!",
+				}
+				if data, err := json.Marshal(gameStartedMsg); err == nil {
+					session.Broadcast(data)
+				}
+
+				// Send initial game state to all players
+				state := session.SerializeState()
+				if data, err := json.Marshal(state); err == nil {
+					session.Broadcast(data)
+				}
+			}
+
 		case "chat":
 			// Handle chat message
 			message, _ := actionMsg["message"].(string)

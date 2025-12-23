@@ -32,16 +32,19 @@ type GameSession struct {
 	SpectatorNames map[string]string          // Spectator ID -> Spectator name
 	PlayerNames    map[int]string             // Player ID -> Player name
 	PlayerAvatars  map[int]string             // Player ID -> Avatar number
+	AIStrategies   map[int]game.AIStrategy    // Player ID -> AI Strategy for AI players
 	CreatedAt      time.Time                  // When session was created
 	LastActivity   time.Time                  // Last time someone was in the room
 	EventStore     eventstore.EventStore      // Event store for recording actions
 	TurnTimeout    time.Duration              // Maximum time per turn (default 60s)
 	TurnStartTime  time.Time                  // When the current turn started
+	LobbyState     *LobbyState                // Lobby state before game starts
+	IsGameStarted  bool                       // Whether the game has started
 	mu             sync.RWMutex
 	ActionChan     chan PlayerAction
 	BroadcastChan  chan []byte
 	logger         *logger.Logger
-	maxChatMsgs   int // Max chat messages from config
+	maxChatMsgs    int // Max chat messages from config
 }
 
 // PlayerAction represents an action from a player
@@ -71,15 +74,18 @@ func NewGameSession(sessionID string, numPlayers int, seed int64, turnTimeoutInS
 		SpectatorNames: make(map[string]string),
 		PlayerNames:    make(map[int]string),
 		PlayerAvatars:  make(map[int]string),
+		AIStrategies:   make(map[int]game.AIStrategy),
 		CreatedAt:      now,
 		LastActivity:   now,
 		EventStore:     nil,                                              // Will be set by GameServer
 		TurnTimeout:    time.Duration(turnTimeoutInSecond) * time.Second, // Default 60s timeout
 		TurnStartTime:  now,
+		LobbyState:     NewLobbyState(numPlayers, 0), // Initialize lobby with empty slots
+		IsGameStarted:  false,
 		ActionChan:     make(chan PlayerAction, 10),
 		BroadcastChan:  make(chan []byte, 100),
 		logger:         logger,
-		maxChatMsgs:   10, // Default, will be set from config
+		maxChatMsgs:    10, // Default, will be set from config
 	}
 }
 
@@ -350,7 +356,17 @@ func (gs *GameSession) advanceTurn() {
 
 // executeAITurn executes a single AI turn with proper error handling
 func (gs *GameSession) executeAITurn(player *game.Player) {
-	aiAction := gs.Engine.AI.ChooseAction(player, gs.GameState.Market, gs.GameState)
+	// Get the AI strategy for this specific player
+	aiStrategy, exists := gs.AIStrategies[player.ID]
+	if !exists || aiStrategy == nil {
+		// Fallback to engine's default AI if no specific strategy is set
+		if gs.Engine.AI == nil {
+			gs.Engine.AI = game.NewAIPlayer(gs.GameState.RNG)
+		}
+		aiStrategy = gs.Engine.AI
+	}
+
+	aiAction := aiStrategy.ChooseAction(player, gs.GameState.Market, gs.GameState)
 	if err := gs.GameState.ExecuteAction(aiAction); err == nil {
 		gs.storeGameEvent(player.ID, aiAction)
 		gs.GameState.CheckGameOver()

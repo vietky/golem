@@ -67,6 +67,12 @@ func main() {
 	mux.HandleFunc("/api/join", gameServer.HandleJoinSession)
 	mux.HandleFunc("/api/list", gameServer.HandleListSessions)
 
+	// Lobby management endpoints
+	mux.HandleFunc("/api/lobby/state", gameServer.HandleLobbyState)
+	mux.HandleFunc("/api/lobby/setAI", gameServer.HandleSetSlotAI)
+	mux.HandleFunc("/api/lobby/clearSlot", gameServer.HandleClearSlot)
+	mux.HandleFunc("/api/lobby/start", gameServer.HandleStartGame)
+
 	// Admin API endpoints for event store
 	mux.HandleFunc("/api/events", gameServer.HandleGetEvents)
 	mux.HandleFunc("/api/snapshot", gameServer.HandleGetSnapshot)

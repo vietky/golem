@@ -33,7 +33,27 @@ const useGameStore = create((set, get) => ({
   acquiredCardOverlay: null, // { card, type: 'market'|'golem', playerName } for overlay animation
 
   // Actions
-  connectWebSocket: (sessionId, playerName, playerAvatar, asSpectator = false) => {
+  connectWebSocket: (sessionId, playerName, playerAvatar, asSpectator = false, existingWs = null) => {
+    // If an existing WebSocket is provided (from lobby), use it
+    if (existingWs) {
+      set({ 
+        connected: true, 
+        ws: existingWs, 
+        isSpectator: asSpectator,
+        sessionId,
+        playerName,
+        playerAvatar
+      });
+      console.log(`Using existing WebSocket connection${asSpectator ? ' as spectator' : ''}`);
+      
+      // Set up message handler for the existing websocket
+      existingWs.onmessage = (event) => {
+        get().handleWebSocketMessage(event);
+      };
+      
+      return;
+    }
+
     // Allow overriding backend host via Vite env `VITE_API_HOST`.
     // Example: VITE_API_HOST="http://backend-host:8080"
     const configuredHost = import.meta.env.VITE_API_HOST || `${window.location.protocol}//${window.location.host}`;
@@ -51,12 +71,26 @@ const useGameStore = create((set, get) => ({
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
-      set({ connected: true, ws, isSpectator: asSpectator });
+      set({ connected: true, ws, isSpectator: asSpectator, sessionId, playerName, playerAvatar });
       console.log(`WebSocket connected${asSpectator ? ' as spectator' : ''}`);
     };
 
     ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
+      get().handleWebSocketMessage(event);
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
+    ws.onclose = () => {
+      set({ connected: false });
+      console.log("WebSocket closed");
+    };
+  },
+
+  handleWebSocketMessage: (event) => {
+    const message = JSON.parse(event.data);
 
       if (message.type === "playerAssigned") {
         set({ playerId: message.playerID });
@@ -284,19 +318,6 @@ const useGameStore = create((set, get) => ({
         console.error("Game error:", message.error);
         get().addToLog(`Error: ${message.error}`);
       }
-    };
-
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      set({ connected: false });
-    };
-
-    ws.onclose = () => {
-      set({ connected: false, ws: null });
-      console.log("WebSocket disconnected");
-    };
-
-    set({ ws, sessionId });
   },
 
   sendAction: (actionType, cardIndex = null, inputResources = null, outputResources = null, multiplier = null, deposits = null) => {

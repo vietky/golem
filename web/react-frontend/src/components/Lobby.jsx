@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import useGameStore from "../store/gameStore";
 import useOrientation from "../hooks/useOrientation";
 import { apiFetch } from "../utils/api";
+import RoomLobby from "./RoomLobby";
 
 // Generate a random player name
 const generatePlayerName = () => {
@@ -34,6 +35,8 @@ const Lobby = ({ onJoinGame }) => {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("create");
+  const [inLobby, setInLobby] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
   const { isMobile, isTablet, isPortrait, isLandscape } = useOrientation();
 
   // Fetch available rooms
@@ -94,10 +97,8 @@ const Lobby = ({ onJoinGame }) => {
       const data = await response.json();
       if (response.ok) {
         setSessionInfo(data.sessionID);
-        setTimeout(() => {
-          fetchRooms();
-          setActiveTab("join");
-        }, 500);
+        setCurrentSessionId(data.sessionID);
+        setInLobby(true);
       }
     } catch (error) {
       console.error("Error creating game:", error);
@@ -108,9 +109,40 @@ const Lobby = ({ onJoinGame }) => {
 
   const joinGame = (sessionId, asSpectator = false) => {
     if (sessionId) {
-      onJoinGame(sessionId, playerName, selectedAvatar, asSpectator);
+      if (asSpectator) {
+        // Join as spectator directly
+        onJoinGame(sessionId, playerName, selectedAvatar, true);
+      } else {
+        // Join lobby
+        setCurrentSessionId(sessionId);
+        setInLobby(true);
+      }
     }
   };
+
+  const handleLobbyBack = () => {
+    setInLobby(false);
+    setCurrentSessionId(null);
+    fetchRooms();
+  };
+
+  const handleGameStart = (websocket) => {
+    // Game started from lobby, transition to game
+    onJoinGame(currentSessionId, playerName, selectedAvatar, false, websocket);
+  };
+
+  // If in lobby, show the lobby component
+  if (inLobby && currentSessionId) {
+    return (
+      <RoomLobby
+        sessionId={currentSessionId}
+        playerName={playerName}
+        playerAvatar={selectedAvatar}
+        onBack={handleLobbyBack}
+        onGameStart={handleGameStart}
+      />
+    );
+  }
 
   const copySessionId = (sessionId) => {
     navigator.clipboard.writeText(sessionId);
