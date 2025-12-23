@@ -80,13 +80,30 @@ const SimpleMarketArea = () => {
   };
 
   // Determine coin badge info for a point card position using server-provided coins
+  // New logic: Position 0 gets first available coin (copper if available, silver if copper is gone)
+  // Position 1 only gets silver coin if copper is still available
   const getCoinBadgeInfo = (position) => {
     if (!gameState?.market?.coins) return null
-    const coin = gameState.market.coins[position]
-    if (!coin || coin.amount <= 0) return null
-    // coin.points should be 3 for copper, 1 for silver
-    const label = coin.points === 3 ? 'Copper Token (3 pts)' : coin.points === 1 ? 'Silver Token (1 pt)' : `Coin (${coin.points} pts)`
-    return { label, amount: coin.amount, points: coin.points }
+    const coins = gameState.market.coins
+    
+    if (position === 0) {
+      // Position 0: First available coin
+      if (coins[0] && coins[0].amount > 0) {
+        const label = coins[0].points === 3 ? 'Copper Token (3 pts)' : coins[0].points === 1 ? 'Silver Token (1 pt)' : `Coin (${coins[0].points} pts)`
+        return { label, amount: coins[0].amount, points: coins[0].points }
+      } else if (coins[1] && coins[1].amount > 0) {
+        const label = coins[1].points === 3 ? 'Copper Token (3 pts)' : coins[1].points === 1 ? 'Silver Token (1 pt)' : `Coin (${coins[1].points} pts)`
+        return { label, amount: coins[1].amount, points: coins[1].points }
+      }
+    } else if (position === 1) {
+      // Position 1: Silver coin only if copper is still available
+      if (coins[0] && coins[0].amount > 0 && coins[1] && coins[1].amount > 0) {
+        const label = coins[1].points === 3 ? 'Copper Token (3 pts)' : coins[1].points === 1 ? 'Silver Token (1 pt)' : `Coin (${coins[1].points} pts)`
+        return { label, amount: coins[1].amount, points: coins[1].points }
+      }
+    }
+    
+    return null
   }
 
   return (

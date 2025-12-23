@@ -329,10 +329,31 @@ const FantasyMarketArea = () => {
               : false
             
             // Coin bonus for first 2 positions
-            const coins = gameState?.market?.coins || []
-            const coinBonus = index <= 1 && coins[index] && coins[index].amount > 0
-            const coinAmount = coins[index] ? coins[index].amount : 0
-            const isCopperCoin = index === 0
+            // Helper function to get coin for position based on new rules
+            // Position 0: First available coin (copper if available, silver if copper is gone)
+            // Position 1: Silver coin only if copper is still available
+            const getCoinForPosition = (pos) => {
+              const coins = gameState?.market?.coins || []
+              if (pos === 0) {
+                // Position 0: First available coin
+                if (coins && coins[0] && coins[0].amount > 0) {
+                  return { coin: coins[0], isCopper: coins[0].points === 3 }
+                } else if (coins && coins[1] && coins[1].amount > 0) {
+                  return { coin: coins[1], isCopper: false }
+                }
+              } else if (pos === 1) {
+                // Position 1: Silver coin only if copper is still available
+                if (coins && coins[0] && coins[0].amount > 0 && coins[1] && coins[1].amount > 0) {
+                  return { coin: coins[1], isCopper: false }
+                }
+              }
+              return null
+            }
+
+            const coinInfo = getCoinForPosition(index)
+            const coinBonus = coinInfo !== null
+            const coinAmount = coinInfo ? coinInfo.coin.amount : 0
+            const isCopperCoin = coinInfo ? coinInfo.isCopper : false
             const coinEmoji = isCopperCoin ? '🥉' : '🥈'
 
             return (
