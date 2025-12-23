@@ -10,26 +10,28 @@ import TradeModal from './TradeModal'
 import DepositModal from './DepositModal'
 import ConfirmGolemModal from './ConfirmGolemModal'
 import AcquiredCardOverlay from './AcquiredCardOverlay'
+import { ChatProvider, ChatOverlay, ChatInput } from './Chat'
 import { showToast } from '../utils/toast'
 
 const WebGameLayout = () => {
-  const { 
-    gameState, 
-    myPlayer, 
-    currentPlayer, 
-    acquireCard, 
-    claimPointCard, 
+  const {
+    gameState,
+    myPlayer,
+    currentPlayer,
+    playerName,
+    acquireCard,
+    claimPointCard,
     playCard,
-    playCardWithUpgrade, 
+    playCardWithUpgrade,
     playCardWithTrade,
-    rest
+    rest,
   } = useGameStore()
 
   const [depositModal, setDepositModal] = useState({ show: false, card: null, index: null })
   const [upgradeModal, setUpgradeModal] = useState({ show: false, card: null, index: null })
   const [tradeModal, setTradeModal] = useState({ show: false, card: null, index: null })
   const [confirmGolem, setConfirmGolem] = useState({ show: false, golem: null, index: null })
-  
+
   // Timer state
   const [turnTimeRemaining, setTurnTimeRemaining] = useState(60)
   const turnTimeLimit = 60
@@ -37,7 +39,7 @@ const WebGameLayout = () => {
   // Timer effect - reset when current player changes
   useEffect(() => {
     setTurnTimeRemaining(turnTimeLimit)
-    
+
     const timer = setInterval(() => {
       setTurnTimeRemaining((prev) => {
         if (prev <= 0) return 0
@@ -48,7 +50,22 @@ const WebGameLayout = () => {
     return () => clearInterval(timer)
   }, [gameState?.currentPlayer])
 
-  if (!gameState?.market || !myPlayer) return null
+  // Get player name for chat (before early return)
+  const chatPlayerName = myPlayer?.name || playerName || 'Player'
+  // Get maxChatMessages from gameState (from backend config)
+  const maxChatMessages = gameState?.maxChatMessages || 10
+
+  if (!gameState?.market || !myPlayer) {
+    // Still render ChatProvider even if game not ready
+    return (
+      <ChatProvider playerName={chatPlayerName} maxMessages={maxChatMessages} fadeOutDelay={5000} useWebSocket={true}>
+        <ChatOverlay />
+        <div className="h-full w-full flex items-center justify-center">
+          <div className="text-white">Loading game...</div>
+        </div>
+      </ChatProvider>
+    )
+  }
 
   // Get ALL other players (not me) - show all in top row
   // const otherPlayers = gameState.players?.filter(p => p.id !== myPlayer.id) || []
@@ -94,7 +111,7 @@ const WebGameLayout = () => {
 
   const handleAcquireCard = (index) => {
     if (!isMyTurn) {
-      showToast("Not your turn!", 'error')
+      showToast('Not your turn!', 'error')
       return
     }
     const card = actionCards[index]
@@ -106,10 +123,11 @@ const WebGameLayout = () => {
     }
 
     // Check if player has any crystals to deposit
-    const totalCrystals = (myPlayer?.caravan?.yellow || 0) + 
-                          (myPlayer?.caravan?.green || 0) + 
-                          (myPlayer?.caravan?.blue || 0) + 
-                          (myPlayer?.caravan?.pink || 0)
+    const totalCrystals =
+      (myPlayer?.caravan?.yellow || 0) +
+      (myPlayer?.caravan?.green || 0) +
+      (myPlayer?.caravan?.blue || 0) +
+      (myPlayer?.caravan?.pink || 0)
 
     if (totalCrystals < index) {
       showToast(`Need ${index} crystals to deposit for position ${index + 1}`, 'error')
@@ -122,7 +140,7 @@ const WebGameLayout = () => {
 
   const handleClaimPointCard = (index) => {
     if (!isMyTurn) {
-      showToast("Not your turn!", 'error')
+      showToast('Not your turn!', 'error')
       return
     }
 
@@ -132,16 +150,12 @@ const WebGameLayout = () => {
       const req = card?.requirement || {}
       const have = myPlayer?.caravan || {}
       const missing = []
-      
-      if ((req.yellow || 0) > (have.yellow || 0)) 
-        missing.push(`${(req.yellow || 0) - (have.yellow || 0)} Yellow`)
-      if ((req.green || 0) > (have.green || 0)) 
-        missing.push(`${(req.green || 0) - (have.green || 0)} Green`)
-      if ((req.blue || 0) > (have.blue || 0)) 
-        missing.push(`${(req.blue || 0) - (have.blue || 0)} Blue`)
-      if ((req.pink || 0) > (have.pink || 0)) 
-        missing.push(`${(req.pink || 0) - (have.pink || 0)} Pink`)
-      
+
+      if ((req.yellow || 0) > (have.yellow || 0)) missing.push(`${(req.yellow || 0) - (have.yellow || 0)} Yellow`)
+      if ((req.green || 0) > (have.green || 0)) missing.push(`${(req.green || 0) - (have.green || 0)} Green`)
+      if ((req.blue || 0) > (have.blue || 0)) missing.push(`${(req.blue || 0) - (have.blue || 0)} Blue`)
+      if ((req.pink || 0) > (have.pink || 0)) missing.push(`${(req.pink || 0) - (have.pink || 0)} Pink`)
+
       showToast(`Missing: ${missing.join(', ')}`, 'error')
       return
     }
@@ -159,7 +173,7 @@ const WebGameLayout = () => {
 
   const handleCardClick = (card, index) => {
     if (!isMyTurn) {
-      showToast("Not your turn!", 'error')
+      showToast('Not your turn!', 'error')
       return
     }
 
@@ -184,27 +198,26 @@ const WebGameLayout = () => {
     yellow: 'bg-yellow-400',
     green: 'bg-green-500',
     blue: 'bg-blue-500',
-    pink: 'bg-pink-400'
+    pink: 'bg-pink-400',
   }
 
   return (
-    <div className="h-full w-full grid p-4 gap-2" style={{ gridTemplateRows: 'auto 1fr 1fr 1fr' }}>
-      {/* Row 1 - ALL Players in one row (auto height) */}
-      <div className="flex gap-3 justify-center items-center flex-wrap">
-        {otherPlayers.map((player) => (
-          <div key={player.id} className="w-64">
-            <PlayerCard 
-              player={player} 
-              isCurrentPlayer={currentPlayer?.id === player.id}
-            />
-          </div>
-        ))}
-      </div>
+    <ChatProvider playerName={chatPlayerName} maxMessages={maxChatMessages} fadeOutDelay={5000} useWebSocket={true}>
+      <ChatOverlay />
+      <div className="h-full w-full grid p-4 gap-2" style={{ gridTemplateRows: 'auto 1fr 1fr 1fr' }}>
+        {/* Row 1 - ALL Players in one row (auto height) */}
+        <div className="flex gap-3 justify-center items-center flex-wrap">
+          {otherPlayers.map((player) => (
+            <div key={player.id} className="w-64">
+              <PlayerCard player={player} isCurrentPlayer={currentPlayer?.id === player.id} />
+            </div>
+          ))}
+        </div>
 
-      {/* Row 2 - Market (Action Cards) */}
-      <div className="bg-black/30 backdrop-blur-md rounded-xl border border-white/20 p-2 flex flex-col min-h-0 overflow-hidden">
-        <div className="text-white/70 text-xs font-semibold mb-1">Market</div>
-        <div className="flex-1 grid grid-cols-6 gap-1 place-items-center min-h-0">
+        {/* Row 2 - Market (Action Cards) */}
+        <div className="bg-black/30 backdrop-blur-md rounded-xl border border-white/20 p-2 flex flex-col min-h-0 overflow-hidden">
+          <div className="text-white/70 text-xs font-semibold mb-1">Market</div>
+          <div className="flex-1 grid grid-cols-6 gap-1 place-items-center min-h-0">
             {actionCards.slice(0, 6).map((card, index) => {
               const cost = card.cost || {}
               const isAffordable = isMyTurn && canAfford(cost)
@@ -216,7 +229,7 @@ const WebGameLayout = () => {
                 yellow: '/images/stone_yellow.JPG',
                 green: '/images/stone_green.JPG',
                 blue: '/images/stone_blue.JPG',
-                pink: '/images/stone_pink.JPG'
+                pink: '/images/stone_pink.JPG',
               }
               Object.entries(deposits).forEach(([type, count]) => {
                 for (let i = 0; i < parseInt(count || 0); i++) {
@@ -225,8 +238,8 @@ const WebGameLayout = () => {
               })
 
               return (
-                <div 
-                  key={card.id || `action-${index}`} 
+                <div
+                  key={card.id || `action-${index}`}
                   className="relative cursor-pointer h-full aspect-[2/3]"
                   onClick={() => handleAcquireCard(index)}
                 >
@@ -234,7 +247,7 @@ const WebGameLayout = () => {
                   <div className="absolute -top-1 -left-1 bg-purple-600 text-white rounded-full w-4 h-4 flex items-center justify-center font-bold text-[9px] z-20 shadow-lg border border-white pointer-events-none">
                     {index + 1}
                   </div>
-                  
+
                   {/* Deposit Crystals Badge */}
                   {crystalBadges.length > 0 && (
                     <div className="absolute -top-1 -right-1 z-20 flex flex-wrap gap-0.5 max-w-[40px] justify-end pointer-events-none">
@@ -244,45 +257,40 @@ const WebGameLayout = () => {
                           src={crystal.src}
                           alt={crystal.type}
                           className="w-3.5 h-3.5 rounded-full object-cover border border-white shadow"
-                          onError={(e) => { e.target.src = '/images/stone_yellow.JPG' }}
+                          onError={(e) => {
+                            e.target.src = '/images/stone_yellow.JPG'
+                          }}
                         />
                       ))}
                     </div>
                   )}
-                  
-                  <CompactCard
-                    card={card}
-                    type="action"
-                    index={index}
-                    cost={cost}
-                    isAffordable={isAffordable}
-                    size="flexible"
-                  />
+
+                  <CompactCard card={card} type="action" index={index} cost={cost} isAffordable={isAffordable} size="flexible" />
                 </div>
               )
             })}
           </div>
         </div>
 
-      {/* Row 3 - Golems (Point Cards) */}
-      <div className="bg-black/30 backdrop-blur-md rounded-xl border border-white/20 p-2 flex flex-col min-h-0 overflow-hidden">
-        <div className="flex items-center justify-between mb-1">
-          <div className="text-white/70 text-xs font-semibold">Golems</div>
-          {/* Coins remaining info */}
-          <div className="flex items-center gap-2 text-[10px]">
-            {coins[0]?.amount > 0 && (
-              <span className="text-orange-400" title="Copper coins (3pts each)">
-                🥉{coins[0].amount}
-              </span>
-            )}
-            {coins[1]?.amount > 0 && (
-              <span className="text-gray-300" title="Silver coins (1pt each)">
-                🥈{coins[1].amount}
-              </span>
-            )}
+        {/* Row 3 - Golems (Point Cards) */}
+        <div className="bg-black/30 backdrop-blur-md rounded-xl border border-white/20 p-2 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-white/70 text-xs font-semibold">Golems</div>
+            {/* Coins remaining info */}
+            <div className="flex items-center gap-2 text-[10px]">
+              {coins[0]?.amount > 0 && (
+                <span className="text-orange-400" title="Copper coins (3pts each)">
+                  🥉{coins[0].amount}
+                </span>
+              )}
+              {coins[1]?.amount > 0 && (
+                <span className="text-gray-300" title="Silver coins (1pt each)">
+                  🥈{coins[1].amount}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="flex-1 grid grid-cols-5 gap-1 place-items-center min-h-0">
+          <div className="flex-1 grid grid-cols-5 gap-1 place-items-center min-h-0">
             {pointCards.slice(0, 5).map((card, index) => {
               const coinBonus = index <= 1 && coins && coins[index] && coins[index].amount > 0
               const coinAmount = coins && coins[index] ? coins[index].amount : 0
@@ -290,7 +298,7 @@ const WebGameLayout = () => {
               const coinEmoji = isCopperCoin ? '🥉' : '🥈'
 
               return (
-                <div 
+                <div
                   key={card.id || `point-${index}`}
                   className="relative cursor-pointer h-full aspect-[2/3]"
                   onClick={() => handleClaimPointCard(index)}
@@ -299,10 +307,10 @@ const WebGameLayout = () => {
                   <div className="absolute -top-1 -left-1 bg-purple-600 text-white rounded-full w-4 h-4 flex items-center justify-center font-bold text-[9px] z-20 shadow-lg border border-white pointer-events-none">
                     {index + 1}
                   </div>
-                  
+
                   {/* Coin Bonus Badge */}
                   {coinBonus && (
-                    <div 
+                    <div
                       className="absolute -top-1 -right-1 z-20 flex items-center gap-0.5 bg-black/70 backdrop-blur-sm rounded-full px-1 py-0.5 border border-white/30 pointer-events-none"
                       title={`${isCopperCoin ? 'Copper (3pts)' : 'Silver (1pt)'} - ${coinAmount} left`}
                     >
@@ -310,7 +318,7 @@ const WebGameLayout = () => {
                       <span className="text-[8px] text-white font-bold">{coinAmount}</span>
                     </div>
                   )}
-                  
+
                   <CompactCard
                     card={card}
                     type="point"
@@ -321,175 +329,171 @@ const WebGameLayout = () => {
                 </div>
               )
             })}
-        </div>
-      </div>
-
-      {/* Row 4 - Bottom Row: History | Graveyard | My Hand + Crystals + Timer | My Golems */}
-      <div className="flex gap-3 min-h-0 overflow-hidden">
-        {/* History */}
-        <div className="w-44 flex-shrink-0 bg-black/30 backdrop-blur-md rounded-xl border border-white/20 flex flex-col min-h-0 overflow-hidden">
-          <HistorySection />
+          </div>
         </div>
 
-        {/* Graveyard */}
-        <div className="w-28 flex-shrink-0 bg-black/30 backdrop-blur-md rounded-xl border border-white/20 py-2 flex flex-col min-h-0">
-          <GraveyardPanel playedCards={playedCards} />
-        </div>
+        {/* Row 4 - Bottom Row: History | Graveyard | My Hand + Crystals + Timer | My Golems */}
+        <div className="flex gap-3 min-h-0 overflow-hidden">
+          {/* History */}
+          <div className="w-44 flex-shrink-0 bg-black/30 backdrop-blur-md rounded-xl border border-white/20 flex flex-col min-h-0 overflow-hidden">
+            <HistorySection />
+          </div>
 
-        {/* My Hand + Info + Timer */}
-        <div className={`flex-1 bg-black/30 backdrop-blur-md rounded-xl p-2 flex flex-col min-w-0 min-h-0 transition-all duration-300 ${
-          isMyTurn 
-            ? 'border-2 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.4)]' 
-            : 'border border-white/20'
-        }`}>
-          {/* Header with info */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              {/* Avatar & Name */}
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-yellow-500 text-black flex items-center justify-center font-bold text-sm border-2 border-white">
-                  {myPlayer.name?.charAt(0)?.toUpperCase() || '?'}
+          {/* Graveyard */}
+          <div className="w-28 flex-shrink-0 bg-black/30 backdrop-blur-md rounded-xl border border-white/20 py-2 flex flex-col min-h-0">
+            <GraveyardPanel playedCards={playedCards} />
+          </div>
+
+          {/* My Hand + Info + Timer */}
+          <div
+            className={`flex-1 bg-black/30 backdrop-blur-md rounded-xl p-2 flex flex-col min-w-0 min-h-0 transition-all duration-300 ${
+              isMyTurn ? 'border-2 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.4)]' : 'border border-white/20'
+            }`}
+          >
+            {/* Header with info */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                {/* Avatar & Name */}
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-yellow-500 text-black flex items-center justify-center font-bold text-sm border-2 border-white">
+                    {myPlayer.name?.charAt(0)?.toUpperCase() || '?'}
+                  </div>
+                  <div className="text-white font-bold text-sm">{myPlayer.name || 'You'}</div>
                 </div>
-                <div className="text-white font-bold text-sm">{myPlayer.name || 'You'}</div>
-              </div>
-              
-              {/* Crystals - always show all 4 colors */}
-              <div className="flex items-center gap-1.5 ml-2">
-                {['yellow', 'green', 'blue', 'pink'].map((color) => {
-                  const count = myPlayer.caravan?.[color] || 0
-                  return (
-                    <div key={color} className="flex items-center gap-0.5">
-                      <div className={`w-4 h-4 rounded-full ${crystalColors[color]}`} />
-                      <span className="text-white text-sm font-bold">{count}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
 
-            {/* Timer + Actions */}
-            <div className="flex items-center gap-3">
-              {/* Timer */}
-              <div className="flex items-center gap-2">
-                <div className="w-24 h-2 bg-white/20 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full transition-all duration-1000 ${
-                      turnProgress > 50 ? 'bg-green-500' : 
-                      turnProgress > 20 ? 'bg-yellow-500' : 'bg-red-500'
+                {/* Crystals - always show all 4 colors */}
+                <div className="flex items-center gap-1.5 ml-2">
+                  {['yellow', 'green', 'blue', 'pink'].map((color) => {
+                    const count = myPlayer.caravan?.[color] || 0
+                    return (
+                      <div key={color} className="flex items-center gap-0.5">
+                        <div className={`w-4 h-4 rounded-full ${crystalColors[color]}`} />
+                        <span className="text-white text-sm font-bold">{count}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Timer + Actions */}
+              <div className="flex items-center gap-3">
+                {/* Chat Input - Compact */}
+                <ChatInput compact={true} />
+
+                {/* Timer */}
+                <div className="flex items-center gap-2">
+                  <div className="w-24 h-2 bg-white/20 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-1000 ${
+                        turnProgress > 50 ? 'bg-green-500' : turnProgress > 20 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${turnProgress}%` }}
+                    />
+                  </div>
+                  <span
+                    className={`text-sm font-bold min-w-[2rem] text-right ${
+                      turnProgress > 50 ? 'text-green-400' : turnProgress > 20 ? 'text-yellow-400' : 'text-red-400'
                     }`}
-                    style={{ width: `${turnProgress}%` }}
-                  />
+                  >
+                    {turnTimeRemaining}s
+                  </span>
                 </div>
-                <span className={`text-sm font-bold min-w-[2rem] text-right ${
-                  turnProgress > 50 ? 'text-green-400' : 
-                  turnProgress > 20 ? 'text-yellow-400' : 'text-red-400'
-                }`}>
-                  {turnTimeRemaining}s
-                </span>
-              </div>
 
-              {/* Rest Button */}
-              {canRest && (
-                <button
-                  onClick={handleRest}
-                  className="px-3 py-1 rounded-lg font-bold bg-green-600 hover:bg-green-500 text-white text-sm border border-green-400 transition-all"
+                {/* Rest Button */}
+                {canRest && (
+                  <button
+                    onClick={handleRest}
+                    className="px-3 py-1 rounded-lg font-bold bg-green-600 hover:bg-green-500 text-white text-sm border border-green-400 transition-all"
+                  >
+                    Rest
+                  </button>
+                )}
+
+                {/* Turn indicator */}
+                {isMyTurn ? (
+                  <div className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-lg text-sm font-bold border border-yellow-400">
+                    Your Turn
+                  </div>
+                ) : (
+                  <div className="px-3 py-1 bg-white/10 text-white/50 rounded-lg text-sm">Waiting...</div>
+                )}
+              </div>
+            </div>
+
+            {/* Hand Cards */}
+            <div className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent min-h-0">
+              {hand.map((card, index) => (
+                <div
+                  key={`hand-${index}`}
+                  className="flex-shrink-0 h-full aspect-[2/3] cursor-pointer"
+                  onClick={() => handleCardClick(card, index)}
                 >
-                  Rest
-                </button>
-              )}
-              
-              {/* Turn indicator */}
-              {isMyTurn ? (
-                <div className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-lg text-sm font-bold border border-yellow-400">
-                  Your Turn
+                  <CompactCard card={card} type="action" index={index} isPlayable={isMyTurn} size="flexible" />
                 </div>
-              ) : (
-                <div className="px-3 py-1 bg-white/10 text-white/50 rounded-lg text-sm">
-                  Waiting...
+              ))}
+
+              {hand.length === 0 && (
+                <div className="h-full aspect-[2/3] rounded-xl border-2 border-dashed border-white/30 flex items-center justify-center flex-shrink-0">
+                  <span className="text-white/40 text-xs">No cards</span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Hand Cards */}
-          <div className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent min-h-0">
-            {hand.map((card, index) => (
-              <div 
-                key={`hand-${index}`} 
-                className="flex-shrink-0 h-full aspect-[2/3] cursor-pointer"
-                onClick={() => handleCardClick(card, index)}
-              >
-                <CompactCard
-                  card={card}
-                  type="action"
-                  index={index}
-                  isPlayable={isMyTurn}
-                  size="flexible"
-                />
-              </div>
-            ))}
-            
-            {hand.length === 0 && (
-              <div className="h-full aspect-[2/3] rounded-xl border-2 border-dashed border-white/30 flex items-center justify-center flex-shrink-0">
-                <span className="text-white/40 text-xs">No cards</span>
-              </div>
-            )}
+          {/* My Golems */}
+          <div className="w-28 flex-shrink-0 bg-black/30 backdrop-blur-md rounded-xl border border-white/20 py-2 flex flex-col min-h-0">
+            <MyGolemsPanel pointCards={myPlayer.pointCards || []} coins={myPlayer.coins || []} />
           </div>
         </div>
 
-        {/* My Golems */}
-        <div className="w-28 flex-shrink-0 bg-black/30 backdrop-blur-md rounded-xl border border-white/20 py-2 flex flex-col min-h-0">
-          <MyGolemsPanel pointCards={myPlayer.pointCards || []} coins={myPlayer.coins || []} />
-        </div>
+        {/* Modals */}
+        {depositModal.show && (
+          <DepositModal
+            card={depositModal.card}
+            cardIndex={depositModal.index}
+            onClose={() => setDepositModal({ show: false, card: null, index: null })}
+          />
+        )}
+
+        {upgradeModal.show && (
+          <UpgradeModal
+            card={upgradeModal.card}
+            cardIndex={upgradeModal.index}
+            playerResources={myPlayer?.resources}
+            maxTurnUpgrade={upgradeModal.card?.turnUpgrade || 1}
+            onConfirm={(inputResources, outputResources) => {
+              playCardWithUpgrade(upgradeModal.index, inputResources, outputResources, upgradeModal.card)
+              setUpgradeModal({ show: false, card: null, index: null })
+            }}
+            onCancel={() => setUpgradeModal({ show: false, card: null, index: null })}
+          />
+        )}
+
+        {tradeModal.show && (
+          <TradeModal
+            card={tradeModal.card}
+            cardIndex={tradeModal.index}
+            playerResources={myPlayer?.resources}
+            onConfirm={(multiplier) => {
+              playCardWithTrade(tradeModal.index, multiplier, tradeModal.card)
+              setTradeModal({ show: false, card: null, index: null })
+            }}
+            onCancel={() => setTradeModal({ show: false, card: null, index: null })}
+          />
+        )}
+
+        {/* Confirm Golem Modal */}
+        <ConfirmGolemModal
+          isOpen={confirmGolem.show}
+          golem={confirmGolem.golem}
+          onConfirm={handleConfirmClaim}
+          onCancel={() => setConfirmGolem({ show: false, golem: null, index: null })}
+        />
+
+        {/* Card acquisition overlay animation */}
+        <AcquiredCardOverlay />
       </div>
-
-      {/* Modals */}
-      {depositModal.show && (
-        <DepositModal
-          card={depositModal.card}
-          cardIndex={depositModal.index}
-          onClose={() => setDepositModal({ show: false, card: null, index: null })}
-        />
-      )}
-
-      {upgradeModal.show && (
-        <UpgradeModal
-          card={upgradeModal.card}
-          cardIndex={upgradeModal.index}
-          playerResources={myPlayer?.resources}
-          maxTurnUpgrade={upgradeModal.card?.turnUpgrade || 1}
-          onConfirm={(inputResources, outputResources) => {
-            playCardWithUpgrade(upgradeModal.index, inputResources, outputResources, upgradeModal.card)
-            setUpgradeModal({ show: false, card: null, index: null })
-          }}
-          onCancel={() => setUpgradeModal({ show: false, card: null, index: null })}
-        />
-      )}
-
-      {tradeModal.show && (
-        <TradeModal
-          card={tradeModal.card}
-          cardIndex={tradeModal.index}
-          playerResources={myPlayer?.resources}
-          onConfirm={(multiplier) => {
-            playCardWithTrade(tradeModal.index, multiplier, tradeModal.card)
-            setTradeModal({ show: false, card: null, index: null })
-          }}
-          onCancel={() => setTradeModal({ show: false, card: null, index: null })}
-        />
-      )}
-
-      {/* Confirm Golem Modal */}
-      <ConfirmGolemModal
-        isOpen={confirmGolem.show}
-        golem={confirmGolem.golem}
-        onConfirm={handleConfirmClaim}
-        onCancel={() => setConfirmGolem({ show: false, golem: null, index: null })}
-      />
-
-      {/* Card acquisition overlay animation */}
-      <AcquiredCardOverlay />
-    </div>
+    </ChatProvider>
   )
 }
 

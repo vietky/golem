@@ -41,6 +41,7 @@ type GameSession struct {
 	ActionChan     chan PlayerAction
 	BroadcastChan  chan []byte
 	logger         *logger.Logger
+	maxChatMsgs   int // Max chat messages from config
 }
 
 // PlayerAction represents an action from a player
@@ -78,6 +79,7 @@ func NewGameSession(sessionID string, numPlayers int, seed int64, turnTimeoutInS
 		ActionChan:     make(chan PlayerAction, 10),
 		BroadcastChan:  make(chan []byte, 100),
 		logger:         logger,
+		maxChatMsgs:   10, // Default, will be set from config
 	}
 }
 
@@ -523,14 +525,15 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 	marketCoins := serializeCards(gs.GameState.Market.Coins)
 
 	return map[string]interface{}{
-		"type":          "state",
-		"currentTurn":   gs.GameState.CurrentTurn,
-		"currentPlayer": gs.GameState.GetCurrentPlayer().ID,
-		"round":         gs.GameState.Round,
-		"gameOver":      gs.GameState.GameOver,
-		"lastRound":     gs.GameState.LastRound,
-		"winner":        gs.getWinnerInfo(),
-		"players":       players,
+		"type":            "state",
+		"currentTurn":     gs.GameState.CurrentTurn,
+		"currentPlayer":   gs.GameState.GetCurrentPlayer().ID,
+		"round":           gs.GameState.Round,
+		"gameOver":        gs.GameState.GameOver,
+		"lastRound":       gs.GameState.LastRound,
+		"winner":          gs.getWinnerInfo(),
+		"players":         players,
+		"maxChatMessages": gs.maxChatMsgs,
 		"market": map[string]interface{}{
 			"actionCards": marketActionCards,
 			"pointCards":  marketPointCards,

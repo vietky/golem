@@ -268,6 +268,18 @@ const useGameStore = create((set, get) => ({
             get().addToLog(`${currentPlayer.name}'s turn`);
           }
         }
+      } else if (message.type === "chat") {
+        // Handle chat message from server
+        if (get().onChatMessage) {
+          get().onChatMessage({
+            id: Date.now(),
+            player: message.player,
+            playerID: message.playerID,
+            message: message.message,
+            timestamp: new Date(message.timestamp * 1000),
+            visible: true,
+          });
+        }
       } else if (message.type === "error") {
         console.error("Game error:", message.error);
         get().addToLog(`Error: ${message.error}`);
@@ -550,6 +562,23 @@ const useGameStore = create((set, get) => ({
   // Clear acquired card overlay
   clearAcquiredCardOverlay: () => {
     set({ acquiredCardOverlay: null })
+  },
+
+  // Chat message callback
+  onChatMessage: null,
+  setChatMessageCallback: (callback) => set({ onChatMessage: callback }),
+
+  // Send chat message via WebSocket
+  sendChatMessage: (message) => {
+    const { ws } = get();
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+    const chatMsg = {
+      type: "chat",
+      message: message,
+    };
+
+    ws.send(JSON.stringify(chatMsg));
   },
 }));
 
