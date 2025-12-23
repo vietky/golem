@@ -489,6 +489,11 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 
 	players := make([]map[string]interface{}, len(gs.GameState.Players))
 	for i, p := range gs.GameState.Players {
+		// Get player name from session, fallback to game state name
+		name := gs.PlayerNames[p.ID]
+		if name == "" {
+			name = p.Name
+		}
 		avatar := gs.PlayerAvatars[p.ID]
 		if avatar == "" {
 			avatar = fmt.Sprintf("%d", p.ID) // Default to player ID
@@ -502,7 +507,7 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 
 		players[i] = map[string]interface{}{
 			"id":        p.ID,
-			"name":      p.Name,
+			"name":      name,
 			"avatar":    avatar,
 			"resources": resourcesMap,
 			// Backwards compatibility: some frontends expect `caravan`
