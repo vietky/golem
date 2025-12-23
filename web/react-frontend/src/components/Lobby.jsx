@@ -108,6 +108,7 @@ const Lobby = ({ onJoinGame }) => {
 
   const joinGame = (sessionId, asSpectator = false) => {
     if (sessionId) {
+      console.log(`[Lobby] joinGame called - sessionId: ${sessionId}, asSpectator: ${asSpectator}, playerName: ${playerName}, avatar: ${selectedAvatar}`);
       onJoinGame(sessionId, playerName, selectedAvatar, asSpectator);
     }
   };

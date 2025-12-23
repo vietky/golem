@@ -141,6 +141,7 @@ function App() {
   const { connectWebSocket, gameState, connected } = useGameStore()
 
   const handleJoinGame = (sessionId, playerName, playerAvatar, asSpectator = false) => {
+    console.log(`[App] handleJoinGame called - sessionId: ${sessionId}, playerName: ${playerName}, avatar: ${playerAvatar}, asSpectator: ${asSpectator}`);
     connectWebSocket(sessionId, playerName, playerAvatar, asSpectator)
     setInGame(true)
   }

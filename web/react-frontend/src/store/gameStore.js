@@ -48,6 +48,9 @@ const useGameStore = create((set, get) => ({
     const spectateParam = asSpectator ? '&spectate=true' : ''
     const wsUrl = `${wsBase}/ws?session=${sessionId}&name=${encodeURIComponent(playerName)}&avatar=${playerAvatar}${spectateParam}`
 
+    console.log(`[WebSocket] Connecting to: ${wsUrl}`);
+    console.log(`[WebSocket] As spectator: ${asSpectator}`);
+
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
@@ -68,7 +71,7 @@ const useGameStore = create((set, get) => ({
           ? `${message.playerName} is now spectating`
           : `${message.playerName} joined the game`;
         console.log(joinMessage);
-        get().addActionToLog(joinMessage);
+        get().addToLog(joinMessage);
       } else if (message.type === "state") {
         const isSpectator = get().isSpectator;
         const myPlayer = isSpectator ? null : message.players.find((p) => p.id === get().playerId);
@@ -291,9 +294,15 @@ const useGameStore = create((set, get) => ({
       set({ connected: false });
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       set({ connected: false, ws: null });
-      console.log("WebSocket disconnected");
+      console.log("WebSocket disconnected", event.code, event.reason);
+      
+      // Show user-friendly error message if connection closed due to game started
+      if (event.code === 1008 || event.reason) {
+        const errorMsg = event.reason || "Connection closed";
+        get().addToLog(`❌ ${errorMsg}`);
+      }
     };
 
     set({ ws, sessionId });

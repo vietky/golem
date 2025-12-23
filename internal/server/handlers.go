@@ -30,23 +30,46 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	playerName := r.URL.Query().Get("name")
 	spectateMode := r.URL.Query().Get("spectate") == "true"
 
-	if sessionID == "" {
-		sendJSONError(w, http.StatusBadRequest, "Missing session ID")
-		return
-	}
-
-	session, ok := gs.GetSession(sessionID)
-	if !ok {
-		sendJSONError(w, http.StatusNotFound, "Session not found")
-		return
-	}
-
+	// Upgrade to WebSocket first - we'll handle errors via the WebSocket connection
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("WebSocket upgrade error: %v", err)
 		return
 	}
 	defer conn.Close()
+
+	// Send error via WebSocket and close connection
+	sendWSError := func(errorMsg string) {
+		errData := map[string]interface{}{
+			"type":  "error",
+			"error": errorMsg,
+		}
+		if data, err := json.Marshal(errData); err == nil {
+			conn.WriteMessage(websocket.TextMessage, data)
+		}
+		conn.Close()
+	}
+
+	// Validate session ID
+	if sessionID == "" {
+		sendWSError("Missing session ID")
+		return
+	}
+
+	session, ok := gs.GetSession(sessionID)
+	if !ok {
+		sendWSError("Session not found")
+		return
+	}
+
+	// Check if game has started
+	gameStarted := session.HasGameStarted()
+
+	// If game has started, only allow spectators
+	if gameStarted && !spectateMode {
+		sendWSError("Game has already started. You can only spectate.")
+		return
+	}
 
 	// Handle spectator mode
 	if spectateMode {
@@ -92,7 +115,7 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	var playerID int
 	if playerIDStr != "" {
 		if _, err := fmt.Sscanf(playerIDStr, "%d", &playerID); err != nil {
-			sendJSONError(w, http.StatusBadRequest, "Invalid player ID")
+			sendWSError("Invalid player ID")
 			return
 		}
 		// Check if this player ID is already taken
@@ -117,14 +140,14 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		session.mu.RUnlock()
 
 		if playerID == 0 {
-			sendJSONError(w, http.StatusForbidden, "Game is full")
+			sendWSError("Game is full")
 			return
 		}
 	}
 
 	// Validate player ID is within bounds
 	if playerID < 1 || playerID > len(session.GameState.Players) {
-		sendJSONError(w, http.StatusBadRequest, "Invalid player ID")
+		sendWSError("Invalid player ID")
 		return
 	}
 

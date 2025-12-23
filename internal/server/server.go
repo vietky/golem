@@ -83,6 +83,19 @@ func NewGameSession(sessionID string, numPlayers int, seed int64, turnTimeoutInS
 	}
 }
 
+// HasGameStarted checks if the game has started (any turn taken or cards played)
+func (gs *GameSession) HasGameStarted() bool {
+	gs.mu.RLock()
+	defer gs.mu.RUnlock()
+
+	// Game has started if current turn > 0
+	if gs.GameState.CurrentTurn > 0 {
+		return true
+	}
+
+	return false
+}
+
 // AddPlayer adds a player to the session
 func (gs *GameSession) AddPlayer(playerID int, name string, avatar string, conn *websocket.Conn) {
 	gs.mu.Lock()

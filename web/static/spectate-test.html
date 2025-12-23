@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spectate Mode Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            border: none;
+            background: #007bff;
+            color: white;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Spectate Mode Test</h1>
+    
+    <div class="test-section">
+        <h2>Step 1: Create a Game Session</h2>
+        <button onclick="createSession()">Create New Session</button>
+        <div class="log" id="create-log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 2: Join as Player</h2>
+        <input type="text" id="player-name" placeholder="Player Name" value="TestPlayer">
+        <button onclick="joinAsPlayer()">Join as Player</button>
+        <div class="log" id="player-log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 3: Join as Spectator</h2>
+        <input type="text" id="spectator-name" placeholder="Spectator Name" value="TestSpectator">
+        <button onclick="joinAsSpectator()">Join as Spectator (spectate=true)</button>
+        <div class="log" id="spectator-log"></div>
+    </div>
+
+    <script>
+        let sessionID = null;
+        let playerWS = null;
+        let spectatorWS = null;
+
+        function log(elementId, message, className = 'info') {
+            const logEl = document.getElementById(elementId);
+            const time = new Date().toLocaleTimeString();
+            logEl.innerHTML += `<div class="${className}">[${time}] ${message}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        async function createSession() {
+            try {
+                const response = await fetch('/api/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ numPlayers: 2, seed: Date.now() })
+                });
+                const data = await response.json();
+                sessionID = data.sessionID;
+                log('create-log', `✅ Session created: ${sessionID}`, 'success');
+            } catch (error) {
+                log('create-log', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function joinAsPlayer() {
+            if (!sessionID) {
+                log('player-log', '❌ Create a session first!', 'error');
+                return;
+            }
+
+            const playerName = document.getElementById('player-name').value;
+            const wsUrl = `ws://localhost:8080/ws?session=${sessionID}&name=${encodeURIComponent(playerName)}&avatar=1`;
+            
+            log('player-log', `Connecting to: ${wsUrl}`, 'info');
+
+            playerWS = new WebSocket(wsUrl);
+
+            playerWS.onopen = () => {
+                log('player-log', '✅ WebSocket connected!', 'success');
+            };
+
+            playerWS.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                log('player-log', `📨 Received: ${JSON.stringify(message, null, 2)}`, 'info');
+            };
+
+            playerWS.onerror = (error) => {
+                log('player-log', `❌ WebSocket error: ${error}`, 'error');
+            };
+
+            playerWS.onclose = (event) => {
+                log('player-log', `❌ WebSocket closed: ${event.code} - ${event.reason}`, 'error');
+            };
+        }
+
+        function joinAsSpectator() {
+            if (!sessionID) {
+                log('spectator-log', '❌ Create a session first!', 'error');
+                return;
+            }
+
+            const spectatorName = document.getElementById('spectator-name').value;
+            const wsUrl = `ws://localhost:8080/ws?session=${sessionID}&name=${encodeURIComponent(spectatorName)}&avatar=2&spectate=true`;
+            
+            log('spectator-log', `📡 Connecting to: ${wsUrl}`, 'info');
+            log('spectator-log', `🔍 Parameter 'spectate=true' IS included!`, 'success');
+
+            spectatorWS = new WebSocket(wsUrl);
+
+            spectatorWS.onopen = () => {
+                log('spectator-log', '✅ WebSocket connected!', 'success');
+            };
+
+            spectatorWS.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                if (message.type === 'spectatorAssigned') {
+                    log('spectator-log', `✅✅ SPECTATOR ASSIGNED! ID: ${message.spectatorID}`, 'success');
+                } else if (message.type === 'error') {
+                    log('spectator-log', `❌ ERROR: ${message.error}`, 'error');
+                } else {
+                    log('spectator-log', `📨 Received (${message.type}): ${JSON.stringify(message, null, 2).substring(0, 200)}...`, 'info');
+                }
+            };
+
+            spectatorWS.onerror = (error) => {
+                log('spectator-log', `❌ WebSocket error: ${error}`, 'error');
+            };
+
+            spectatorWS.onclose = (event) => {
+                log('spectator-log', `❌ WebSocket closed: ${event.code} - ${event.reason}`, 'error');
+            };
+        }
+    </script>
+</body>
+</html>
