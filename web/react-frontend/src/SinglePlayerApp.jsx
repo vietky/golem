@@ -146,8 +146,8 @@ function SinglePlayerApp() {
     setInGame(true)
   }
 
-  const handleJoinMultiplayer = (sessionId, playerName, playerAvatar) => {
-    connectWebSocket(sessionId, playerName, playerAvatar)
+  const handleJoinMultiplayer = (sessionId, playerName, playerAvatar, asSpectator) => {
+    connectWebSocket(sessionId, playerName, playerAvatar, asSpectator)
     setGameMode('multi')
     setInGame(true)
   }

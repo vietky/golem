@@ -68,7 +68,7 @@ const useGameStore = create((set, get) => ({
           ? `${message.playerName} is now spectating`
           : `${message.playerName} joined the game`;
         console.log(joinMessage);
-        get().addActionToLog(joinMessage);
+        get().addToLog(joinMessage);
       } else if (message.type === "state") {
         const isSpectator = get().isSpectator;
         const myPlayer = isSpectator ? null : message.players.find((p) => p.id === get().playerId);

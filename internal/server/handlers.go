@@ -187,10 +187,10 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 				// Broadcast chat message to all players
 				chatMsg := map[string]interface{}{
-					"type":    "chat",
-					"player":  playerName,
-					"playerID": playerID,
-					"message": message,
+					"type":      "chat",
+					"player":    playerName,
+					"playerID":  playerID,
+					"message":   message,
 					"timestamp": time.Now().Unix(),
 				}
 				if data, err := json.Marshal(chatMsg); err == nil {
