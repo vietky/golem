@@ -415,7 +415,7 @@ func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request)
 		connectedPlayers := len(session.Connections)
 		spectatorCount := len(session.Spectators)
 		maxPlayers := len(session.GameState.Players)
-		isFull := connectedPlayers >= maxPlayers
+		// isFull := connectedPlayers >= maxPlayers
 		isGameOver := session.GameState.GameOver
 
 		// Get player names
