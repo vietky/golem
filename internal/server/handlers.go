@@ -173,6 +173,30 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 
 		switch actionType {
+		case "chat":
+			// Handle chat message
+			message, _ := actionMsg["message"].(string)
+			if message != "" {
+				// Get player name
+				session.mu.RLock()
+				playerName := session.PlayerNames[playerID]
+				if playerName == "" {
+					playerName = fmt.Sprintf("Player %d", playerID)
+				}
+				session.mu.RUnlock()
+
+				// Broadcast chat message to all players
+				chatMsg := map[string]interface{}{
+					"type":    "chat",
+					"player":  playerName,
+					"playerID": playerID,
+					"message": message,
+					"timestamp": time.Now().Unix(),
+				}
+				if data, err := json.Marshal(chatMsg); err == nil {
+					session.Broadcast(data)
+				}
+			}
 		case "action":
 			actionTypeStr, _ := actionMsg["actionType"].(string)
 			cardIndex, _ := actionMsg["cardIndex"].(float64)

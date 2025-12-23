@@ -11,3 +11,5 @@ bin/
 web/react
 
 node_modules/
+
+.vscode/

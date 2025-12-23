@@ -18,6 +18,7 @@ type Config struct {
 	LogLevel                    string
 	LogFormat                   string
 	DefaultTurnTimeoutInSeconds int
+	MaxChatMessages             int
 }
 
 // LoadConfig loads configuration from environment variables with defaults
@@ -34,6 +35,7 @@ func LoadConfig() Config {
 		LogLevel:                    getEnv("LOG_LEVEL", "info"),
 		LogFormat:                   getEnv("LOG_FORMAT", "json"),
 		DefaultTurnTimeoutInSeconds: getEnvInt("DEFAULT_TURN_TIMEOUT_SECONDS", 60),
+		MaxChatMessages:             getEnvInt("MAX_CHAT_MESSAGES", 10),
 	}
 }
 
