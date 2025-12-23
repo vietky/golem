@@ -55,7 +55,10 @@ const WebGameLayout = () => {
   // Get maxChatMessages from gameState (from backend config)
   const maxChatMessages = gameState?.maxChatMessages || 10
 
-  if (!gameState?.market || !myPlayer) {
+  // Get isSpectator state
+  const isSpectator = useGameStore(state => state.isSpectator)
+
+  if (!gameState?.market) {
     // Still render ChatProvider even if game not ready
     return (
       <ChatProvider playerName={chatPlayerName} maxMessages={maxChatMessages} fadeOutDelay={5000} useWebSocket={true}>
@@ -67,10 +70,20 @@ const WebGameLayout = () => {
     )
   }
 
-  // Get ALL other players (not me) - show all in top row
-  // const otherPlayers = gameState.players?.filter(p => p.id !== myPlayer.id) || []
+  // For spectators, myPlayer will be null - handle this case
+  if (!isSpectator && !myPlayer) {
+    return (
+      <ChatProvider playerName={chatPlayerName} maxMessages={maxChatMessages} fadeOutDelay={5000} useWebSocket={true}>
+        <ChatOverlay />
+        <div className="h-full w-full flex items-center justify-center">
+          <div className="text-white">Loading game...</div>
+        </div>
+      </ChatProvider>
+    )
+  }
 
-  // display all players including myself
+  // Get ALL other players (not me) - show all in top row
+  // For spectators, show all players. For players, show all players including yourself
   const otherPlayers = gameState.players || []
 
   // Get cards directly from current state
@@ -78,9 +91,9 @@ const WebGameLayout = () => {
   const pointCards = gameState.market.pointCards || []
   const coins = gameState.market.coins || []
 
-  const isMyTurn = currentPlayer?.id === myPlayer.id
-  const hand = myPlayer.hand || []
-  const playedCards = myPlayer.playedCards || []
+  const isMyTurn = !isSpectator && currentPlayer?.id === myPlayer?.id
+  const hand = myPlayer?.hand || []
+  const playedCards = myPlayer?.playedCards || []
   const canRest = isMyTurn && playedCards.length > 0
 
   // Timer progress percentage
@@ -88,7 +101,7 @@ const WebGameLayout = () => {
 
   // Check if can afford
   const canAfford = (cost) => {
-    if (!myPlayer?.caravan) return false
+    if (isSpectator || !myPlayer?.caravan) return false
     // Empty cost or no cost = always affordable
     if (!cost || Object.keys(cost).length === 0) return true
     return (
@@ -100,7 +113,7 @@ const WebGameLayout = () => {
   }
 
   const canClaimPointCard = (card) => {
-    if (!card?.requirement || !myPlayer?.caravan) return false
+    if (isSpectator || !card?.requirement || !myPlayer?.caravan) return false
     return (
       (myPlayer.caravan.yellow || 0) >= (card.requirement.yellow || 0) &&
       (myPlayer.caravan.green || 0) >= (card.requirement.green || 0) &&
@@ -110,6 +123,10 @@ const WebGameLayout = () => {
   }
 
   const handleAcquireCard = (index) => {
+    if (isSpectator) {
+      showToast('You are spectating - cannot perform actions', 'info')
+      return
+    }
     if (!isMyTurn) {
       showToast('Not your turn!', 'error')
       return
@@ -139,6 +156,10 @@ const WebGameLayout = () => {
   }
 
   const handleClaimPointCard = (index) => {
+    if (isSpectator) {
+      showToast('You are spectating - cannot perform actions', 'info')
+      return
+    }
     if (!isMyTurn) {
       showToast('Not your turn!', 'error')
       return
@@ -172,6 +193,10 @@ const WebGameLayout = () => {
   }
 
   const handleCardClick = (card, index) => {
+    if (isSpectator) {
+      showToast('You are spectating - cannot perform actions', 'info')
+      return
+    }
     if (!isMyTurn) {
       showToast('Not your turn!', 'error')
       return
@@ -205,6 +230,16 @@ const WebGameLayout = () => {
     <ChatProvider playerName={chatPlayerName} maxMessages={maxChatMessages} fadeOutDelay={5000} useWebSocket={true}>
       <ChatOverlay />
       <div className="h-full w-full grid p-4 gap-2" style={{ gridTemplateRows: 'auto 1fr 1fr 1fr' }}>
+        {/* Spectator Badge */}
+        {isSpectator && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
+            <div className="bg-purple-600/90 backdrop-blur-md text-white px-4 py-2 rounded-full shadow-lg border border-purple-300/30 flex items-center gap-2 animate-pulse">
+              <span className="text-xl">👁️</span>
+              <span className="font-bold text-sm">Spectating</span>
+            </div>
+          </div>
+        )}
+        
         {/* Row 1 - ALL Players in one row (auto height) */}
         <div className="flex gap-3 justify-center items-center flex-wrap">
           {otherPlayers.map((player) => (
@@ -344,106 +379,153 @@ const WebGameLayout = () => {
             <GraveyardPanel playedCards={playedCards} />
           </div>
 
-          {/* My Hand + Info + Timer */}
-          <div
-            className={`flex-1 bg-black/30 backdrop-blur-md rounded-xl p-2 flex flex-col min-w-0 min-h-0 transition-all duration-300 ${
-              isMyTurn ? 'border-2 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.4)]' : 'border border-white/20'
-            }`}
-          >
-            {/* Header with info */}
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                {/* Avatar & Name */}
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-yellow-500 text-black flex items-center justify-center font-bold text-sm border-2 border-white">
-                    {myPlayer.name?.charAt(0)?.toUpperCase() || '?'}
-                  </div>
-                  <div className="text-white font-bold text-sm">{myPlayer.name || 'You'}</div>
-                </div>
-
-                {/* Crystals - always show all 4 colors */}
-                <div className="flex items-center gap-1.5 ml-2">
-                  {['yellow', 'green', 'blue', 'pink'].map((color) => {
-                    const count = myPlayer.caravan?.[color] || 0
-                    return (
-                      <div key={color} className="flex items-center gap-0.5">
-                        <div className={`w-4 h-4 rounded-full ${crystalColors[color]}`} />
-                        <span className="text-white text-sm font-bold">{count}</span>
+          {/* My Hand + Info + Timer (Hidden for spectators) */}
+          {!isSpectator ? (
+            <>
+              <div
+                className={`flex-1 bg-black/30 backdrop-blur-md rounded-xl p-2 flex flex-col min-w-0 min-h-0 transition-all duration-300 ${
+                  isMyTurn ? 'border-2 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.4)]' : 'border border-white/20'
+                }`}
+              >
+                {/* Header with info */}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    {/* Avatar & Name */}
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-yellow-500 text-black flex items-center justify-center font-bold text-sm border-2 border-white">
+                        {myPlayer?.name?.charAt(0)?.toUpperCase() || '?'}
                       </div>
-                    )
-                  })}
+                      <div className="text-white font-bold text-sm">{myPlayer?.name || 'You'}</div>
+                    </div>
+
+                    {/* Crystals - always show all 4 colors */}
+                    <div className="flex items-center gap-1.5 ml-2">
+                      {['yellow', 'green', 'blue', 'pink'].map((color) => {
+                        const count = myPlayer?.caravan?.[color] || 0
+                        return (
+                          <div key={color} className="flex items-center gap-0.5">
+                            <div className={`w-4 h-4 rounded-full ${crystalColors[color]}`} />
+                            <span className="text-white text-sm font-bold">{count}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Timer + Actions */}
+                  <div className="flex items-center gap-3">
+                    {/* Chat Input - Compact */}
+                    <ChatInput compact={true} />
+
+                    {/* Timer */}
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 h-2 bg-white/20 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-1000 ${
+                            turnProgress > 50 ? 'bg-green-500' : turnProgress > 20 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}
+                          style={{ width: `${turnProgress}%` }}
+                        />
+                      </div>
+                      <span
+                        className={`text-sm font-bold min-w-[2rem] text-right ${
+                          turnProgress > 50 ? 'text-green-400' : turnProgress > 20 ? 'text-yellow-400' : 'text-red-400'
+                        }`}
+                      >
+                        {turnTimeRemaining}s
+                      </span>
+                    </div>
+
+                    {/* Rest Button */}
+                    {canRest && (
+                      <button
+                        onClick={handleRest}
+                        className="px-3 py-1 rounded-lg font-bold bg-green-600 hover:bg-green-500 text-white text-sm border border-green-400 transition-all"
+                      >
+                        Rest
+                      </button>
+                    )}
+
+                    {/* Turn indicator */}
+                    {isMyTurn ? (
+                      <div className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-lg text-sm font-bold border border-yellow-400">
+                        Your Turn
+                      </div>
+                    ) : (
+                      <div className="px-3 py-1 bg-white/10 text-white/50 rounded-lg text-sm">Waiting...</div>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Timer + Actions */}
-              <div className="flex items-center gap-3">
-                {/* Chat Input - Compact */}
-                <ChatInput compact={true} />
-
-                {/* Timer */}
-                <div className="flex items-center gap-2">
-                  <div className="w-24 h-2 bg-white/20 rounded-full overflow-hidden">
+                {/* Hand Cards */}
+                <div className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent min-h-0">
+                  {hand.map((card, index) => (
                     <div
-                      className={`h-full transition-all duration-1000 ${
-                        turnProgress > 50 ? 'bg-green-500' : turnProgress > 20 ? 'bg-yellow-500' : 'bg-red-500'
-                      }`}
-                      style={{ width: `${turnProgress}%` }}
-                    />
-                  </div>
-                  <span
-                    className={`text-sm font-bold min-w-[2rem] text-right ${
-                      turnProgress > 50 ? 'text-green-400' : turnProgress > 20 ? 'text-yellow-400' : 'text-red-400'
-                    }`}
-                  >
-                    {turnTimeRemaining}s
-                  </span>
+                      key={`hand-${index}`}
+                      className="flex-shrink-0 h-full aspect-[2/3] cursor-pointer"
+                      onClick={() => handleCardClick(card, index)}
+                    >
+                      <CompactCard card={card} type="action" index={index} isPlayable={isMyTurn} size="flexible" />
+                    </div>
+                  ))}
+
+                  {hand.length === 0 && (
+                    <div className="h-full aspect-[2/3] rounded-xl border-2 border-dashed border-white/30 flex items-center justify-center flex-shrink-0">
+                      <span className="text-white/40 text-xs">No cards</span>
+                    </div>
+                  )}
                 </div>
+              </div>
 
-                {/* Rest Button */}
-                {canRest && (
-                  <button
-                    onClick={handleRest}
-                    className="px-3 py-1 rounded-lg font-bold bg-green-600 hover:bg-green-500 text-white text-sm border border-green-400 transition-all"
-                  >
-                    Rest
-                  </button>
-                )}
+              {/* My Golems */}
+              <div className="w-28 flex-shrink-0 bg-black/30 backdrop-blur-md rounded-xl border border-white/20 py-2 flex flex-col min-h-0">
+                <MyGolemsPanel pointCards={myPlayer?.pointCards || []} coins={myPlayer?.coins || []} />
+              </div>
+            </>
+          ) : (
+            /* Spectator Info Area */
+            <div className="flex-1 bg-black/30 backdrop-blur-md rounded-xl p-2 flex flex-col min-w-0 min-h-0 border border-purple-400/40">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">👁️</span>
+                  <div className="text-white font-bold text-sm">Spectating</div>
+                </div>
+                
+                {/* Timer + Chat for spectators */}
+                <div className="flex items-center gap-3">
+                  {/* Chat Input - Compact */}
+                  <ChatInput compact={true} />
 
-                {/* Turn indicator */}
-                {isMyTurn ? (
-                  <div className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-lg text-sm font-bold border border-yellow-400">
-                    Your Turn
+                  {/* Timer */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 h-2 bg-white/20 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-1000 ${
+                          turnProgress > 50 ? 'bg-green-500' : turnProgress > 20 ? 'bg-yellow-500' : 'bg-red-500'
+                        }`}
+                        style={{ width: `${turnProgress}%` }}
+                      />
+                    </div>
+                    <span
+                      className={`text-sm font-bold min-w-[2rem] text-right ${
+                        turnProgress > 50 ? 'text-green-400' : turnProgress > 20 ? 'text-yellow-400' : 'text-red-400'
+                      }`}
+                    >
+                      {turnTimeRemaining}s
+                    </span>
                   </div>
-                ) : (
-                  <div className="px-3 py-1 bg-white/10 text-white/50 rounded-lg text-sm">Waiting...</div>
-                )}
+                </div>
+              </div>
+
+              {/* Spectator message */}
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center text-white/60">
+                  <p className="text-sm">You are watching this game</p>
+                  <p className="text-xs mt-1">You cannot perform any actions</p>
+                </div>
               </div>
             </div>
-
-            {/* Hand Cards */}
-            <div className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent min-h-0">
-              {hand.map((card, index) => (
-                <div
-                  key={`hand-${index}`}
-                  className="flex-shrink-0 h-full aspect-[2/3] cursor-pointer"
-                  onClick={() => handleCardClick(card, index)}
-                >
-                  <CompactCard card={card} type="action" index={index} isPlayable={isMyTurn} size="flexible" />
-                </div>
-              ))}
-
-              {hand.length === 0 && (
-                <div className="h-full aspect-[2/3] rounded-xl border-2 border-dashed border-white/30 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white/40 text-xs">No cards</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* My Golems */}
-          <div className="w-28 flex-shrink-0 bg-black/30 backdrop-blur-md rounded-xl border border-white/20 py-2 flex flex-col min-h-0">
-            <MyGolemsPanel pointCards={myPlayer.pointCards || []} coins={myPlayer.coins || []} />
-          </div>
+          )}
         </div>
 
         {/* Modals */}
