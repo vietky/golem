@@ -436,7 +436,7 @@ func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request)
 		session.mu.RUnlock()
 
 		// Only show active, non-full, non-game-over sessions
-		if !isFull && !isGameOver {
+		if !isGameOver {
 			sessions = append(sessions, map[string]interface{}{
 				"sessionID":        sessionID,
 				"numPlayers":       maxPlayers,
