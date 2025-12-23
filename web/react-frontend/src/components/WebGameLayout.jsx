@@ -56,7 +56,7 @@ const WebGameLayout = () => {
   const maxChatMessages = gameState?.maxChatMessages || 10
 
   // Get isSpectator state
-  const isSpectator = useGameStore(state => state.isSpectator)
+  const isSpectator = useGameStore((state) => state.isSpectator)
 
   if (!gameState?.market) {
     // Still render ChatProvider even if game not ready
@@ -239,7 +239,7 @@ const WebGameLayout = () => {
             </div>
           </div>
         )}
-        
+
         {/* Row 1 - ALL Players in one row (auto height) */}
         <div className="flex gap-3 justify-center items-center flex-wrap">
           {otherPlayers.map((player) => (
@@ -327,9 +327,30 @@ const WebGameLayout = () => {
           </div>
           <div className="flex-1 grid grid-cols-5 gap-1 place-items-center min-h-0">
             {pointCards.slice(0, 5).map((card, index) => {
-              const coinBonus = index <= 1 && coins && coins[index] && coins[index].amount > 0
-              const coinAmount = coins && coins[index] ? coins[index].amount : 0
-              const isCopperCoin = index === 0
+              // Helper function to get coin for position based on new rules
+              // Position 0: First available coin (copper if available, silver if copper is gone)
+              // Position 1: Silver coin only if copper is still available
+              const getCoinForPosition = (pos) => {
+                if (pos === 0) {
+                  // Position 0: First available coin
+                  if (coins && coins[0] && coins[0].amount > 0) {
+                    return { coin: coins[0], isCopper: coins[0].points === 3 }
+                  } else if (coins && coins[1] && coins[1].amount > 0) {
+                    return { coin: coins[1], isCopper: false }
+                  }
+                } else if (pos === 1) {
+                  // Position 1: Silver coin only if copper is still available
+                  if (coins && coins[0] && coins[0].amount > 0 && coins[1] && coins[1].amount > 0) {
+                    return { coin: coins[1], isCopper: false }
+                  }
+                }
+                return null
+              }
+
+              const coinInfo = getCoinForPosition(index)
+              const coinBonus = coinInfo !== null
+              const coinAmount = coinInfo ? coinInfo.coin.amount : 0
+              const isCopperCoin = coinInfo ? coinInfo.isCopper : false
               const coinEmoji = isCopperCoin ? '🥉' : '🥈'
 
               return (
@@ -490,7 +511,7 @@ const WebGameLayout = () => {
                   <span className="text-2xl">👁️</span>
                   <div className="text-white font-bold text-sm">Spectating</div>
                 </div>
-                
+
                 {/* Timer + Chat for spectators */}
                 <div className="flex items-center gap-3">
                   {/* Chat Input - Compact */}

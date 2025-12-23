@@ -217,9 +217,25 @@ func (gs *GameState) ExecuteAction(action Action) error {
 		gs.Market.RefillPointCards()
 
 		// check bonus coin if player has claimed point card
-		if action.CardIndex <= 1 && gs.Market.Coins[action.CardIndex].Amount > 0 {
-			player.Coins = append(player.Coins, gs.Market.Coins[action.CardIndex])
-			gs.Market.Coins[action.CardIndex].Amount--
+		// New logic: Position 0 gets first available coin (copper if available, silver if copper is gone)
+		// Position 1 only gets silver coin if copper is still available
+		if action.CardIndex == 0 {
+			// Position 0: Use first available coin
+			if len(gs.Market.Coins) > 0 && gs.Market.Coins[0].Amount > 0 {
+				// Copper coin available
+				player.Coins = append(player.Coins, gs.Market.Coins[0])
+				gs.Market.Coins[0].Amount--
+			} else if len(gs.Market.Coins) > 1 && gs.Market.Coins[1].Amount > 0 {
+				// Copper is gone, use silver coin
+				player.Coins = append(player.Coins, gs.Market.Coins[1])
+				gs.Market.Coins[1].Amount--
+			}
+		} else if action.CardIndex == 1 {
+			// Position 1: Only get silver coin if copper is still available
+			if len(gs.Market.Coins) > 0 && gs.Market.Coins[0].Amount > 0 && len(gs.Market.Coins) > 1 && gs.Market.Coins[1].Amount > 0 {
+				player.Coins = append(player.Coins, gs.Market.Coins[1])
+				gs.Market.Coins[1].Amount--
+			}
 		}
 
 		// Check win condition
