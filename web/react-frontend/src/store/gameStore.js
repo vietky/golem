@@ -5,6 +5,8 @@ const useGameStore = create((set, get) => ({
   ws: null,
   sessionId: null,
   playerId: null,
+  spectatorId: null,
+  isSpectator: false,
   playerName: "",
   playerAvatar: "4",
   connected: false,
@@ -31,7 +33,7 @@ const useGameStore = create((set, get) => ({
   acquiredCardOverlay: null, // { card, type: 'market'|'golem', playerName } for overlay animation
 
   // Actions
-  connectWebSocket: (sessionId, playerName, playerAvatar) => {
+  connectWebSocket: (sessionId, playerName, playerAvatar, asSpectator = false) => {
     // Allow overriding backend host via Vite env `VITE_API_HOST`.
     // Example: VITE_API_HOST="http://backend-host:8080"
     const configuredHost = import.meta.env.VITE_API_HOST || `${window.location.protocol}//${window.location.host}`;
@@ -43,13 +45,14 @@ const useGameStore = create((set, get) => ({
 
     const hostForWs = configuredHost.replace(/\/$/, '')
     const wsBase = toWs(hostForWs)
-    const wsUrl = `${wsBase}/ws?session=${sessionId}&name=${encodeURIComponent(playerName)}&avatar=${playerAvatar}`
+    const spectateParam = asSpectator ? '&spectate=true' : ''
+    const wsUrl = `${wsBase}/ws?session=${sessionId}&name=${encodeURIComponent(playerName)}&avatar=${playerAvatar}${spectateParam}`
 
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
-      set({ connected: true, ws });
-      console.log("WebSocket connected");
+      set({ connected: true, ws, isSpectator: asSpectator });
+      console.log(`WebSocket connected${asSpectator ? ' as spectator' : ''}`);
     };
 
     ws.onmessage = (event) => {
@@ -57,9 +60,19 @@ const useGameStore = create((set, get) => ({
 
       if (message.type === "playerAssigned") {
         set({ playerId: message.playerID });
+      } else if (message.type === "spectatorAssigned") {
+        set({ spectatorId: message.spectatorID, isSpectator: true });
+      } else if (message.type === "playerJoined") {
+        // Show notification when a player joins
+        const joinMessage = message.isSpectator 
+          ? `${message.playerName} is now spectating`
+          : `${message.playerName} joined the game`;
+        console.log(joinMessage);
+        get().addActionToLog(joinMessage);
       } else if (message.type === "state") {
-        const myPlayer = message.players.find((p) => p.id === get().playerId);
-        const opponents = message.players.filter((p) => p.id !== get().playerId);
+        const isSpectator = get().isSpectator;
+        const myPlayer = isSpectator ? null : message.players.find((p) => p.id === get().playerId);
+        const opponents = isSpectator ? message.players : message.players.filter((p) => p.id !== get().playerId);
         const currentPlayer = message.players.find((p) => p.id === message.currentPlayer);
         const previousState = get().gameState;
         const previousOpponents = get().opponents || [];
@@ -247,8 +260,13 @@ const useGameStore = create((set, get) => ({
         });
 
         // Add to log when turn changes
-        if (currentPlayer && currentPlayer.id === get().playerId) {
-          get().addToLog(`Your turn!`);
+        const isSpectatorMode = get().isSpectator;
+        if (currentPlayer) {
+          if (!isSpectatorMode && currentPlayer.id === get().playerId) {
+            get().addToLog(`Your turn!`);
+          } else if (isSpectatorMode) {
+            get().addToLog(`${currentPlayer.name}'s turn`);
+          }
         }
       } else if (message.type === "error") {
         console.error("Game error:", message.error);
@@ -270,7 +288,14 @@ const useGameStore = create((set, get) => ({
   },
 
   sendAction: (actionType, cardIndex = null, inputResources = null, outputResources = null, multiplier = null, deposits = null) => {
-    const { ws } = get();
+    const { ws, isSpectator } = get();
+    
+    // Spectators cannot send actions
+    if (isSpectator) {
+      console.log("Spectators cannot perform actions");
+      return;
+    }
+    
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
     const message = {

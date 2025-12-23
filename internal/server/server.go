@@ -24,21 +24,23 @@ var upgrader = websocket.Upgrader{
 
 // GameSession represents a multiplayer game session
 type GameSession struct {
-	ID            string
-	GameState     *game.GameState
-	Engine        *game.Engine
-	Connections   map[int]*websocket.Conn // Player ID -> WebSocket connection
-	PlayerNames   map[int]string          // Player ID -> Player name
-	PlayerAvatars map[int]string          // Player ID -> Avatar number
-	CreatedAt     time.Time               // When session was created
-	LastActivity  time.Time               // Last time someone was in the room
-	EventStore    eventstore.EventStore   // Event store for recording actions
-	TurnTimeout   time.Duration           // Maximum time per turn (default 60s)
-	TurnStartTime time.Time               // When the current turn started
-	mu            sync.RWMutex
-	ActionChan    chan PlayerAction
-	BroadcastChan chan []byte
-	logger        *logger.Logger
+	ID             string
+	GameState      *game.GameState
+	Engine         *game.Engine
+	Connections    map[int]*websocket.Conn    // Player ID -> WebSocket connection
+	Spectators     map[string]*websocket.Conn // Spectator ID -> WebSocket connection
+	SpectatorNames map[string]string          // Spectator ID -> Spectator name
+	PlayerNames    map[int]string             // Player ID -> Player name
+	PlayerAvatars  map[int]string             // Player ID -> Avatar number
+	CreatedAt      time.Time                  // When session was created
+	LastActivity   time.Time                  // Last time someone was in the room
+	EventStore     eventstore.EventStore      // Event store for recording actions
+	TurnTimeout    time.Duration              // Maximum time per turn (default 60s)
+	TurnStartTime  time.Time                  // When the current turn started
+	mu             sync.RWMutex
+	ActionChan     chan PlayerAction
+	BroadcastChan  chan []byte
+	logger         *logger.Logger
 }
 
 // PlayerAction represents an action from a player
@@ -60,20 +62,22 @@ func NewGameSession(sessionID string, numPlayers int, seed int64, turnTimeoutInS
 
 	now := time.Now()
 	return &GameSession{
-		ID:            sessionID,
-		GameState:     gameState,
-		Engine:        engine,
-		Connections:   make(map[int]*websocket.Conn),
-		PlayerNames:   make(map[int]string),
-		PlayerAvatars: make(map[int]string),
-		CreatedAt:     now,
-		LastActivity:  now,
-		EventStore:    nil,                                              // Will be set by GameServer
-		TurnTimeout:   time.Duration(turnTimeoutInSecond) * time.Second, // Default 60s timeout
-		TurnStartTime: now,
-		ActionChan:    make(chan PlayerAction, 10),
-		BroadcastChan: make(chan []byte, 100),
-		logger:        logger,
+		ID:             sessionID,
+		GameState:      gameState,
+		Engine:         engine,
+		Connections:    make(map[int]*websocket.Conn),
+		Spectators:     make(map[string]*websocket.Conn),
+		SpectatorNames: make(map[string]string),
+		PlayerNames:    make(map[int]string),
+		PlayerAvatars:  make(map[int]string),
+		CreatedAt:      now,
+		LastActivity:   now,
+		EventStore:     nil,                                              // Will be set by GameServer
+		TurnTimeout:    time.Duration(turnTimeoutInSecond) * time.Second, // Default 60s timeout
+		TurnStartTime:  now,
+		ActionChan:     make(chan PlayerAction, 10),
+		BroadcastChan:  make(chan []byte, 100),
+		logger:         logger,
 	}
 }
 
@@ -105,12 +109,61 @@ func (gs *GameSession) RemovePlayer(playerID int) {
 	delete(gs.PlayerAvatars, playerID)
 }
 
-// Broadcast sends a message to all connected players
+// AddSpectator adds a spectator to the session
+func (gs *GameSession) AddSpectator(spectatorID string, name string, conn *websocket.Conn) {
+	gs.mu.Lock()
+	defer gs.mu.Unlock()
+
+	gs.Spectators[spectatorID] = conn
+	gs.SpectatorNames[spectatorID] = name
+	gs.LastActivity = time.Now()
+}
+
+// RemoveSpectator removes a spectator from the session
+func (gs *GameSession) RemoveSpectator(spectatorID string) {
+	gs.mu.Lock()
+	defer gs.mu.Unlock()
+	delete(gs.Spectators, spectatorID)
+	delete(gs.SpectatorNames, spectatorID)
+}
+
+// BroadcastPlayerJoined notifies all users when a player or spectator joins
+func (gs *GameSession) BroadcastPlayerJoined(playerID int, name string, avatar string, isSpectator bool) {
+	gs.mu.RLock()
+	connectedPlayers := len(gs.Connections)
+	spectatorCount := len(gs.Spectators)
+	gs.mu.RUnlock()
+
+	joinMsg := map[string]interface{}{
+		"type":             "playerJoined",
+		"playerID":         playerID,
+		"playerName":       name,
+		"avatar":           avatar,
+		"isSpectator":      isSpectator,
+		"connectedPlayers": connectedPlayers,
+		"spectatorCount":   spectatorCount,
+	}
+
+	if data, err := json.Marshal(joinMsg); err == nil {
+		gs.Broadcast(data)
+	}
+}
+
+// Broadcast sends a message to all connected players and spectators
 func (gs *GameSession) Broadcast(message []byte) {
 	gs.mu.RLock()
 	defer gs.mu.RUnlock()
 
+	// Send to all players
 	for _, conn := range gs.Connections {
+		if conn != nil {
+			conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			conn.WriteMessage(websocket.TextMessage, message)
+		}
+	}
+
+	// Send to all spectators
+	for _, conn := range gs.Spectators {
 		if conn != nil {
 			conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			conn.WriteMessage(websocket.TextMessage, message)
@@ -211,11 +264,12 @@ func (gs *GameServer) startCleanupTimer(sessionID string) {
 
 		session.mu.RLock()
 		hasPlayers := len(session.Connections) > 0
+		hasSpectators := len(session.Spectators) > 0
 		lastActivity := session.LastActivity
 		session.mu.RUnlock()
 
-		// If no players and last activity was more than 5 minutes ago, delete
-		if !hasPlayers {
+		// If no players or spectators and last activity was more than 5 minutes ago, delete
+		if !hasPlayers && !hasSpectators {
 			timeSinceActivity := time.Since(lastActivity)
 			if timeSinceActivity >= 5*time.Minute {
 				gs.Logger.Info("Deleting empty room", zap.String("sessionID", sessionID))
@@ -225,7 +279,7 @@ func (gs *GameServer) startCleanupTimer(sessionID string) {
 				return
 			}
 		} else {
-			// Update last activity if players are present
+			// Update last activity if players or spectators are present
 			session.mu.Lock()
 			session.LastActivity = time.Now()
 			session.mu.Unlock()

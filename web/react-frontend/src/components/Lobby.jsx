@@ -106,9 +106,9 @@ const Lobby = ({ onJoinGame }) => {
     }
   };
 
-  const joinGame = (sessionId) => {
+  const joinGame = (sessionId, asSpectator = false) => {
     if (sessionId) {
-      onJoinGame(sessionId, playerName, selectedAvatar);
+      onJoinGame(sessionId, playerName, selectedAvatar, asSpectator);
     }
   };
 
@@ -393,6 +393,11 @@ const Lobby = ({ onJoinGame }) => {
                                 <span className="bg-green-500/30 text-green-300 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded flex-shrink-0">
                                   {room.connectedPlayers}/{room.numPlayers}
                                 </span>
+                                {room.spectatorCount > 0 && (
+                                  <span className="bg-blue-500/30 text-blue-300 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded flex-shrink-0">
+                                    👁️ {room.spectatorCount}
+                                  </span>
+                                )}
                               </div>
 
                               {room.players && room.players.length > 0 && (
@@ -437,15 +442,31 @@ const Lobby = ({ onJoinGame }) => {
                                 📋
                               </button>
                               <motion.button
-                                onClick={() => joinGame(room.sessionID)}
+                                onClick={() => joinGame(room.sessionID, true)}
+                                className={`
+                                  bg-gradient-to-r from-purple-500 to-indigo-500 
+                                  text-white rounded hover:from-purple-600 hover:to-indigo-600 
+                                  transition-all font-bold touch-target
+                                  ${isMobileLayout ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm"}
+                                `}
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.97 }}
+                                title="Watch as spectator"
+                              >
+                                👁️
+                              </motion.button>
+                              <motion.button
+                                onClick={() => joinGame(room.sessionID, false)}
+                                disabled={room.connectedPlayers >= room.numPlayers}
                                 className={`
                                   bg-gradient-to-r from-blue-500 to-cyan-500 
                                   text-white rounded hover:from-blue-600 hover:to-cyan-600 
                                   transition-all font-bold touch-target
+                                  disabled:opacity-50 disabled:cursor-not-allowed
                                   ${isMobileLayout ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm"}
                                 `}
-                                whileHover={{ scale: 1.03 }}
-                                whileTap={{ scale: 0.97 }}
+                                whileHover={{ scale: room.connectedPlayers >= room.numPlayers ? 1 : 1.03 }}
+                                whileTap={{ scale: room.connectedPlayers >= room.numPlayers ? 1 : 0.97 }}
                               >
                                 Join
                               </motion.button>

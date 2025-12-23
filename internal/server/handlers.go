@@ -28,6 +28,7 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	sessionID := r.URL.Query().Get("session")
 	playerIDStr := r.URL.Query().Get("player")
 	playerName := r.URL.Query().Get("name")
+	spectateMode := r.URL.Query().Get("spectate") == "true"
 
 	if sessionID == "" {
 		sendJSONError(w, http.StatusBadRequest, "Missing session ID")
@@ -40,7 +41,54 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Auto-assign player ID if not provided or if slot is taken
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("WebSocket upgrade error: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	// Handle spectator mode
+	if spectateMode {
+		spectatorID := fmt.Sprintf("spectator_%d", time.Now().UnixNano())
+		if playerName == "" {
+			playerName = "Spectator"
+		}
+
+		session.AddSpectator(spectatorID, playerName, conn)
+		defer session.RemoveSpectator(spectatorID)
+
+		// Send spectator assignment
+		assignedMsg := map[string]interface{}{
+			"type":        "spectatorAssigned",
+			"spectatorID": spectatorID,
+			"isSpectator": true,
+		}
+		if data, err := json.Marshal(assignedMsg); err == nil {
+			conn.WriteMessage(websocket.TextMessage, data)
+		}
+
+		// Send initial state
+		state := session.SerializeState()
+		if data, err := json.Marshal(state); err == nil {
+			conn.WriteMessage(websocket.TextMessage, data)
+		}
+
+		// Notify all users that a spectator joined
+		session.BroadcastPlayerJoined(0, playerName, "", true)
+
+		// Keep connection alive (spectators don't send actions)
+		for {
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				log.Printf("Spectator read error: %v", err)
+				break
+			}
+		}
+		return
+	}
+
+	// Regular player join logic
 	var playerID int
 	if playerIDStr != "" {
 		if _, err := fmt.Sscanf(playerIDStr, "%d", &playerID); err != nil {
@@ -80,13 +128,6 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Printf("WebSocket upgrade error: %v", err)
-		return
-	}
-	defer conn.Close()
-
 	// Add player to session
 	if playerName == "" {
 		playerName = fmt.Sprintf("Player %d", playerID)
@@ -108,6 +149,9 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	if data, err := json.Marshal(state); err == nil {
 		conn.WriteMessage(websocket.TextMessage, data)
 	}
+
+	// Notify all users (players and spectators) that a player joined
+	session.BroadcastPlayerJoined(playerID, playerName, playerAvatar, false)
 
 	// Handle incoming messages
 	for {
@@ -369,6 +413,7 @@ func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request)
 	for sessionID, session := range gs.Sessions {
 		session.mu.RLock()
 		connectedPlayers := len(session.Connections)
+		spectatorCount := len(session.Spectators)
 		maxPlayers := len(session.GameState.Players)
 		isFull := connectedPlayers >= maxPlayers
 		isGameOver := session.GameState.GameOver
@@ -384,7 +429,7 @@ func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request)
 		timeSinceActivity := time.Since(session.LastActivity)
 		timeUntilDelete := 5*time.Minute - timeSinceActivity
 		var timeUntilDeleteSeconds int64
-		if timeUntilDelete > 0 && connectedPlayers == 0 {
+		if timeUntilDelete > 0 && connectedPlayers == 0 && spectatorCount == 0 {
 			timeUntilDeleteSeconds = int64(timeUntilDelete.Seconds())
 		}
 
@@ -396,6 +441,7 @@ func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request)
 				"sessionID":        sessionID,
 				"numPlayers":       maxPlayers,
 				"connectedPlayers": connectedPlayers,
+				"spectatorCount":   spectatorCount,
 				"players":          playerNames,
 				"status":           "open",
 				"timeUntilDelete":  timeUntilDeleteSeconds, // Seconds until auto-delete (only if empty)
