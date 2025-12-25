@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { createLogger } from './utils/logger'
 import Lobby from './components/Lobby'
 import ThemeToggleButton from './components/ThemeToggleButton'
 import FantasyGameLayout from './components/FantasyGameLayout'
@@ -7,11 +8,13 @@ import useGameStore from './store/gameStore'
 import { MobileLayoutProvider } from './contexts/MobileLayoutContext'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
 
+const logger = createLogger('App');
+
 // Game Content - Switches between layouts based on theme
 function GameContent({ setInGame }) {
   const { isFantasy } = useTheme()
 
-  console.log('[GameContent] Rendering, isFantasy:', isFantasy)
+  logger.debug('Rendering, isFantasy:', isFantasy)
 
   const handleNewGame = () => {
     setInGame(false)
@@ -49,7 +52,7 @@ function App() {
     connectWebSocket(sessionId, playerName, playerAvatar, asSpectator)
     setInGame(true)
   }
-  console.log(`[App] Render: inGame=${inGame}, connected=${connected}, gameState=${!!gameState}`);
+  logger.debug(`Render: inGame=${inGame}, connected=${connected}, gameState=${!!gameState}`);
 
   if (!inGame) {
     return <Lobby onJoinGame={handleJoinGame} />

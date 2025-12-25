@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { createLogger } from '../utils/logger';
 import useGameStore from "../store/gameStore";
 import useOrientation from "../hooks/useOrientation";
 import { apiFetch } from "../utils/api";
+
+const logger = createLogger('Lobby');
 
 // Generate a random player name
 const generatePlayerName = () => {
@@ -45,7 +48,7 @@ const Lobby = ({ onJoinGame }) => {
         setRooms(data.sessions || []);
       }
     } catch (error) {
-      console.error("Error fetching rooms:", error);
+      logger.error("Error fetching rooms:", error);
     }
   };
 
@@ -100,7 +103,7 @@ const Lobby = ({ onJoinGame }) => {
         }, 500);
       }
     } catch (error) {
-      console.error("Error creating game:", error);
+      logger.error("Error creating game:", error);
     } finally {
       setLoading(false);
     }
@@ -121,7 +124,7 @@ const Lobby = ({ onJoinGame }) => {
   const isCompactLayout = isMobile || (isTablet && isPortrait);
 
   // Debug: log layout mode
-  console.log("[Lobby] Layout:", { isMobile, isTablet, isPortrait, isMobileLayout, isCompactLayout });
+  logger.debug("Layout:", { isMobile, isTablet, isPortrait, isMobileLayout, isCompactLayout });
 
   return (
     <div

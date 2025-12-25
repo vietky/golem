@@ -1,7 +1,10 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
+import { createLogger } from '../utils/logger'
 import { apiFetch } from '../utils/api'
 import useOrientation from '../hooks/useOrientation'
+
+const logger = createLogger('SinglePlayerLobby');
 
 const SinglePlayerLobby = ({ onStartGame }) => {
   const [playerName, setPlayerName] = useState('Player 1')
@@ -34,11 +37,11 @@ const SinglePlayerLobby = ({ onStartGame }) => {
       if (response.ok) {
         onStartGame(data.sessionID, playerName, selectedAvatar)
       } else {
-        console.error('Failed to create single-player game:', data.error)
+        logger.error('Failed to create single-player game:', data.error)
         alert('Failed to create game: ' + (data.error || 'Unknown error'))
       }
     } catch (error) {
-      console.error('Error creating single-player game:', error)
+      logger.error('Error creating single-player game:', error)
       alert('Error creating game: ' + error.message)
     } finally {
       setLoading(false)

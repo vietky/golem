@@ -1,11 +1,14 @@
 import React from 'react'
+import { createLogger } from '../utils/logger'
 import { useTheme, THEMES } from '../contexts/ThemeContext'
+
+const logger = createLogger('ThemeToggleButton');
 
 const ThemeToggleButton = () => {
   const { theme, toggleTheme } = useTheme()
   const isFantasy = theme === THEMES.FANTASY
 
-  console.log('[ThemeToggleButton] Current theme:', theme)
+  logger.debug('Current theme:', theme)
 
   return (
     <button

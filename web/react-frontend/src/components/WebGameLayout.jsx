@@ -10,7 +10,7 @@ import TradeModal from './TradeModal'
 import DepositModal from './DepositModal'
 import ConfirmGolemModal from './ConfirmGolemModal'
 import AcquiredCardOverlay from './AcquiredCardOverlay'
-import { ChatProvider, ChatOverlay, ChatInput } from './Chat'
+import CollapsibleInfo from './CollapsibleInfo'
 import { showToast } from '../utils/toast'
 
 const WebGameLayout = () => {
@@ -59,26 +59,19 @@ const WebGameLayout = () => {
   const isSpectator = useGameStore((state) => state.isSpectator)
 
   if (!gameState?.market) {
-    // Still render ChatProvider even if game not ready
     return (
-      <ChatProvider playerName={chatPlayerName} maxMessages={maxChatMessages} fadeOutDelay={5000} useWebSocket={true}>
-        <ChatOverlay />
-        <div className="h-full w-full flex items-center justify-center">
-          <div className="text-white">Loading game...</div>
-        </div>
-      </ChatProvider>
+      <div className="h-full w-full flex items-center justify-center">
+        <div className="text-white">Loading game...</div>
+      </div>
     )
   }
 
   // For spectators, myPlayer will be null - handle this case
   if (!isSpectator && !myPlayer) {
     return (
-      <ChatProvider playerName={chatPlayerName} maxMessages={maxChatMessages} fadeOutDelay={5000} useWebSocket={true}>
-        <ChatOverlay />
-        <div className="h-full w-full flex items-center justify-center">
-          <div className="text-white">Loading game...</div>
-        </div>
-      </ChatProvider>
+      <div className="h-full w-full flex items-center justify-center">
+        <div className="text-white">Loading game...</div>
+      </div>
     )
   }
 
@@ -227,8 +220,10 @@ const WebGameLayout = () => {
   }
 
   return (
-    <ChatProvider playerName={chatPlayerName} maxMessages={maxChatMessages} fadeOutDelay={5000} useWebSocket={true}>
-      <ChatOverlay />
+    <div className="relative h-full w-full">
+      {/* Collapsible Info with Activity Feed */}
+      <CollapsibleInfo sessionId={gameState?.sessionID || 'unknown'} />
+      
       <div className="h-full w-full grid p-4 gap-2" style={{ gridTemplateRows: 'auto 1fr 1fr 1fr' }}>
         {/* Spectator Badge */}
         {isSpectator && (
@@ -435,9 +430,6 @@ const WebGameLayout = () => {
 
                   {/* Timer + Actions */}
                   <div className="flex items-center gap-3">
-                    {/* Chat Input - Compact */}
-                    <ChatInput compact={true} />
-
                     {/* Timer */}
                     <div className="flex items-center gap-2">
                       <div className="w-24 h-2 bg-white/20 rounded-full overflow-hidden">
@@ -512,11 +504,8 @@ const WebGameLayout = () => {
                   <div className="text-white font-bold text-sm">Spectating</div>
                 </div>
 
-                {/* Timer + Chat for spectators */}
+                {/* Timer for spectators */}
                 <div className="flex items-center gap-3">
-                  {/* Chat Input - Compact */}
-                  <ChatInput compact={true} />
-
                   {/* Timer */}
                   <div className="flex items-center gap-2">
                     <div className="w-24 h-2 bg-white/20 rounded-full overflow-hidden">
@@ -596,7 +585,7 @@ const WebGameLayout = () => {
         {/* Card acquisition overlay animation */}
         <AcquiredCardOverlay />
       </div>
-    </ChatProvider>
+    </div>
   )
 }
 

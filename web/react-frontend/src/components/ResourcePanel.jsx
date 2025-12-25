@@ -1,8 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { createLogger } from '../utils/logger'
 import CrystalStack from './CrystalStack'
 import useGameStore from '../store/gameStore'
 import useOrientation from '../hooks/useOrientation'
+
+const logger = createLogger('ResourcePanel');
 
 // Flying crystal icon component for collect animation
 const FlyingCrystal = ({ type, startPos, endPos, onComplete }) => {
@@ -106,7 +109,7 @@ const ResourcePanel = () => {
           }
         })
       } catch (error) {
-        console.error('Error in resource comparison:', error)
+        logger.error('Error in resource comparison:', error)
         previousResourcesRef.current = null
       }
       
@@ -119,7 +122,7 @@ const ResourcePanel = () => {
       try {
         previousResourcesRef.current = { ...myPlayer.resources }
       } catch (error) {
-        console.error('Error setting previous resources:', error)
+        logger.error('Error setting previous resources:', error)
         previousResourcesRef.current = null
       }
     }

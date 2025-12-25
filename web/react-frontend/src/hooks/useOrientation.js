@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
+import { createLogger } from '../utils/logger'
+
+const logger = createLogger('useOrientation');
 
 /**
  * Custom hook to detect device orientation and screen size
@@ -83,7 +86,7 @@ const useOrientation = () => {
   // Debug log in development
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('[useOrientation]', {
+      logger.debug({
         width: orientation.width,
         height: orientation.height,
         isMobile: orientation.isMobile,

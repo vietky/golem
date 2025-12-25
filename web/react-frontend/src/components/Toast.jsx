@@ -1,7 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { createLogger } from '../utils/logger'
 import { setToastListener, clearToastListener } from '../utils/toast'
+
+const logger = createLogger('ToastComponent');
 
 const Toast = () => {
   const [toasts, setToasts] = useState([])
@@ -11,9 +14,9 @@ const Toast = () => {
   }, [])
 
   useEffect(() => {
-    console.log('[Toast] Component mounted, setting up listener')
+    logger.debug('Component mounted, setting up listener')
     setToastListener((toast) => {
-      console.log('[Toast] Received toast:', toast)
+      logger.debug('Received toast:', toast)
       setToasts(prev => [...prev, toast])
       
       // Auto remove after 5 seconds (longer to give time to read)

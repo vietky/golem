@@ -1,25 +1,29 @@
 // Toast store - simple global state
+import { createLogger } from './logger'
+
+const logger = createLogger('Toast');
+
 let toastListener = null
 let toastId = 0
 
 export const showToast = (message, type = 'error') => {
-  console.log('[Toast] showToast called:', message, 'listener:', !!toastListener)
+  logger.debug('showToast called:', message, 'listener:', !!toastListener)
   if (toastListener) {
     toastListener({ id: ++toastId, message, type })
   } else {
     // Fallback: use alert if Toast not mounted
-    console.warn('[Toast] No listener, using alert fallback')
+    logger.warn('No listener, using alert fallback')
     alert(message)
   }
 }
 
 export const setToastListener = (listener) => {
-  console.log('[Toast] Setting listener')
+  logger.debug('Setting listener')
   toastListener = listener
 }
 
 export const clearToastListener = () => {
-  console.log('[Toast] Clearing listener')
+  logger.debug('Clearing listener')
   toastListener = null
 }
 

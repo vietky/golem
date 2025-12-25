@@ -21,12 +21,21 @@ export default ({ mode }) => {
   // If SOURCE_MAPS is set to 'true', generate full maps and reference them.
   // Otherwise, for production default to 'hidden' maps (generated but not referenced).
   const enableSourceMaps = isDev || (env.SOURCE_MAPS === 'true')
+  
+  // Configure log level: DEBUG, INFO, WARN, ERROR, NONE
+  // Default to DEBUG in development, INFO in production
+  const logLevel = env.VITE_LOG_LEVEL || (isDev ? 'DEBUG' : 'INFO')
 
   const base = "./"; // isDev ? "./" : (env.VITE_API_HOST || "./");
-  console.log('mode:', mode, ' | apiHost:', apiHost, ' | nginxHost:', nginxHost, ' | enableSourceMaps:', enableSourceMaps, ' | base:', base)
+  console.log('mode:', mode, ' | apiHost:', apiHost, ' | nginxHost:', nginxHost, ' | enableSourceMaps:', enableSourceMaps, ' | base:', base, ' | logLevel:', logLevel)
   return defineConfig({
     base: base, 
     plugins: [react()],
+    
+    // Make log level available to app
+    define: {
+      'import.meta.env.VITE_LOG_LEVEL': JSON.stringify(logLevel),
+    },
 
     // build.sourcemap accepts: true | false | 'hidden'
     build: {

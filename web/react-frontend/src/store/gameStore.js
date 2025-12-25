@@ -1,4 +1,7 @@
 import { create } from "zustand";
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('GameStore');
 
 const useGameStore = create((set, get) => ({
   // Connection state
@@ -20,7 +23,6 @@ const useGameStore = create((set, get) => ({
 
   // UI state
   selectedCard: null,
-  actionLog: [],
   actionHistory: [], // Rich action history with card details
   isDragging: false,
   invalidAction: null, // Card name that triggered invalid action
@@ -52,7 +54,7 @@ const useGameStore = create((set, get) => ({
 
     ws.onopen = () => {
       set({ connected: true, ws, isSpectator: asSpectator });
-      console.log(`WebSocket connected${asSpectator ? ' as spectator' : ''}`);
+      logger.info(`WebSocket connected${asSpectator ? ' as spectator' : ''}`);
     };
 
     ws.onmessage = (event) => {
@@ -67,8 +69,7 @@ const useGameStore = create((set, get) => ({
         const joinMessage = message.isSpectator 
           ? `${message.playerName} is now spectating`
           : `${message.playerName} joined the game`;
-        console.log(joinMessage);
-        get().addToLog(joinMessage);
+        logger.info(joinMessage);
       } else if (message.type === "state") {
         const isSpectator = get().isSpectator;
         const myPlayer = isSpectator ? null : message.players.find((p) => p.id === get().playerId);
@@ -80,16 +81,16 @@ const useGameStore = create((set, get) => ({
 
         // Debug: log deposits on market cards
         if (message.market?.actionCards) {
-          console.log(`[DEBUG State] Received ${message.market.actionCards.length} market cards`);
+          logger.debug(`Received ${message.market.actionCards.length} market cards`);
           // Log raw message to see if deposits field exists
           if (message.market.actionCards.length > 1) {
-            console.log(`[DEBUG State] Raw message market.actionCards[1]:`, JSON.stringify(message.market.actionCards[1], null, 2));
-            console.log(`[DEBUG State] Raw message keys:`, Object.keys(message.market.actionCards[1]));
+            logger.debug(`Raw message market.actionCards[1]:`, JSON.stringify(message.market.actionCards[1], null, 2));
+            logger.debug(`Raw message keys:`, Object.keys(message.market.actionCards[1]));
           }
           message.market.actionCards.forEach((card, idx) => {
             const hasDepositsField = 'deposits' in card;
             const depositsType = typeof card.deposits;
-            console.log(`[DEBUG State] Card ${idx} (position ${idx + 1}):`, {
+            logger.debug(`Card ${idx} (position ${idx + 1}):`, {
               name: card.name,
               hasDepositsField,
               depositsType,
@@ -98,9 +99,9 @@ const useGameStore = create((set, get) => ({
               depositsCount: card.deposits ? Object.keys(card.deposits).length : 0
             });
             if (card.deposits && typeof card.deposits === 'object' && Object.keys(card.deposits).length > 0) {
-              console.log(`[DEBUG State] ✓ Card ${idx} (position ${idx + 1}) HAS deposits:`, card.deposits);
+              logger.debug(`✓ Card ${idx} (position ${idx + 1}) HAS deposits:`, card.deposits);
             } else {
-              console.log(`[DEBUG State] ✗ Card ${idx} (position ${idx + 1}) has NO deposits (field: ${hasDepositsField}, type: ${depositsType}, value: ${JSON.stringify(card.deposits)})`);
+              logger.debug(`✗ Card ${idx} (position ${idx + 1}) has NO deposits (field: ${hasDepositsField}, type: ${depositsType}, value: ${JSON.stringify(card.deposits)})`);
             }
           });
         }
@@ -259,13 +260,13 @@ const useGameStore = create((set, get) => ({
           currentPlayer,
         });
 
-        // Add to log when turn changes
+        // Log turn changes
         const isSpectatorMode = get().isSpectator;
         if (currentPlayer) {
           if (!isSpectatorMode && currentPlayer.id === get().playerId) {
-            get().addToLog(`Your turn!`);
+            logger.info(`Your turn!`);
           } else if (isSpectatorMode) {
-            get().addToLog(`${currentPlayer.name}'s turn`);
+            logger.info(`${currentPlayer.name}'s turn`);
           }
         }
       } else if (message.type === "chat") {
@@ -281,19 +282,18 @@ const useGameStore = create((set, get) => ({
           });
         }
       } else if (message.type === "error") {
-        console.error("Game error:", message.error);
-        get().addToLog(`Error: ${message.error}`);
+        logger.error("Game error:", message.error);
       }
     };
 
     ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
+      logger.error("WebSocket error:", error);
       set({ connected: false });
     };
 
     ws.onclose = () => {
       set({ connected: false, ws: null });
-      console.log("WebSocket disconnected");
+      logger.info("WebSocket disconnected");
     };
 
     set({ ws, sessionId });
@@ -304,7 +304,7 @@ const useGameStore = create((set, get) => ({
     
     // Spectators cannot send actions
     if (isSpectator) {
-      console.log("Spectators cannot perform actions");
+      logger.warn("Spectators cannot perform actions");
       return;
     }
     
@@ -336,7 +336,7 @@ const useGameStore = create((set, get) => ({
     const { myPlayer } = get();
     const cardData = card || myPlayer?.hand?.[cardIndex];
     get().sendAction("playCard", cardIndex);
-    get().addToLog(`Playing card from hand`);
+    logger.info(`Playing card from hand`);
     get().addActionToHistory({
       type: 'play',
       playerName: myPlayer?.name || 'You',
@@ -349,7 +349,7 @@ const useGameStore = create((set, get) => ({
     const { myPlayer } = get();
     const cardData = card || myPlayer?.hand?.[cardIndex];
     get().sendAction("playCard", cardIndex, inputResources, outputResources);
-    get().addToLog(`Playing upgrade card`);
+    logger.info(`Playing upgrade card`);
     get().addActionToHistory({
       type: 'upgrade',
       playerName: myPlayer?.name || 'You',
@@ -368,7 +368,7 @@ const useGameStore = create((set, get) => ({
     const { myPlayer } = get();
     const cardData = card || myPlayer?.hand?.[cardIndex];
     get().sendAction("playCard", cardIndex, null, null, multiplier);
-    get().addToLog(`Playing trade card (x${multiplier})`);
+    logger.info(`Playing trade card (x${multiplier})`);
     get().addActionToHistory({
       type: 'trade',
       playerName: myPlayer?.name || 'You',
@@ -392,7 +392,7 @@ const useGameStore = create((set, get) => ({
     const { myPlayer, gameState } = get();
     const cardData = card || gameState?.market?.actionCards?.[cardIndex];
     get().sendAction("acquireCard", cardIndex, null, null, null, deposits);
-    get().addToLog(`Acquiring card from market`);
+    logger.info(`Acquiring card from market`);
     get().addActionToHistory({
       type: 'acquire',
       playerName: myPlayer?.name || 'You',
@@ -405,7 +405,7 @@ const useGameStore = create((set, get) => ({
     const { myPlayer, gameState } = get();
     const cardData = card || gameState?.market?.pointCards?.[cardIndex];
     get().sendAction("claimPointCard", cardIndex);
-    get().addToLog(`Claiming point card`);
+    logger.info(`Claiming point card`);
     get().addActionToHistory({
       type: 'claim',
       playerName: myPlayer?.name || 'You',
@@ -417,7 +417,7 @@ const useGameStore = create((set, get) => ({
   rest: () => {
     const { myPlayer } = get();
     get().sendAction("rest");
-    get().addToLog(`Resting - returning cards to hand`);
+    logger.info(`Resting - returning cards to hand`);
     get().addActionToHistory({
       type: 'rest',
       playerName: myPlayer?.name || 'You',
@@ -442,7 +442,7 @@ const useGameStore = create((set, get) => ({
     }
 
     ws.send(JSON.stringify(message))
-    get().addToLog(`Discarding ${Object.values(discard).reduce((a, b) => a + b, 0)} crystals`)
+    logger.info(`Discarding ${Object.values(discard).reduce((a, b) => a + b, 0)} crystals`)
     
     // Optimistically update crystals and reset pendingDiscard to close modal immediately
     if (myPlayer) {
@@ -475,7 +475,7 @@ const useGameStore = create((set, get) => ({
     }
 
     ws.send(JSON.stringify(message))
-    get().addToLog(`Depositing crystals on card (target: position ${targetPosition})`)
+    logger.info(`Depositing crystals on card (target: position ${targetPosition})`)
   },
 
   collectCrystals: (cardIndex, positions) => {
@@ -490,7 +490,7 @@ const useGameStore = create((set, get) => ({
     }
 
     ws.send(JSON.stringify(message))
-    get().addToLog(`Collecting ${positions.length} crystals from card`)
+    logger.info(`Collecting ${positions.length} crystals from card`)
   },
 
   collectAllCrystals: (cardIndex) => {
@@ -504,17 +504,11 @@ const useGameStore = create((set, get) => ({
     }
 
     ws.send(JSON.stringify(message))
-    get().addToLog(`Auto-collecting crystals from card`)
+    logger.info(`Auto-collecting crystals from card`)
   },
 
   setSelectedCard: (card) => set({ selectedCard: card }),
   clearSelectedCard: () => set({ selectedCard: null }),
-
-  addToLog: (message) => {
-    const log = get().actionLog;
-    const newLog = [message, ...log].slice(0, 3); // Keep last 3
-    set({ actionLog: newLog });
-  },
 
   // Add rich action to history
   addActionToHistory: (action) => {
