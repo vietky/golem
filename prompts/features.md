@@ -14,7 +14,6 @@
     - Showing the number and types of crystals held by each player at the end of the game.
     - Including the amount of copper and silver coins each player has accumulated.
     - Presenting the final rankings of players based on their total points.
-    - It seems like 
 
 ## 2025-12-25 11:30:00
 let's revamp #collapsibleinfo to display chat messages and all user actions there:
@@ -26,7 +25,6 @@ let's revamp #collapsibleinfo to display chat messages and all user actions ther
 - test the feature to ensure that all actions and messages are logged correctly and displayed in real-time.
 - remove existing chat box if this new implementation works well.
 
-
 ## backlogs
 - I'm adding sound effects to enhance the gaming experience. The sound effects will be triggered by specific in-game actions:
     - Playing a card: A sound effect will play when a player plays any card from their hand.
@@ -37,3 +35,17 @@ let's revamp #collapsibleinfo to display chat messages and all user actions ther
     - I'll ensure that the sound effects are not too intrusive and can be muted or adjusted in volume through game settings.
     - I'll test the sound effects to ensure they play correctly and enhance the overall gaming experience without causing distractions.
 - if a user is disconnected, make a rest action for them after 5 seconds of inactivity.
+- firebase authentication for user login/signup.
+    - update user profile with avatar and display name.
+    - use postgresql to store user profile data.
+    - remove mongodb codes and replace with postgresql.
+    - relational schema for users, user_games, games with initial migration scripts.
+
+- revamp the lobby UI to show list of available games with join button, clicking on it will take user to the waiting room of that game.
+    - show game host, number of players, game status (waiting/playing), game mode (2-5 players), created at timestamp.
+    - implement create new game form with options for game mode (2-5 players), game name, max time per turn.
+    - implement search and filter functionality for the game list.
+    - allow users to choose AI or human opponents when creating a new game.
+    - auto refresh the game list every 10 seconds to show the latest available games.
+    - ensure responsive design for both desktop and mobile devices.
+    - test the lobby UI to ensure smooth user experience and functionality.

@@ -33,8 +33,10 @@ const CollapsibleInfo = ({ sessionId }) => {
   const [chatMessages, setChatMessages] = useState([])
   const [chatInput, setChatInput] = useState('')
   const [hoveredCard, setHoveredCard] = useState(null)
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false)
   const { isMobile, isPortrait } = useOrientation()
   const scrollRef = useRef(null)
+  const previousMessageCountRef = useRef(0)
   
   // Get action history and stores
   const { actionHistory, actionLog, sendChatMessage, setChatMessageCallback } = useGameStore()
@@ -67,6 +69,12 @@ const CollapsibleInfo = ({ sessionId }) => {
       })
     }
     
+    // Check for new messages when collapsed
+    if (!isExpanded && chatMessages.length > previousMessageCountRef.current) {
+      setHasUnreadMessages(true)
+    }
+    previousMessageCountRef.current = chatMessages.length
+    
     // Add action history (rich actions with card details)
     if (actionHistory && Array.isArray(actionHistory)) {
       actionHistory.forEach((action, idx) => {
@@ -98,7 +106,7 @@ const CollapsibleInfo = ({ sessionId }) => {
     // Sort by timestamp (newest last) and take last 50
     combined.sort((a, b) => a.timestamp - b.timestamp)
     setActivityFeed(combined.slice(-50))
-  }, [chatMessages, actionHistory, actionLog])
+  }, [chatMessages, actionHistory, actionLog, isExpanded])
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -195,10 +203,14 @@ const CollapsibleInfo = ({ sessionId }) => {
         {/* Collapsed State - Icon Button */}
         {!isExpanded && (
           <button
-            onClick={() => setIsExpanded(true)}
+            onClick={() => {
+              setIsExpanded(true)
+              setHasUnreadMessages(false)
+            }}
             className={`
               bg-purple-600 hover:bg-purple-700 text-white rounded-full 
               flex items-center justify-center shadow-lg transition-all hover:scale-110
+              relative
               ${isMobile ? 'w-10 h-10' : 'w-12 h-12'}
             `}
             title="Show Activity Feed"
@@ -216,6 +228,10 @@ const CollapsibleInfo = ({ sessionId }) => {
                 d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" 
               />
             </svg>
+            {/* Unread Message Indicator */}
+            {hasUnreadMessages && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-purple-600 animate-pulse"></span>
+            )}
           </button>
         )}
 
@@ -274,7 +290,11 @@ const CollapsibleInfo = ({ sessionId }) => {
                 </h4>
                 <div 
                   ref={scrollRef}
-                  className={`bg-black/40 rounded-lg overflow-y-auto flex-1 ${isMobile ? 'p-1.5' : 'p-2'}`}
+                  className={`bg-black/40 rounded-lg overflow-y-auto flex-1 ${isMobile ? 'p-1.5 max-h-[40vh]' : 'p-2 max-h-[50vh]'}`}
+                  style={{
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(255, 255, 255, 0.3) transparent'
+                  }}
                 >
                   {activityFeed.length === 0 ? (
                     <div className={`text-white/50 text-center py-8 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
