@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { createLogger } from './utils/logger'
-import Lobby from './components/Lobby'
+import EnhancedLobby from './components/EnhancedLobby'
 import ThemeToggleButton from './components/ThemeToggleButton'
 import FantasyGameLayout from './components/FantasyGameLayout'
 import WebGameLayout from './components/WebGameLayout'
@@ -55,7 +55,7 @@ function App() {
   logger.debug(`Render: inGame=${inGame}, connected=${connected}, gameState=${!!gameState}`);
 
   if (!inGame) {
-    return <Lobby onJoinGame={handleJoinGame} />
+    return <EnhancedLobby onJoinGame={handleJoinGame} />
   }
 
   // Show loading screen while connecting or waiting for game state

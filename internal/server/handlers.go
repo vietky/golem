@@ -351,10 +351,13 @@ func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request
 	}
 
 	var req struct {
-		NumPlayers  int    `json:"numPlayers"`
-		Seed        int64  `json:"seed"`
-		SessionID   string `json:"sessionID"`   // Optional custom session ID
-		TurnTimeout int    `json:"turnTimeout"` // Optional turn timeout in seconds (default 60)
+		NumPlayers  int      `json:"numPlayers"`
+		Seed        int64    `json:"seed"`
+		SessionID   string   `json:"sessionID"`   // Optional custom session ID
+		GameName    string   `json:"gameName"`    // Optional game name
+		TurnTimeout int      `json:"turnTimeout"` // Optional turn timeout in seconds (default 60)
+		AIPlayers   []string `json:"aiPlayers"`   // List of AI types for specific slots (e.g., ["basic", "", "rest"] means AI in slots 2 and 4)
+		HostName    string   `json:"hostName"`    // Name of the host player
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -386,20 +389,53 @@ func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request
 		}
 		sessionID = req.SessionID
 	} else {
-		sessionID = fmt.Sprintf("session_%d", time.Now().UnixNano())
+		if req.GameName != "" {
+			sessionID = req.GameName
+		} else {
+			sessionID = fmt.Sprintf("session_%d", time.Now().UnixNano())
+		}
 	}
 
-	session := gs.CreateSession(sessionID, req.NumPlayers, req.Seed, game.NewRestOnlyAI())
+	// Create AI strategy (default to RestOnlyAI)
+	aiStrategy := game.NewRestOnlyAI()
+	session := gs.CreateSession(sessionID, req.NumPlayers, req.Seed, aiStrategy)
 
 	// Set custom turn timeout if specified
 	session.mu.Lock()
 	session.TurnTimeout = time.Duration(req.TurnTimeout) * time.Second
+
+	// Configure AI players based on request
+	if len(req.AIPlayers) > 0 {
+		for i := 0; i < len(req.AIPlayers) && i < req.NumPlayers; i++ {
+			aiType := req.AIPlayers[i]
+			if aiType != "" {
+				// Mark this player as AI
+				session.GameState.Players[i].IsAI = true
+				switch aiType {
+				case "basic":
+					session.GameState.Players[i].Name = fmt.Sprintf("AI (Basic) %d", i+1)
+				case "rest":
+					session.GameState.Players[i].Name = fmt.Sprintf("AI (Rest) %d", i+1)
+				default:
+					session.GameState.Players[i].Name = fmt.Sprintf("AI %d", i+1)
+				}
+			}
+		}
+	}
+
+	// Store host name in session metadata
+	if req.HostName != "" {
+		session.PlayerNames[1] = req.HostName
+		session.GameState.Players[0].Name = req.HostName
+	}
+
 	session.mu.Unlock()
 
 	response := map[string]interface{}{
 		"sessionID":   sessionID,
 		"numPlayers":  req.NumPlayers,
 		"turnTimeout": req.TurnTimeout,
+		"gameName":    req.GameName,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -433,6 +469,10 @@ func (gs *GameServer) HandleJoinSession(w http.ResponseWriter, r *http.Request) 
 
 // HandleListSessions lists all active game sessions
 func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request) {
+	// Get query parameters for filtering
+	searchQuery := r.URL.Query().Get("search")
+	statusFilter := r.URL.Query().Get("status") // "waiting", "playing", "all"
+
 	gs.mu.RLock()
 	defer gs.mu.RUnlock()
 
@@ -442,17 +482,28 @@ func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request)
 		connectedPlayers := len(session.Connections)
 		spectatorCount := len(session.Spectators)
 		maxPlayers := len(session.GameState.Players)
-		// isFull := connectedPlayers >= maxPlayers
 		isGameOver := session.GameState.GameOver
+		gameStarted := session.GameState.CurrentTurn > 0
 
 		// Get player names
 		playerNames := make([]string, 0)
 		for i := 1; i <= maxPlayers; i++ {
 			if name, exists := session.PlayerNames[i]; exists {
 				playerNames = append(playerNames, name)
+			} else if i <= len(session.GameState.Players) && session.GameState.Players[i-1].IsAI {
+				playerNames = append(playerNames, session.GameState.Players[i-1].Name)
 			}
 		}
 
+		// Get host name (first player)
+		hostName := "Unknown"
+		if name, exists := session.PlayerNames[1]; exists {
+			hostName = name
+		} else if len(session.GameState.Players) > 0 {
+			hostName = session.GameState.Players[0].Name
+		}
+
+		// Calculate time until deletion
 		timeSinceActivity := time.Since(session.LastActivity)
 		timeUntilDelete := 5*time.Minute - timeSinceActivity
 		var timeUntilDeleteSeconds int64
@@ -460,29 +511,133 @@ func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request)
 			timeUntilDeleteSeconds = int64(timeUntilDelete.Seconds())
 		}
 
+		// Determine game status
+		var gameStatus string
+		if isGameOver {
+			gameStatus = "finished"
+		} else if gameStarted {
+			gameStatus = "playing"
+		} else {
+			gameStatus = "waiting"
+		}
+
 		session.mu.RUnlock()
 
-		// Only show active, non-full, non-game-over sessions
-		if !isGameOver {
-			sessions = append(sessions, map[string]interface{}{
-				"sessionID":        sessionID,
-				"numPlayers":       maxPlayers,
-				"connectedPlayers": connectedPlayers,
-				"spectatorCount":   spectatorCount,
-				"players":          playerNames,
-				"status":           "open",
-				"timeUntilDelete":  timeUntilDeleteSeconds, // Seconds until auto-delete (only if empty)
-			})
+		// Apply filters
+		if isGameOver {
+			continue // Skip finished games
 		}
+
+		// Apply status filter
+		if statusFilter != "" && statusFilter != "all" && gameStatus != statusFilter {
+			continue
+		}
+
+		// Apply search filter (search in sessionID, host name, or player names)
+		if searchQuery != "" {
+			found := false
+			searchLower := ""
+			for _, char := range searchQuery {
+				if char >= 'A' && char <= 'Z' {
+					searchLower += string(char + 32)
+				} else {
+					searchLower += string(char)
+				}
+			}
+
+			// Check sessionID
+			sessionIDLower := ""
+			for _, char := range sessionID {
+				if char >= 'A' && char <= 'Z' {
+					sessionIDLower += string(char + 32)
+				} else {
+					sessionIDLower += string(char)
+				}
+			}
+			if contains(sessionIDLower, searchLower) {
+				found = true
+			}
+
+			// Check host name
+			if !found {
+				hostLower := ""
+				for _, char := range hostName {
+					if char >= 'A' && char <= 'Z' {
+						hostLower += string(char + 32)
+					} else {
+						hostLower += string(char)
+					}
+				}
+				if contains(hostLower, searchLower) {
+					found = true
+				}
+			}
+
+			// Check player names
+			if !found {
+				for _, name := range playerNames {
+					nameLower := ""
+					for _, char := range name {
+						if char >= 'A' && char <= 'Z' {
+							nameLower += string(char + 32)
+						} else {
+							nameLower += string(char)
+						}
+					}
+					if contains(nameLower, searchLower) {
+						found = true
+						break
+					}
+				}
+			}
+
+			if !found {
+				continue
+			}
+		}
+
+		sessions = append(sessions, map[string]interface{}{
+			"sessionID":        sessionID,
+			"numPlayers":       maxPlayers,
+			"connectedPlayers": connectedPlayers,
+			"spectatorCount":   spectatorCount,
+			"players":          playerNames,
+			"host":             hostName,
+			"status":           gameStatus,
+			"createdAt":        session.CreatedAt.Unix(),
+			"timeUntilDelete":  timeUntilDeleteSeconds, // Seconds until auto-delete (only if empty)
+		})
 	}
 
 	response := map[string]interface{}{
 		"sessions": sessions,
-		"count":    len(sessions),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+// Helper function for case-insensitive substring search
+func contains(str, substr string) bool {
+	if len(substr) == 0 {
+		return true
+	}
+	if len(str) < len(substr) {
+		return false
+	}
+	for i := 0; i <= len(str)-len(substr); i++ {
+		match := true
+		for j := 0; j < len(substr); j++ {
+			if str[i+j] != substr[j] {
+				match = false
+				break
+			}
+		}
+		if match {
+			return true
+		}
+	}
+	return false
 }
 
 // HandleCreateSinglePlayer creates a single-player game with AI opponents

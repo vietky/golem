@@ -14,6 +14,10 @@ const useGameStore = create((set, get) => ({
   playerAvatar: "4",
   connected: false,
 
+  // Inactivity handling
+  lastActivityTime: Date.now(),
+  inactivityTimer: null,
+
   // Game state
   gameState: null,
   previousGameState: null, // Track previous state to detect opponent actions
@@ -260,13 +264,18 @@ const useGameStore = create((set, get) => ({
           currentPlayer,
         });
 
-        // Log turn changes
+        // Log turn changes and start inactivity timer
         const isSpectatorMode = get().isSpectator;
         if (currentPlayer) {
           if (!isSpectatorMode && currentPlayer.id === get().playerId) {
             logger.info(`Your turn!`);
+            // Start inactivity timer when it's the player's turn
+            get().updateActivity();
           } else if (isSpectatorMode) {
             logger.info(`${currentPlayer.name}'s turn`);
+          } else {
+            // Clear timer when it's not the player's turn
+            get().clearInactivityTimer();
           }
         }
       } else if (message.type === "chat") {
@@ -330,6 +339,51 @@ const useGameStore = create((set, get) => ({
     }
 
     ws.send(JSON.stringify(message));
+    
+    // Update activity time and reset inactivity timer
+    get().updateActivity();
+  },
+
+  // Update last activity time and reset inactivity timer
+  updateActivity: () => {
+    const now = Date.now();
+    set({ lastActivityTime: now });
+    
+    // Clear existing timer
+    const existingTimer = get().inactivityTimer;
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+    
+    // Set new timer for 5 seconds of inactivity
+    const newTimer = setTimeout(() => {
+      const { ws, isSpectator, gameState, playerId, currentPlayer } = get();
+      
+      // Only auto-rest if:
+      // 1. Not a spectator
+      // 2. It's the player's turn
+      // 3. WebSocket is connected
+      if (!isSpectator && ws && ws.readyState === WebSocket.OPEN && 
+          gameState && currentPlayer && currentPlayer.id === playerId) {
+        logger.info("5 seconds of inactivity detected - sending rest action");
+        const message = {
+          type: "action",
+          actionType: "rest",
+        };
+        ws.send(JSON.stringify(message));
+      }
+    }, 5000); // 5 seconds
+    
+    set({ inactivityTimer: newTimer });
+  },
+  
+  // Clear inactivity timer
+  clearInactivityTimer: () => {
+    const timer = get().inactivityTimer;
+    if (timer) {
+      clearTimeout(timer);
+      set({ inactivityTimer: null });
+    }
   },
 
   playCard: (cardIndex, card = null) => {

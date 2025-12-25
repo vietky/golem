@@ -34,7 +34,6 @@ let's revamp #collapsibleinfo to display chat messages and all user actions ther
     - End of game: A special sound will mark the conclusion of the game and the announcement of the winner.
     - I'll ensure that the sound effects are not too intrusive and can be muted or adjusted in volume through game settings.
     - I'll test the sound effects to ensure they play correctly and enhance the overall gaming experience without causing distractions.
-- if a user is disconnected, make a rest action for them after 5 seconds of inactivity.
 - firebase authentication for user login/signup.
     - update user profile with avatar and display name.
     - use postgresql to store user profile data.
@@ -45,7 +44,23 @@ let's revamp #collapsibleinfo to display chat messages and all user actions ther
     - show game host, number of players, game status (waiting/playing), game mode (2-5 players), created at timestamp.
     - implement create new game form with options for game mode (2-5 players), game name, max time per turn.
     - implement search and filter functionality for the game list.
-    - allow users to choose AI or human opponents when creating a new game.
+    - allow users to choose AI (type) based on ai_interface or human opponents when creating a new game.
     - auto refresh the game list every 10 seconds to show the latest available games.
     - ensure responsive design for both desktop and mobile devices.
     - test the lobby UI to ensure smooth user experience and functionality.
+    - when a user is disconnected, make a rest action for them after 5 seconds of inactivity.
+
+    - when the host start the game, shuffle the players randomly.
+    - people joining the room could choose to be a spectator.
+    - show list of spectators in the waiting room.
+    - allow spectators to chat but not make any game actions.
+    - if the host leaves the room, assign a new host from the remaining players (if any).
+
+- cleanup the room:
+    - if all players leave the room.
+    - if the game lasts more than 1 hour.
+    - if the host leaves the room and there are no other players (only spectators), close the room.
+    - notify all players/spectators in the room before cleanup with a countdown timer
+
+    
+
