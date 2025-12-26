@@ -42,6 +42,7 @@ type GameSession struct {
 	BroadcastChan  chan []byte
 	logger         *logger.Logger
 	maxChatMsgs   int // Max chat messages from config
+	Require60PointsFor5thGolem bool // Require 60 points to claim 5th golem
 }
 
 // PlayerAction represents an action from a player
@@ -80,6 +81,7 @@ func NewGameSession(sessionID string, numPlayers int, seed int64, turnTimeoutInS
 		BroadcastChan:  make(chan []byte, 100),
 		logger:         logger,
 		maxChatMsgs:   10, // Default, will be set from config
+		Require60PointsFor5thGolem: false, // Default false
 	}
 }
 
@@ -534,6 +536,7 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 		"winner":          gs.getWinnerInfo(),
 		"players":         players,
 		"maxChatMessages": gs.maxChatMsgs,
+		"require60PointsFor5thGolem": gs.Require60PointsFor5thGolem,
 		"market": map[string]interface{}{
 			"actionCards": marketActionCards,
 			"pointCards":  marketPointCards,

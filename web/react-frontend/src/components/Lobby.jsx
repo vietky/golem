@@ -37,6 +37,7 @@ const Lobby = ({ onJoinGame }) => {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("create");
+  const [require60PointsFor5thGolem, setRequire60PointsFor5thGolem] = useState(false);
   const { isMobile, isTablet, isPortrait, isLandscape } = useOrientation();
 
   // Fetch available rooms
@@ -91,6 +92,7 @@ const Lobby = ({ onJoinGame }) => {
           numPlayers,
           seed: Date.now(),
           sessionID: customSessionId || undefined,
+          require60PointsFor5thGolem,
         }),
       });
 
@@ -287,6 +289,21 @@ const Lobby = ({ onJoinGame }) => {
                     `}
                     placeholder="Leave empty for auto-generated"
                   />
+                </div>
+
+                {/* Require 60 Points Toggle */}
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={require60PointsFor5thGolem}
+                      onChange={(e) => setRequire60PointsFor5thGolem(e.target.checked)}
+                      className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500"
+                    />
+                    <span className="text-white text-sm">
+                      Require 60 points to claim 5th golem
+                    </span>
+                  </label>
                 </div>
 
                 {/* Create Button */}
