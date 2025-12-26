@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"golem_century/internal/game"
@@ -32,6 +33,11 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	if sessionID == "" {
 		sendJSONError(w, http.StatusBadRequest, "Missing session ID")
+		return
+	}
+
+	if isSessionV2(sessionID) {
+		gs.HandleWebSocketV2(w, r)
 		return
 	}
 
@@ -338,6 +344,165 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	session.RemovePlayer(playerID)
 }
 
+func (gs *GameServer) HandleWebSocketV2(w http.ResponseWriter, r *http.Request) {
+	sessionID := r.URL.Query().Get("session")
+	playerIDStr := r.URL.Query().Get("player")
+	playerName := r.URL.Query().Get("name")
+	spectateMode := r.URL.Query().Get("spectate") == "true"
+	playerAvatar := r.URL.Query().Get("avatar")
+	clientID := r.URL.Query().Get("clientID")
+
+	log := gs.Logger.With(
+		zap.String("sessionID", sessionID),
+		zap.String("playerID", playerIDStr),
+		zap.String("clientID", clientID),
+		zap.String("playerName", playerName),
+		zap.Bool("spectateMode", spectateMode),
+	)
+	log.Info("Handling WebSocket V2")
+
+	if sessionID == "" {
+		sendJSONError(w, http.StatusBadRequest, "Missing session ID")
+		return
+	}
+
+	session, ok := gs.GetSessionV2(sessionID)
+	if !ok {
+		sendJSONError(w, http.StatusNotFound, "Session not found")
+		return
+	}
+
+	var playerID int
+	if playerIDStr != "" {
+		if _, err := fmt.Sscanf(playerIDStr, "%d", &playerID); err != nil {
+			sendJSONError(w, http.StatusBadRequest, "Invalid player ID")
+			return
+		}
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Error("WebSocket upgrade error", zap.Error(err))
+		return
+	}
+	// defer conn.Close()
+
+	// Handle spectator mode
+	// if spectateMode {
+	// 	spectatorID := fmt.Sprintf("spectator_%d", time.Now().UnixNano())
+	// 	if playerName == "" {
+	// 		playerName = "Spectator"
+	// 	}
+
+	// 	session.AddSpectator(spectatorID, playerName, conn)
+	// 	defer session.RemoveSpectator(spectatorID)
+
+	// 	// Send spectator assignment
+	// 	assignedMsg := map[string]interface{}{
+	// 		"type":        "spectatorAssigned",
+	// 		"spectatorID": spectatorID,
+	// 		"isSpectator": true,
+	// 	}
+	// 	if data, err := json.Marshal(assignedMsg); err == nil {
+	// 		conn.WriteMessage(websocket.TextMessage, data)
+	// 	}
+
+	// 	// Send initial state
+	// 	state := session.SerializeState()
+	// 	if data, err := json.Marshal(state); err == nil {
+	// 		conn.WriteMessage(websocket.TextMessage, data)
+	// 	}
+
+	// 	// Notify all users that a spectator joined
+	// 	session.BroadcastPlayerJoined(0, playerName, "", true)
+
+	// 	// Keep connection alive (spectators don't send actions)
+	// 	for {
+	// 		_, _, err := conn.ReadMessage()
+	// 		if err != nil {
+	// 			log.Printf("Spectator read error: %v", err)
+	// 			break
+	// 		}
+	// 	}
+	// 	return
+	// }
+
+	// Regular player join logic
+	// var playerID int
+	// if playerIDStr != "" {
+	// 	if _, err := fmt.Sscanf(playerIDStr, "%d", &playerID); err != nil {
+	// 		sendJSONError(w, http.StatusBadRequest, "Invalid player ID")
+	// 		return
+	// 	}
+	// 	Check if this player ID is already taken
+	// 	session.mu.RLock()
+	// 	_, taken := session.Connections[playerID]
+	// 	session.mu.RUnlock()
+	// 	if taken {
+	// 		playerID = 0 // Force auto-assign
+	// 	}
+	// }
+
+	// Auto-assign next available player ID
+	// if playerID == 0 {
+	// 	session.mu.RLock()
+	// 	maxPlayers := len(session.GameState.Players)
+	// 	for i := 1; i <= maxPlayers; i++ {
+	// 		if _, exists := session.Connections[i]; !exists {
+	// 			playerID = i
+	// 			break
+	// 		}
+	// 	}
+	// 	session.mu.RUnlock()
+
+	// 	if playerID == 0 {
+	// 		sendJSONError(w, http.StatusForbidden, "Game is full")
+	// 		return
+	// 	}
+	// }
+
+	// Validate player ID is within bounds
+	// if playerID < 1 || playerID > len(session.GameState.Players) {
+	// 	sendJSONError(w, http.StatusBadRequest, "Invalid player ID")
+	// 	return
+	// }
+
+	// Add player to session
+	// if playerName == "" {
+	// 	playerName = fmt.Sprintf("Player %d", playerID)
+	// }
+	// playerAvatar := r.URL.Query().Get("avatar")
+	err = session.AddPlayer(playerID, clientID, playerName, playerAvatar, conn)
+	if err != nil {
+		log.Error("failed to add player to session", zap.Error(err))
+		conn.Close()
+	}
+
+	// Send assigned player ID back to client
+	// assignedMsg := map[string]interface{}{
+	// 	"type":     "playerAssigned",
+	// 	"playerID": playerID,
+	// }
+	// if data, err := json.Marshal(assignedMsg); err == nil {
+	// 	conn.WriteMessage(websocket.TextMessage, data)
+	// }
+
+	// Send initial state
+	// state := session.SerializeState()
+	// if data, err := json.Marshal(state); err == nil {
+	// 	conn.WriteMessage(websocket.TextMessage, data)
+	// }
+
+	// Notify all users (players and spectators) that a player joined
+	// session.BroadcastPlayerJoined(playerID, playerName, playerAvatar, false)
+
+	// Broadcast updated state to all players so they see the new player's name
+	// session.BroadcastState()
+
+	// Handle incoming messages
+	// session.RemovePlayer(playerID)
+}
+
 // HandleCreateSession creates a new game session
 func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request) {
 	// Allow CORS preflight
@@ -380,13 +545,28 @@ func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request
 	var sessionID string
 	if req.SessionID != "" {
 		// Check if session already exists
-		if _, exists := gs.GetSession(req.SessionID); exists {
+		if gs.sessionExists(req.SessionID) {
 			sendJSONError(w, http.StatusConflict, "Session ID already exists")
 			return
 		}
 		sessionID = req.SessionID
 	} else {
 		sessionID = fmt.Sprintf("session_%d", time.Now().UnixNano())
+	}
+
+	if isSessionV2(sessionID) {
+		gs.CreateSessionV2(sessionID, req.NumPlayers, req.Seed, game.NewRestOnlyAI(), req.TurnTimeout)
+
+		response := map[string]any{
+			"sessionID":   sessionID,
+			"numPlayers":  req.NumPlayers,
+			"turnTimeout": req.TurnTimeout,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+
+		return
 	}
 
 	session := gs.CreateSession(sessionID, req.NumPlayers, req.Seed, game.NewRestOnlyAI())
@@ -437,6 +617,8 @@ func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request)
 	defer gs.mu.RUnlock()
 
 	sessions := make([]map[string]interface{}, 0)
+
+	// Process v1 sessions
 	for sessionID, session := range gs.Sessions {
 		session.mu.RLock()
 		connectedPlayers := len(session.Connections)
@@ -471,6 +653,35 @@ func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request)
 				"spectatorCount":   spectatorCount,
 				"players":          playerNames,
 				"status":           "open",
+				"timeUntilDelete":  timeUntilDeleteSeconds, // Seconds until auto-delete (only if empty)
+			})
+		}
+	}
+
+	// Process v2 sessions
+	for sessionID, session := range gs.SessionsV2 {
+		connectedPlayers := session.GetConnectedPlayersCount()
+		spectatorCount := len(session.Spectators)
+		maxPlayers := session.MaxPlayers
+		isGameOver := session.GameState.GameOver
+		playerNames := session.GetPlayerNames()
+
+		timeSinceActivity := time.Since(session.LastActivity)
+		timeUntilDelete := 5*time.Minute - timeSinceActivity
+		var timeUntilDeleteSeconds int64
+		if timeUntilDelete > 0 && connectedPlayers == 0 && spectatorCount == 0 {
+			timeUntilDeleteSeconds = int64(timeUntilDelete.Seconds())
+		}
+
+		// Only show active, non-full, non-game-over sessions
+		if !isGameOver {
+			sessions = append(sessions, map[string]interface{}{
+				"sessionID":        sessionID,
+				"numPlayers":       maxPlayers,
+				"connectedPlayers": connectedPlayers,
+				"spectatorCount":   spectatorCount,
+				"players":          playerNames,
+				"status":           session.GetStatus(),
 				"timeUntilDelete":  timeUntilDeleteSeconds, // Seconds until auto-delete (only if empty)
 			})
 		}
@@ -569,4 +780,8 @@ func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Re
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func isSessionV2(sessionID string) bool {
+	return strings.Contains(sessionID, "v2")
 }
