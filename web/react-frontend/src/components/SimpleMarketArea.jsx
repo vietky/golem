@@ -51,6 +51,16 @@ const SimpleMarketArea = () => {
     setDepositModal({ show: true, card, index });
   };
 
+  // Helper function to calculate final points (point cards + coins + crystals)
+  const calculateFinalPoints = (player) => {
+    if (!player) return 0
+    const pointCardPoints = (player.pointCards || []).reduce((sum, card) => sum + (card.points || 0), 0)
+    const coinPoints = (player.coins || []).reduce((sum, coin) => sum + (coin.points || 0), 0)
+    const resources = player.resources || player.caravan || {}
+    const crystalPoints = (resources.green || 0) + (resources.blue || 0) + (resources.pink || 0)
+    return pointCardPoints + coinPoints + crystalPoints
+  }
+
   const handleClaimPointCard = (index) => {
     if (!isMyTurn) {
       showToast("Not your turn!", 'error')
@@ -58,7 +68,23 @@ const SimpleMarketArea = () => {
     }
     
     const card = pointCards[index]
-    if (!canClaimPointCard(card)) {
+    
+    // Check if player already has 4 golems (about to claim the 5th one)
+    // Only check for the FIRST player to claim 5th golem
+    // Check if ANY player already has 5 golems
+    const hasAnyPlayerWith5Golems = gameState?.players?.some(p => (p.pointCards?.length || 0) >= 5) || false
+    
+    if (gameState?.require60PointsFor5thGolem && 
+        (myPlayer.pointCards?.length || 0) === 4 && 
+        !hasAnyPlayerWith5Golems) {
+      const finalPoints = calculateFinalPoints(myPlayer)
+      if (finalPoints < 60) {
+        showToast(`You need at least 60 final points to claim the 5th golem. You have ${finalPoints} points.`, 'error')
+        return
+      }
+    }
+    
+    if (!canClaimPointCard(card, index)) {
       showToast("Not enough crystals!", 'error')
       return
     }
@@ -74,8 +100,23 @@ const SimpleMarketArea = () => {
     setConfirmGolem({ show: false, golem: null, index: null })
   };
 
-  const canClaimPointCard = (card) => {
+  const canClaimPointCard = (card, index) => {
     if (!card.requirement || !myPlayer?.resources) return false;
+    
+    // Check if player already has 4 golems (about to claim 5th)
+    // Only check for the FIRST player to claim 5th golem
+    // Check if ANY player already has 5 golems
+    const hasAnyPlayerWith5Golems = gameState?.players?.some(p => (p.pointCards?.length || 0) >= 5) || false
+    
+    if (gameState?.require60PointsFor5thGolem && 
+        (myPlayer.pointCards?.length || 0) === 4 && 
+        !hasAnyPlayerWith5Golems) {
+      const finalPoints = calculateFinalPoints(myPlayer)
+      if (finalPoints < 60) {
+        return false
+      }
+    }
+    
     return canAfford(card.requirement);
   };
 
@@ -203,7 +244,7 @@ const SimpleMarketArea = () => {
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 justify-items-center">
             {pointCards.map((cardData, index) => {
-              const canClaim = isMyTurn && canClaimPointCard(cardData);
+              const canClaim = isMyTurn && canClaimPointCard(cardData, index);
               const badge = getCoinBadgeInfo(index);
               const isCopperCoin = index === 0;
               const coinEmoji = isCopperCoin ? '🥉' : '🥈';

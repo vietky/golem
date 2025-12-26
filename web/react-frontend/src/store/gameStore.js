@@ -282,7 +282,11 @@ const useGameStore = create((set, get) => ({
           });
         }
       } else if (message.type === "error") {
-        logger.error("Game error:", message.error);
+        logger.error("Game error:", message.message || message.error);
+        // Show error toast to user
+        import('../utils/toast').then(({ showToast }) => {
+          showToast(message.message || message.error || 'An error occurred', 'error');
+        });
       }
     };
 

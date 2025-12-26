@@ -293,9 +293,48 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 					DepositList: depositList,
 				}
 			case "claimPointCard":
+				cardIndex := int(cardIndex)
+				
+				// Check if player already has 4 golems (about to claim the 5th one)
+				session.mu.RLock()
+				require60Points := session.Require60PointsFor5thGolem
+				currentPlayer := session.GameState.GetCurrentPlayer()
+				numPointCards := len(currentPlayer.PointCards)
+				
+				// Check if ANY player already has 5 golems (someone already claimed 5th golem)
+				hasAnyPlayerWith5Golems := false
+				for _, p := range session.GameState.Players {
+					if len(p.PointCards) >= 5 {
+						hasAnyPlayerWith5Golems = true
+						break
+					}
+				}
+				session.mu.RUnlock()
+				
+				// Only check 60 points for the FIRST player to claim 5th golem
+				// If someone already has 5 golems, skip the check
+				if require60Points && numPointCards == 4 && !hasAnyPlayerWith5Golems {
+					// Player is about to claim their 5th golem, check 60 points requirement
+					session.mu.RLock()
+					finalPoints := currentPlayer.GetFinalPoints()
+					session.mu.RUnlock()
+					
+					if finalPoints < 60 {
+						// Send error message to player
+						errorMsg := map[string]interface{}{
+							"type":    "error",
+							"message": "You need at least 60 final points to claim the 5th golem",
+						}
+						if data, err := json.Marshal(errorMsg); err == nil {
+							conn.WriteMessage(websocket.TextMessage, data)
+						}
+						continue // Skip processing this action
+					}
+				}
+				
 				gameAction = game.Action{
 					Type:      game.ClaimPointCard,
-					CardIndex: int(cardIndex),
+					CardIndex: cardIndex,
 				}
 			case "rest":
 				gameAction = game.Action{
@@ -355,6 +394,7 @@ func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request
 		Seed        int64  `json:"seed"`
 		SessionID   string `json:"sessionID"`   // Optional custom session ID
 		TurnTimeout int    `json:"turnTimeout"` // Optional turn timeout in seconds (default 60)
+		Require60PointsFor5thGolem bool `json:"require60PointsFor5thGolem"` // Require 60 points to claim 5th golem
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -394,6 +434,7 @@ func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request
 	// Set custom turn timeout if specified
 	session.mu.Lock()
 	session.TurnTimeout = time.Duration(req.TurnTimeout) * time.Second
+	session.Require60PointsFor5thGolem = req.Require60PointsFor5thGolem
 	session.mu.Unlock()
 
 	response := map[string]interface{}{
