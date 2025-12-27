@@ -19,10 +19,10 @@ const Toast = () => {
       logger.debug('Received toast:', toast)
       setToasts(prev => [...prev, toast])
       
-      // Auto remove after 5 seconds (longer to give time to read)
+      // Auto remove after 3 seconds (longer to give time to read)
       setTimeout(() => {
         removeToast(toast.id)
-      }, 5000)
+      }, 3000)
     })
 
     return () => {
@@ -30,16 +30,16 @@ const Toast = () => {
     }
   }, [removeToast])
 
-  // Always render portal container
+  // Always render portal container - positioned top right
   return createPortal(
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-2 pointer-events-none">
+    <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none max-w-sm">
       <AnimatePresence>
         {toasts.map(toast => (
           <motion.div
             key={toast.id}
-            initial={{ opacity: 0, y: -20, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            initial={{ opacity: 0, x: 100, scale: 0.9 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 100, scale: 0.9 }}
             className={`
               px-4 py-3 rounded-xl shadow-2xl text-white font-semibold text-sm
               backdrop-blur-md border-2 pointer-events-auto

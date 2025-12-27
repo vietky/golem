@@ -19,12 +19,14 @@ const WebGameLayout = () => {
     myPlayer,
     currentPlayer,
     playerName,
+    sessionId,
     acquireCard,
     claimPointCard,
     playCard,
     playCardWithUpgrade,
     playCardWithTrade,
     rest,
+    startGame,
   } = useGameStore()
 
   const [depositModal, setDepositModal] = useState({ show: false, card: null, index: null })
@@ -58,7 +60,14 @@ const WebGameLayout = () => {
   // Get isSpectator state
   const isSpectator = useGameStore((state) => state.isSpectator)
 
-  if (!gameState?.market) {
+  // Check if game is in waiting status
+  // When waiting: backend doesn't send currentPlayer field, market is empty object {} or missing, and players have id: 0
+  // When playing: backend always sends currentPlayer (number) and market has actionCards/pointCards
+  const hasEmptyMarket = !gameState.market || Object.keys(gameState.market).length === 0
+  const isWaiting = gameState.status === 'waiting' || hasEmptyMarket
+
+  // Only require market if not in waiting mode (v2 sessions don't send market in waiting mode)
+  if (!isWaiting && !gameState?.market) {
     return (
       <div className="h-full w-full flex items-center justify-center">
         <div className="text-white">Loading game...</div>
@@ -66,8 +75,8 @@ const WebGameLayout = () => {
     )
   }
 
-  // For spectators, myPlayer will be null - handle this case
-  if (!isSpectator && !myPlayer) {
+  // For spectators, myPlayer will be null - handle this case (but not in waiting mode)
+  if (!isSpectator && !myPlayer && !isWaiting) {
     return (
       <div className="h-full w-full flex items-center justify-center">
         <div className="text-white">Loading game...</div>
@@ -79,12 +88,21 @@ const WebGameLayout = () => {
   // For spectators, show all players. For players, show all players including yourself
   const otherPlayers = gameState.players || []
 
-  // Get cards directly from current state
-  const actionCards = gameState.market.actionCards || []
-  const pointCards = gameState.market.pointCards || []
-  const coins = gameState.market.coins || []
+  // Get cards directly from current state (empty arrays in waiting mode)
+  const actionCards = gameState.market?.actionCards || []
+  const pointCards = gameState.market?.pointCards || []
+  const coins = gameState.market?.coins || []
 
-  const isMyTurn = !isSpectator && currentPlayer?.id === myPlayer?.id
+  // In waiting mode, currentPlayer is 0/null, so isMyTurn should be false
+  const isMyTurn = !isSpectator && !isWaiting && currentPlayer?.id === myPlayer?.id
+
+  // Handle start game button click
+  const handleStartGame = async () => {
+    const result = await startGame()
+    if (!result.success) {
+      showToast(result.error || 'Failed to start game', 'error')
+    }
+  }
   const hand = myPlayer?.hand || []
   const playedCards = myPlayer?.playedCards || []
   const canRest = isMyTurn && playedCards.length > 0
@@ -222,9 +240,9 @@ const WebGameLayout = () => {
   return (
     <div className="relative h-full w-full">
       {/* Collapsible Info with Activity Feed */}
-      <CollapsibleInfo sessionId={gameState?.sessionID || 'unknown'} />
+      <CollapsibleInfo sessionId={gameState?.sessionID || sessionId || 'unknown'} />
       
-      <div className="h-full w-full grid p-4 gap-2" style={{ gridTemplateRows: 'auto 1fr 1fr 1fr' }}>
+      <div className="h-full w-full grid p-2 sm:p-4 gap-2 overflow-auto" style={{ gridTemplateRows: 'auto minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)', minHeight: 0 }}>
         {/* Spectator Badge */}
         {isSpectator && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
@@ -236,15 +254,42 @@ const WebGameLayout = () => {
         )}
 
         {/* Row 1 - ALL Players in one row (auto height) */}
-        <div className="flex gap-3 justify-center items-center flex-wrap">
+        <div className="flex gap-2 sm:gap-3 justify-center items-center flex-wrap overflow-x-auto">
           {otherPlayers.map((player) => (
-            <div key={player.id} className="w-64">
-              <PlayerCard player={player} isCurrentPlayer={currentPlayer?.id === player.id} />
+            <div key={player.id || player.name} className="w-48 sm:w-64 flex-shrink-0">
+              {/* In waiting mode, don't highlight current player (currentPlayer is 0/null) */}
+              <PlayerCard player={player} isCurrentPlayer={!isWaiting && currentPlayer?.id === player.id} />
             </div>
           ))}
         </div>
 
-        {/* Row 2 - Market (Action Cards) */}
+        {/* Waiting Mode UI - spans rows 2-4 */}
+        {isWaiting && (
+          <div className="row-span-3 flex flex-col items-center justify-center gap-2 sm:gap-4 bg-black/30 backdrop-blur-md rounded-xl border border-white/20 p-2 sm:p-4 overflow-visible min-h-[300px] sm:min-h-0 relative">
+            <div className="text-white text-xs sm:text-xl font-semibold text-center px-2 flex-shrink-0 mb-2 sm:mb-0">Waiting for other players to join</div>
+            {!isSpectator && (
+              <>
+                {/* Regular button for larger screens */}
+                <button
+                  onClick={handleStartGame}
+                  className="hidden sm:flex px-6 py-3 bg-green-600 hover:bg-green-500 active:bg-green-700 text-white font-bold rounded-lg border border-green-400 transition-all shadow-lg text-base whitespace-nowrap min-w-[160px] flex-shrink-0 z-10 items-center justify-center"
+                >
+                  Start Game
+                </button>
+                {/* Fixed button for small screens - always visible at bottom */}
+                <button
+                  onClick={handleStartGame}
+                  className="sm:hidden fixed bottom-6 left-1/2 -translate-x-1/2 px-8 py-3 bg-green-600 hover:bg-green-500 active:bg-green-700 text-white font-bold rounded-lg border-2 border-green-400 transition-all shadow-2xl text-base whitespace-nowrap z-[100]"
+                >
+                  Start Game
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Row 2 - Market (Action Cards) - Hidden in waiting mode */}
+        {!isWaiting && (
         <div className="bg-black/30 backdrop-blur-md rounded-xl border border-white/20 p-2 flex flex-col min-h-0 overflow-hidden">
           <div className="text-white/70 text-xs font-semibold mb-1">Market</div>
           <div className="flex-1 grid grid-cols-6 gap-1 place-items-center min-h-0">
@@ -301,8 +346,10 @@ const WebGameLayout = () => {
             })}
           </div>
         </div>
+        )}
 
-        {/* Row 3 - Golems (Point Cards) */}
+        {/* Row 3 - Golems (Point Cards) - Hidden in waiting mode */}
+        {!isWaiting && (
         <div className="bg-black/30 backdrop-blur-md rounded-xl border border-white/20 p-2 flex flex-col min-h-0 overflow-hidden">
           <div className="flex items-center justify-between mb-1">
             <div className="text-white/70 text-xs font-semibold">Golems</div>
@@ -382,8 +429,10 @@ const WebGameLayout = () => {
             })}
           </div>
         </div>
+        )}
 
-        {/* Row 4 - Bottom Row: History | Graveyard | My Hand + Crystals + Timer | My Golems */}
+        {/* Row 4 - Bottom Row: History | Graveyard | My Hand + Crystals + Timer | My Golems - Hidden in waiting mode */}
+        {!isWaiting && (
         <div className="flex gap-3 min-h-0 overflow-hidden">
           {/* History */}
           <div className="w-44 flex-shrink-0 bg-black/30 backdrop-blur-md rounded-xl border border-white/20 flex flex-col min-h-0 overflow-hidden">
@@ -537,6 +586,7 @@ const WebGameLayout = () => {
             </div>
           )}
         </div>
+        )}
 
         {/* Modals */}
         {depositModal.show && (

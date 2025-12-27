@@ -1,0 +1,26 @@
+### list sessions
+curl -XGET 'http://localhost:8080/api/list'
+
+
+### get session state
+curl -XGET 'http://localhost:8080/api/sessions/state?sessionId=abc'
+
+
+### create session
+curl -XPOST 'http://localhost:8080/api/create' \
+--header 'Content-Type: application/json' \
+--data '{
+  "sessionID": "v2_session_1",
+  "maxPlayers": 4,
+  "numPlayers": 4,
+  "seed": 12345,
+  "turnTimeout": 60
+}'
+
+
+### start the game
+curl -XPOST 'http://localhost:8080/api/start' \
+--header 'Content-Type: application/json' \
+--data '{
+  "sessionID": "test v2 session"
+}'

@@ -117,3 +117,27 @@ func (gs *GameServer) HandleListGames(w http.ResponseWriter, r *http.Request) {
 		"count": len(gameIDs),
 	})
 }
+
+// HandleGetGameState handles GET /api/sessions/state?sessionId=xxx
+// Returns the current game state of a session
+func (gs *GameServer) HandleGetSessionState(w http.ResponseWriter, r *http.Request) {
+	sessionID := r.URL.Query().Get("sessionId")
+	if sessionID == "" {
+		sendJSONError(w, http.StatusBadRequest, "Missing sessionId parameter")
+		return
+	}
+
+	gs.mu.RLock()
+	defer gs.mu.RUnlock()
+
+	session, ok := gs.SessionsV2[sessionID]
+	if !ok {
+		sendJSONError(w, http.StatusNotFound, "Session not found")
+		return
+	}
+
+	state := session.GetSerializedState()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(state)
+}

@@ -11,6 +11,7 @@ import (
 	"golem_century/internal/eventstore"
 	"golem_century/internal/game"
 	"golem_century/internal/logger"
+	"golem_century/internal/session"
 
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
@@ -41,7 +42,7 @@ type GameSession struct {
 	ActionChan     chan PlayerAction
 	BroadcastChan  chan []byte
 	logger         *logger.Logger
-	maxChatMsgs   int // Max chat messages from config
+	maxChatMsgs    int // Max chat messages from config
 }
 
 // PlayerAction represents an action from a player
@@ -79,7 +80,7 @@ func NewGameSession(sessionID string, numPlayers int, seed int64, turnTimeoutInS
 		ActionChan:     make(chan PlayerAction, 10),
 		BroadcastChan:  make(chan []byte, 100),
 		logger:         logger,
-		maxChatMsgs:   10, // Default, will be set from config
+		maxChatMsgs:    10, // Default, will be set from config
 	}
 }
 
@@ -190,6 +191,7 @@ func (gs *GameSession) SendToPlayer(playerID int, message []byte) error {
 // GameServer manages multiple game sessions
 type GameServer struct {
 	Sessions   map[string]*GameSession
+	SessionsV2 map[string]*session.GameSession
 	EventStore eventstore.EventStore
 	Logger     *logger.Logger
 	mu         sync.RWMutex
@@ -215,6 +217,7 @@ func NewGameServer(req NewGameServerRequest) *GameServer {
 	}
 	return &GameServer{
 		Sessions:   make(map[string]*GameSession),
+		SessionsV2: make(map[string]*session.GameSession),
 		EventStore: req.EventStore,
 		Logger:     log,
 		config:     req.Config,
@@ -249,6 +252,25 @@ func (gs *GameServer) CreateSession(sessionID string, numPlayers int, seed int64
 
 	// Start cleanup timer for empty rooms
 	go gs.startCleanupTimer(sessionID)
+
+	return session
+}
+
+func (gs *GameServer) CreateSessionV2(sessionID string, maxPlayers int, aiPlayer game.AIStrategy, turnTimeoutInSeconds int) *session.GameSession {
+	gs.mu.Lock()
+	defer gs.mu.Unlock()
+
+	session := session.NewGameSession(sessionID, maxPlayers, turnTimeoutInSeconds, aiPlayer, gs.EventStore, gs.Logger)
+	gs.SessionsV2[sessionID] = session
+
+	gs.Logger.Info("Session V2 created",
+		zap.String("sessionID", sessionID),
+		zap.Int("maxPlayers", maxPlayers),
+		zap.Int("turnTimeoutInSeconds", turnTimeoutInSeconds),
+	)
+
+	// Start cleanup timer for empty rooms
+	go gs.startCleanupTimerV2(sessionID)
 
 	return session
 }
@@ -289,12 +311,51 @@ func (gs *GameServer) startCleanupTimer(sessionID string) {
 	}
 }
 
+// startCleanupTimer starts a timer to clean up empty rooms after 5 minutes
+func (gs *GameServer) startCleanupTimerV2(sessionID string) {
+	ticker := time.NewTicker(30 * time.Second) // Check every 30 seconds
+	defer ticker.Stop()
+
+	for range ticker.C {
+		session, exists := gs.GetSessionV2(sessionID)
+		if !exists {
+			return // Session already deleted
+		}
+
+		if session.CanBeDeleted() {
+			gs.mu.Lock()
+			delete(gs.SessionsV2, sessionID)
+			gs.mu.Unlock()
+			return
+		}
+	}
+}
+
 // GetSession retrieves a game session
 func (gs *GameServer) GetSession(sessionID string) (*GameSession, bool) {
 	gs.mu.RLock()
 	defer gs.mu.RUnlock()
 	session, ok := gs.Sessions[sessionID]
 	return session, ok
+}
+
+func (gs *GameServer) GetSessionV2(sessionID string) (*session.GameSession, bool) {
+	gs.mu.RLock()
+	defer gs.mu.RUnlock()
+	session, ok := gs.SessionsV2[sessionID]
+	return session, ok
+}
+
+func (gs *GameServer) checkSessionExists(sessionID string) bool {
+	gs.mu.RLock()
+	defer gs.mu.RUnlock()
+	if _, ok := gs.Sessions[sessionID]; ok {
+		return true
+	}
+	if _, ok := gs.SessionsV2[sessionID]; ok {
+		return true
+	}
+	return false
 }
 
 // handleAIDiscard handles the discard action when AI has pending discards
@@ -541,6 +602,7 @@ func (gs *GameSession) SerializeState() map[string]interface{} {
 			"pointDeck":   len(gs.GameState.Market.PointDeck),
 			"coins":       marketCoins,
 		},
+		"status": "playing",
 	}
 }
 
