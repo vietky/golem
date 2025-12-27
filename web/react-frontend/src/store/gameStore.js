@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { createLogger } from '../utils/logger';
+import { getClientIDFromCookie, apiFetch } from '../utils/api';
+import { showToast } from '../utils/toast';
 
 const logger = createLogger('GameStore');
 
@@ -48,7 +50,10 @@ const useGameStore = create((set, get) => ({
     const hostForWs = configuredHost.replace(/\/$/, '')
     const wsBase = toWs(hostForWs)
     const spectateParam = asSpectator ? '&spectate=true' : ''
-    const wsUrl = `${wsBase}/ws?session=${sessionId}&name=${encodeURIComponent(playerName)}&avatar=${playerAvatar}${spectateParam}`
+    // Get client ID from cookie and add it as query parameter
+    const clientID = getClientIDFromCookie()
+    const clientIDParam = clientID ? `&clientID=${encodeURIComponent(clientID)}` : ''
+    const wsUrl = `${wsBase}/ws?session=${sessionId}&name=${encodeURIComponent(playerName)}&avatar=${playerAvatar}${spectateParam}${clientIDParam}`
 
     const ws = new WebSocket(wsUrl)
 
@@ -64,6 +69,15 @@ const useGameStore = create((set, get) => ({
         set({ playerId: message.playerID });
       } else if (message.type === "spectatorAssigned") {
         set({ spectatorId: message.spectatorID, isSpectator: true });
+      } else if (message.type === "memberStatusChanged") {
+        // Handle both join and leave events for players and spectators
+        const action = message.online ? "joined" : "left";
+        const statusMessage = message.isSpectator
+          ? `${message.playerName} ${action === "joined" ? "is now spectating" : "stopped spectating"}`
+          : `${message.playerName} ${action} the game`;
+        logger.info(statusMessage);
+        // Show toast notification in top right corner
+        showToast(statusMessage, 'info');
       } else if (message.type === "playerJoined") {
         // Show notification when a player joins
         const joinMessage = message.isSpectator 
@@ -573,6 +587,37 @@ const useGameStore = create((set, get) => ({
     };
 
     ws.send(JSON.stringify(chatMsg));
+  },
+
+  startGame: async () => {
+    const { sessionId } = get();
+    if (!sessionId) {
+      logger.error("No session ID available");
+      return { success: false, error: "No session ID available" };
+    }
+
+    try {
+      const response = await apiFetch('/api/sessions/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sessionID: sessionId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to start game' }));
+        logger.error("Failed to start game:", errorData);
+        return { success: false, error: errorData.error || 'Failed to start game' };
+      }
+
+      const data = await response.json();
+      logger.info("Game started successfully:", data);
+      return { success: true, data };
+    } catch (error) {
+      logger.error("Error starting game:", error);
+      return { success: false, error: error.message || 'Failed to start game' };
+    }
   },
 }));
 

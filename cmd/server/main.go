@@ -66,11 +66,13 @@ func main() {
 	mux.HandleFunc("/api/single", gameServer.HandleCreateSinglePlayer)
 	mux.HandleFunc("/api/join", gameServer.HandleJoinSession)
 	mux.HandleFunc("/api/list", gameServer.HandleListSessions)
+	mux.HandleFunc("/api/sessions/start", gameServer.HandleStartGame)
 
 	// Admin API endpoints for event store
 	mux.HandleFunc("/api/events", gameServer.HandleGetEvents)
 	mux.HandleFunc("/api/snapshot", gameServer.HandleGetSnapshot)
 	mux.HandleFunc("/api/games", gameServer.HandleListGames)
+	mux.HandleFunc("/admin/sessions/state", gameServer.HandleGetSessionState)
 
 	// Always serve images from static directory (both React and vanilla JS need this)
 	staticDir := filepath.Join(".", "web", "static")

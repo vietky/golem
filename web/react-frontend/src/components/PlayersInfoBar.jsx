@@ -55,16 +55,30 @@ const PlayersInfoBar = () => {
                 <div className={`
                   relative w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold
                   ${isCurrentTurn ? 'bg-yellow-500 text-black' : 'bg-purple-600 text-white'}
+                  ${player.online === false ? 'opacity-50' : ''}
                 `}>
                   {player.isAI ? '🤖' : player.name?.charAt(0)?.toUpperCase() || '?'}
                 </div>
+                {/* Online/Offline status indicator */}
+                {player.online !== undefined && (
+                  <div 
+                    className={`
+                      absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white shadow
+                      ${player.online ? 'bg-green-500' : 'bg-gray-500'}
+                    `}
+                    title={player.online ? 'Online' : 'Offline'}
+                  />
+                )}
               </div>
 
               {/* Info */}
               <div className="flex flex-col text-[10px]">
                 {/* Row 1: Name + Points */}
                 <div className="flex items-center gap-1">
-                  <span className="text-white font-medium">{player.name}</span>
+                  <span className={`text-white font-medium ${player.online === false ? 'opacity-60' : ''}`}>
+                    {player.name}
+                    {player.online === false && <span className="text-gray-400 ml-1">(offline)</span>}
+                  </span>
                   <span className="text-yellow-400 font-bold">★{player.points || 0}</span>
                 </div>
                 

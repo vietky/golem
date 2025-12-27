@@ -4,6 +4,7 @@ import Lobby from './components/Lobby'
 import ThemeToggleButton from './components/ThemeToggleButton'
 import FantasyGameLayout from './components/FantasyGameLayout'
 import WebGameLayout from './components/WebGameLayout'
+import Toast from './components/Toast'
 import useGameStore from './store/gameStore'
 import { MobileLayoutProvider } from './contexts/MobileLayoutContext'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
@@ -86,6 +87,7 @@ function App() {
     <ThemeProvider>
       <MobileLayoutProvider>
         <GameContent setInGame={setInGame} />
+        <Toast />
       </MobileLayoutProvider>
     </ThemeProvider>
   )
