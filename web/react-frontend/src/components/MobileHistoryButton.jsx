@@ -1,12 +1,24 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import useGameStore from '../store/gameStore'
 import { getCardSpriteStyle, getCardImagePath } from '../utils/cardNames'
 
 const MobileHistoryButton = () => {
-  const { actionHistory } = useGameStore()
+  const { actionHistory, roundNumber, setChatMessageCallback } = useGameStore()
   const [showModal, setShowModal] = useState(false)
+  const [chatMessages, setChatMessages] = useState([])
+
+  // Set up chat message listener
+  useEffect(() => {
+    if (setChatMessageCallback) {
+      const callback = (newMessage) => {
+        setChatMessages((prev) => [...prev, newMessage])
+      }
+      setChatMessageCallback(callback)
+      return () => setChatMessageCallback(null)
+    }
+  }, [setChatMessageCallback])
 
   const getActionLabel = (type) => {
     switch (type) {
@@ -32,6 +44,8 @@ const MobileHistoryButton = () => {
         return 'bg-yellow-500/20 border-yellow-500/30'
       case 'rest':
         return 'bg-purple-500/20 border-purple-500/30'
+      case 'chat':
+        return 'bg-emerald-500/20 border-emerald-500/30'
       default:
         return 'bg-gray-500/20 border-gray-500/30'
     }
@@ -81,7 +95,7 @@ const MobileHistoryButton = () => {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-white font-bold text-base flex items-center gap-2">
                   <span>📜</span>
-                  History ({actionHistory.length})
+                  {roundNumber > 0 ? `Round ${roundNumber} • ` : ''}History ({actionHistory.length + (chatMessages?.length || 0)})
                 </h3>
                 <button
                   onClick={() => setShowModal(false)}
@@ -93,68 +107,126 @@ const MobileHistoryButton = () => {
               
               {/* Content */}
               <div className="flex-1 overflow-y-auto space-y-2">
-                {actionHistory.length === 0 ? (
-                  <div className="text-center py-8 text-white/40 text-sm">
-                    No actions yet.<br/>Play a card to start!
-                  </div>
-                ) : actionHistory.map((action, index) => (
-                  <motion.div 
-                    key={action.timestamp}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.03 }}
-                    className={`${getActionColor(action.type)} rounded-lg p-2.5 border flex items-center gap-2.5`}
-                  >
-                    {/* Card Thumbnail */}
-                    {action.card ? (
-                      (() => {
-                        const spriteStyle = getCardSpriteStyle(action.card.name)
-                        if (spriteStyle) {
-                          return (
-                            <div
-                              className="w-10 aspect-[2/3] rounded border border-white/30 flex-shrink-0"
-                              style={spriteStyle}
-                            />
-                          )
-                        }
-                        return (
-                          <img
-                            src={getCardImagePath(action.card.name)}
-                            alt=""
-                            className="w-10 rounded border border-white/30 flex-shrink-0"
-                            onError={(e) => { e.target.style.display = 'none' }}
-                          />
-                        )
-                      })()
-                    ) : (
-                      <div className="w-10 aspect-[2/3] rounded bg-white/10 flex items-center justify-center flex-shrink-0">
-                        <span className="text-base">💤</span>
+                {(() => {
+                  // Combine chat and actions
+                  const combined = []
+                  
+                  // Add chat messages
+                  if (chatMessages && Array.isArray(chatMessages)) {
+                    chatMessages.forEach(msg => {
+                      combined.push({
+                        id: `chat-${msg.id || msg.timestamp}`,
+                        type: 'chat',
+                        playerName: msg.player,
+                        message: msg.message,
+                        timestamp: msg.timestamp,
+                      })
+                    })
+                  }
+                  
+                  // Add action history
+                  if (actionHistory && Array.isArray(actionHistory)) {
+                    actionHistory.forEach(action => {
+                      combined.push({
+                        ...action,
+                        id: `action-${action.timestamp}`,
+                      })
+                    })
+                  }
+                  
+                  // Sort by timestamp
+                  combined.sort((a, b) => a.timestamp - b.timestamp)
+                  
+                  if (combined.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-white/40 text-sm">
+                        No activity yet.<br/>Play a card or chat!
                       </div>
-                    )}
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-white font-medium text-sm truncate">
-                          {action.playerName}
-                        </span>
-                        {action.isOpponent && (
-                          <span className="text-[9px] text-orange-300 bg-orange-500/20 px-1 py-0.5 rounded">
-                            opp
+                    )
+                  }
+                  
+                  return combined.map((item, index) => (
+                    <motion.div 
+                      key={item.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                      className={`${getActionColor(item.type)} rounded-lg p-2.5 border flex items-center gap-2.5`}
+                    >
+                      {item.type === 'chat' ? (
+                        /* Chat Message */
+                        <>
+                          <div className="w-10 aspect-[2/3] rounded bg-emerald-500/30 flex items-center justify-center flex-shrink-0">
+                            <span className="text-base">💬</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-white font-medium text-sm block truncate">
+                              {item.playerName}
+                            </span>
+                            <span className="text-white/80 text-xs block break-words">
+                              {item.message}
+                            </span>
+                          </div>
+                          <span className="text-white/40 text-xs flex-shrink-0">
+                            {formatTime(item.timestamp)}
                           </span>
-                        )}
-                      </div>
-                      <span className="text-white/60 text-xs">
-                        {getActionLabel(action.type)}
-                      </span>
-                    </div>
+                        </>
+                      ) : (
+                        /* Action Item */
+                        <>
+                          {/* Card Thumbnail */}
+                          {item.card ? (
+                            (() => {
+                              const spriteStyle = getCardSpriteStyle(item.card.name)
+                              if (spriteStyle) {
+                                return (
+                                  <div
+                                    className="w-10 aspect-[2/3] rounded border border-white/30 flex-shrink-0"
+                                    style={spriteStyle}
+                                  />
+                                )
+                              }
+                              return (
+                                <img
+                                  src={getCardImagePath(item.card.name)}
+                                  alt=""
+                                  className="w-10 rounded border border-white/30 flex-shrink-0"
+                                  onError={(e) => { e.target.style.display = 'none' }}
+                                />
+                              )
+                            })()
+                          ) : (
+                            <div className="w-10 aspect-[2/3] rounded bg-white/10 flex items-center justify-center flex-shrink-0">
+                              <span className="text-base">💤</span>
+                            </div>
+                          )}
 
-                    {/* Time */}
-                    <span className="text-white/40 text-xs flex-shrink-0">
-                      {formatTime(action.timestamp)}
-                    </span>
-                  </motion.div>
-                ))}
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-white font-medium text-sm truncate">
+                                {item.playerName}
+                              </span>
+                              {item.isOpponent && (
+                                <span className="text-[9px] text-orange-300 bg-orange-500/20 px-1 py-0.5 rounded">
+                                  opp
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-white/60 text-xs">
+                              {getActionLabel(item.type)}
+                            </span>
+                          </div>
+
+                          {/* Time */}
+                          <span className="text-white/40 text-xs flex-shrink-0">
+                            {formatTime(item.timestamp)}
+                          </span>
+                        </>
+                      )}
+                    </motion.div>
+                  ))
+                })()}
               </div>
             </motion.div>
           </motion.div>

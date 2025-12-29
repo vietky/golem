@@ -39,7 +39,7 @@ const CollapsibleInfo = ({ sessionId }) => {
   const previousMessageCountRef = useRef(0)
   
   // Get action history and stores
-  const { actionHistory, actionLog, sendChatMessage, setChatMessageCallback } = useGameStore()
+  const { actionHistory, actionLog, sendChatMessage, setChatMessageCallback, roundNumber } = useGameStore()
 
   // Set up chat message listener
   useEffect(() => {
@@ -140,10 +140,7 @@ const CollapsibleInfo = ({ sessionId }) => {
     }
   }
 
-  // Hide completely on mobile portrait
-  if (isMobile && isPortrait) {
-    return null
-  }
+  // Keep visible on all devices now
 
   // Format timestamp (relative time similar to HistorySection)
   const formatTime = (timestamp) => {
@@ -206,6 +203,7 @@ const CollapsibleInfo = ({ sessionId }) => {
             onClick={() => {
               setIsExpanded(true)
               setHasUnreadMessages(false)
+              previousMessageCountRef.current = chatMessages.length
             }}
             className={`
               bg-purple-600 hover:bg-purple-700 text-white rounded-full 
@@ -228,9 +226,13 @@ const CollapsibleInfo = ({ sessionId }) => {
                 d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" 
               />
             </svg>
-            {/* Unread Message Indicator */}
-            {hasUnreadMessages && (
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-purple-600 animate-pulse"></span>
+            {/* Unread Message Count Badge */}
+            {hasUnreadMessages && chatMessages.length - previousMessageCountRef.current > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-emerald-500 rounded-full border-2 border-purple-600 animate-bounce flex items-center justify-center px-1">
+                <span className="text-white text-xs font-bold">
+                  {chatMessages.length - previousMessageCountRef.current}
+                </span>
+              </span>
             )}
           </button>
         )}
@@ -250,7 +252,7 @@ const CollapsibleInfo = ({ sessionId }) => {
               ${isMobile ? 'px-3 py-1.5' : 'px-4 py-2'}
             `}>
               <h3 className={`text-white font-bold ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                Activity Feed
+                {roundNumber > 0 ? `🎯 Round ${roundNumber} • ` : ''}📊 Activity
               </h3>
               <div className="flex items-center gap-2">
                 {activityFeed.length > 0 && (

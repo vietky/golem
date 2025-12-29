@@ -20,6 +20,7 @@ const WebGameLayout = () => {
     currentPlayer,
     playerName,
     sessionId,
+    roundNumber,
     acquireCard,
     claimPointCard,
     playCard,
@@ -243,6 +244,16 @@ const WebGameLayout = () => {
       <CollapsibleInfo sessionId={gameState?.sessionID || sessionId || 'unknown'} />
       
       <div className="h-full w-full grid p-2 sm:p-4 gap-2 overflow-auto" style={{ gridTemplateRows: 'auto minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)', minHeight: 0 }}>
+        {/* Round Number Display */}
+        {!isWaiting && roundNumber > 0 && (
+          <div className="absolute top-4 left-4 z-40">
+            <div className="bg-blue-600/90 backdrop-blur-md text-white px-3 py-1.5 rounded-lg shadow-lg border border-blue-300/30 flex items-center gap-2">
+              <span className="text-sm">🎯</span>
+              <span className="font-bold text-sm">Round {roundNumber}</span>
+            </div>
+          </div>
+        )}
+        
         {/* Spectator Badge */}
         {isSpectator && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">

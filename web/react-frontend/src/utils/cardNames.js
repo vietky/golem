@@ -104,9 +104,10 @@ export const getCardImagePath = (cardName) => {
 // ============================================
 
 // Configuration for choosing between sprite and individual images
+// Can be configured via environment variable VITE_USE_SPRITE_IMAGES
 // Default: true (use sprites for better performance)
 // Set to false to use individual image files
-const USE_SPRITE_IMAGES = false
+const USE_SPRITE_IMAGES = import.meta.env.VITE_USE_SPRITE_IMAGES !== 'false'
 
 // Sprite configuration
 const SPRITE_CONFIG = {

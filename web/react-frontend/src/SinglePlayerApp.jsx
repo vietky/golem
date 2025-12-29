@@ -7,7 +7,6 @@ import CompactPlayerHand from './components/CompactPlayerHand'
 import CollapsibleInfo from './components/CollapsibleInfo'
 import DiscardModal from './components/DiscardModal'
 import AcquiredCardOverlay from './components/AcquiredCardOverlay'
-import MobileHistoryButton from './components/MobileHistoryButton'
 import GameOverModal from './components/GameOverModal'
 import Toast from './components/Toast'
 import WebGameLayout from './components/WebGameLayout'
@@ -69,9 +68,7 @@ function GameContentWithTheme({ useWebLayout, isMobile, isPortrait, sessionId, s
         /* Desktop/Tablet - New WebGameLayout */
         <div className="h-screen h-[100dvh] relative z-10">
           <WebGameLayout />
-          
-          {/* Collapsible Info (Room ID + Action Log) - Bottom Right */}
-          <CollapsibleInfo sessionId={sessionId} />
+
 
           {/* Discard Modal (when crystals exceed max) */}
           <DiscardModal />
@@ -117,8 +114,8 @@ function GameContentWithTheme({ useWebLayout, isMobile, isPortrait, sessionId, s
           {/* Overlay when other players acquire or play cards */}
           <AcquiredCardOverlay />
 
-          {/* Mobile History Button */}
-          <MobileHistoryButton />
+          {/* Activity Feed (Chat & History) - Works on all screen sizes */}
+          <CollapsibleInfo sessionId={sessionId} />
         </div>
       )}
 

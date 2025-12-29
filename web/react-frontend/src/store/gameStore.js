@@ -22,6 +22,7 @@ const useGameStore = create((set, get) => ({
   currentPlayer: null,
   myPlayer: null,
   opponents: [],
+  roundNumber: 0, // Track number of times players have played in current game
 
   // UI state
   selectedCard: null,
@@ -239,6 +240,8 @@ const useGameStore = create((set, get) => ({
                 const playedCard = currentOpponent.playedCards[currentPlayedCount - 1]
                 if (playedCard) {
                   get().showAcquiredCard(playedCard, 'played', currentOpponent.name)
+                  // Increment round number
+                  set((state) => ({ roundNumber: state.roundNumber + 1 }))
                   // Add to action history
                   get().addActionToHistory({
                     type: 'play',
@@ -576,9 +579,9 @@ const useGameStore = create((set, get) => ({
   onChatMessage: null,
   setChatMessageCallback: (callback) => set({ onChatMessage: callback }),
 
-  // Send chat message via WebSocket
+  // Send chat message via WebSocket (both players and spectators can chat)
   sendChatMessage: (message) => {
-    const { ws } = get();
+    const { ws, isSpectator } = get();
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
     const chatMsg = {
@@ -587,6 +590,7 @@ const useGameStore = create((set, get) => ({
     };
 
     ws.send(JSON.stringify(chatMsg));
+    logger.info(`${isSpectator ? 'Spectator' : 'Player'} sent chat message:`, message);
   },
 
   startGame: async () => {
