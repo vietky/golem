@@ -103,6 +103,11 @@ export const getCardImagePath = (cardName) => {
 // CSS SPRITE SYSTEM
 // ============================================
 
+// Configuration for choosing between sprite and individual images
+// Default: true (use sprites for better performance)
+// Set to false to use individual image files
+const USE_SPRITE_IMAGES = false
+
 // Sprite configuration
 const SPRITE_CONFIG = {
   merchant: {
@@ -230,10 +235,16 @@ const GOLEM_SPRITE_MAP = {
 /**
  * Get CSS sprite style for a card
  * @param {string} cardName - Card name (e.g., 'golem_0022', 'mint_0003')
+ * @param {object} options - Options for rendering
+ * @param {boolean} options.useSprite - Force use sprite (default: USE_SPRITE_IMAGES constant)
  * @returns {object|null} - CSS style object or null if not in sprite
  */
-export const getCardSpriteStyle = (cardName) => {
+export const getCardSpriteStyle = (cardName, options = {}) => {
   if (!cardName) return null
+  
+  // Check if sprite mode is enabled (from options or global config)
+  const useSprite = options.useSprite !== undefined ? options.useSprite : USE_SPRITE_IMAGES
+  if (!useSprite) return null
   
   let mapping = null
   let config = null
@@ -283,10 +294,16 @@ export const hasSprite = (cardName) => {
 /**
  * Get CSS sprite style for a token (stone, coin, arrow, etc.)
  * @param {string} tokenName - Token name (e.g., 'yellow_stone', 'gold_coin')
+ * @param {object} options - Options for rendering
+ * @param {boolean} options.useSprite - Force use sprite (default: USE_SPRITE_IMAGES constant)
  * @returns {object|null} - CSS style object or null if not in sprite
  */
-export const getTokenSpriteStyle = (tokenName) => {
+export const getTokenSpriteStyle = (tokenName, options = {}) => {
   if (!tokenName || !TOKEN_SPRITE_MAP[tokenName]) return null
+  
+  // Check if sprite mode is enabled (from options or global config)
+  const useSprite = options.useSprite !== undefined ? options.useSprite : USE_SPRITE_IMAGES
+  if (!useSprite) return null
   
   const mapping = TOKEN_SPRITE_MAP[tokenName]
   const config = SPRITE_CONFIG.token
@@ -308,6 +325,83 @@ export const getTokenSpriteStyle = (tokenName) => {
     backgroundSize: `${bgSizeX}% ${bgSizeY}%`,
     backgroundPosition: `${posX}% ${posY}%`,
     backgroundRepeat: 'no-repeat',
+  }
+}
+
+/**
+ * Get card rendering configuration (sprite or individual image)
+ * This is a unified function that returns all necessary information for rendering a card
+ * @param {string} cardName - Card name (e.g., 'golem_0022', 'mint_0003')
+ * @param {object} options - Options for rendering
+ * @param {boolean} options.useSprite - Force use sprite (default: USE_SPRITE_IMAGES constant)
+ * @returns {object} - { mode: 'sprite'|'image', style: object, imagePath: string }
+ */
+export const getCardRenderConfig = (cardName, options = {}) => {
+  if (!cardName) {
+    return {
+      mode: 'image',
+      style: null,
+      imagePath: '/images/golem_bg.JPG'
+    }
+  }
+  
+  const spriteStyle = getCardSpriteStyle(cardName, options)
+  
+  if (spriteStyle) {
+    return {
+      mode: 'sprite',
+      style: spriteStyle,
+      imagePath: null
+    }
+  }
+  
+  return {
+    mode: 'image',
+    style: null,
+    imagePath: getCardImagePath(cardName)
+  }
+}
+
+/**
+ * Get token rendering configuration (sprite or individual image)
+ * @param {string} tokenName - Token name (e.g., 'yellow_stone', 'gold_coin')
+ * @param {object} options - Options for rendering
+ * @param {boolean} options.useSprite - Force use sprite (default: USE_SPRITE_IMAGES constant)
+ * @returns {object} - { mode: 'sprite'|'image', style: object, imagePath: string }
+ */
+export const getTokenRenderConfig = (tokenName, options = {}) => {
+  if (!tokenName) {
+    return {
+      mode: 'image',
+      style: null,
+      imagePath: '/images/golem_bg.JPG'
+    }
+  }
+  
+  const spriteStyle = getTokenSpriteStyle(tokenName, options)
+  
+  if (spriteStyle) {
+    return {
+      mode: 'sprite',
+      style: spriteStyle,
+      imagePath: null
+    }
+  }
+  
+  // Fallback to individual image for tokens
+  const tokenImageMap = {
+    'yellow_stone': '/images/stone_yellow.JPG',
+    'pink_stone': '/images/stone_pink.JPG',
+    'blue_stone': '/images/stone_blue.JPG',
+    'green_stone': '/images/stone_green.JPG',
+    'gold_coin': '/images/coin_3.JPG',
+    'silver_coin': '/images/coin_1.JPG',
+  }
+  
+  return {
+    mode: 'image',
+    style: null,
+    imagePath: tokenImageMap[tokenName] || '/images/golem_bg.JPG'
   }
 }
 
