@@ -186,32 +186,16 @@ func (gs *GameSession) StartGame() error {
 	// Update number of players in the game equals to the number of connected players
 	gs.maxPlayers = len(gs.connectedPlayers)
 
-	// Assign player IDs to players in waiting list
-	// Randomly pick a starting player ID, then assign sequentially in circular order
-	rng := rand.New(rand.NewSource(seed))
-	numPlayers := len(gameState.Players)
-	startPlayerID := rng.Intn(numPlayers) + 1 // Random starting ID (1 to numPlayers)
+	// Assign player IDs for waiting players
+	shuffledClientIDs := gs.getShuffledClientIDs(gs.connectedPlayers)
+	for i, clientID := range shuffledClientIDs {
+		gs.assignedPlayers[i+1] = clientID
 
-	playerIndex := 0
-	for clientID, playerInfo := range gs.connectedPlayers {
-		// Calculate player ID: start from startPlayerID and wrap around
-		// Example: if startPlayerID=3 and numPlayers=4, IDs are 3, 4, 1, 2
-		playerID := ((startPlayerID - 1 + playerIndex) % numPlayers) + 1
+		pi := gs.connectedPlayers[clientID]
+		pi.PlayerID = i + 1
 
-		playerInfo.PlayerID = playerID
-		gs.assignedPlayers[playerID] = clientID
-
-		// Update player name in game state
-		gameState.Players[playerID-1].Name = playerInfo.Name
-		gameState.Players[playerID-1].IsAI = false // Human player
-
-		playerIndex++
-
-		gs.logger.Info("assigned player to game",
-			zap.Int("playerID", playerID),
-			zap.String("clientID", clientID),
-			zap.String("name", playerInfo.Name),
-		)
+		gs.GameState.Players[i].Name = pi.Name
+		gs.GameState.Players[i].IsAI = false // Human player
 	}
 
 	// Store initial game state in event store
@@ -227,9 +211,6 @@ func (gs *GameSession) StartGame() error {
 			gs.logger.Warn("Failed to store initial game state", zap.Error(resp.Error))
 		}
 	}
-
-	// Release lock before broadcasting (BroadcastState and sendToPlayer acquire their own locks)
-	// gs.mu.Unlock()
 
 	// Send playerAssigned messages to all players
 	for clientID, playerInfo := range gs.connectedPlayers {
@@ -256,7 +237,21 @@ func (gs *GameSession) StartGame() error {
 	return nil
 }
 
-func (gs *GameSession) assignAvailablePlayerID() int {
+func (gs *GameSession) getShuffledClientIDs(players map[string]*PlayerInfo) []string {
+	rng := rand.New(rand.NewSource(time.Now().UnixMilli()))
+	numPlayers := len(players)
+
+	clientIDs := make([]string, 0, numPlayers)
+	for clientId := range gs.connectedPlayers {
+		clientIDs = append(clientIDs, clientId)
+	}
+	rng.Shuffle(numPlayers, func(i, j int) {
+		clientIDs[i], clientIDs[j] = clientIDs[j], clientIDs[i]
+	})
+	return clientIDs
+}
+
+func (gs *GameSession) findAvailablePlayerID() int {
 	for i := 1; i <= gs.maxPlayers; i++ {
 		if _, ok := gs.assignedPlayers[i]; !ok {
 			return i
@@ -280,7 +275,7 @@ func (gs *GameSession) addPlayerToGame(playerID int, clientID string, name strin
 		playerID = 0 // auto-assign next available player ID
 	}
 	if playerID == 0 {
-		playerID = gs.assignAvailablePlayerID()
+		playerID = gs.findAvailablePlayerID()
 		if playerID == 0 {
 			return fmt.Errorf("failed to assign player ID, game is full")
 		}
