@@ -49,3 +49,18 @@ let's revamp #collapsibleinfo to display chat messages and all user actions ther
     - auto refresh the game list every 10 seconds to show the latest available games.
     - ensure responsive design for both desktop and mobile devices.
     - test the lobby UI to ensure smooth user experience and functionality.
+    - when a user is disconnected, make a rest action for them after 5 seconds of inactivity.
+
+    - when the host start the game, shuffle the players randomly.
+    - people joining the room could choose to be a spectator.
+    - show list of spectators in the waiting room.
+    - allow spectators to chat but not make any game actions.
+    - if the host leaves the room, assign a new host from the remaining players (if any).
+
+- cleanup the room:
+    - if all players leave the room.
+    - if the game lasts more than 1 hour.
+    - if the host leaves the room and there are no other players (only spectators), close the room.
+    - notify all players/spectators in the room before cleanup with a countdown timer
+
+

@@ -15,3 +15,8 @@
 
 ## dev
 - `DEFAULT_TURN_TIMEOUT_SECONDS=3 go run ./cmd/server/main.go`
+
+## export mongodb data
+- mongodump --host 127.0.0.1 --port 27017 --db golem_game --out /data/golem_game
+- docker cp golem-mongodb:/data/golem_game ./golem_game
+- tar -czvf /opt/nginx/apps/images/golem-data.tar.gz ./golem_game
