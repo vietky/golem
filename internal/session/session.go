@@ -275,8 +275,8 @@ func (gs *GameSession) addPlayerToGame(playerID int, clientID string, name strin
 	}
 
 	// check if playerID is already in the players list
-	if gs.assignedPlayers[playerID] != "" {
-		gs.logger.Warn("playerID already in the players list", zap.Int("playerID", playerID))
+	if _, ok := gs.assignedPlayers[playerID]; ok {
+		gs.logger.Warn("playerID is in use by another player", zap.Int("playerID", playerID))
 		playerID = 0 // auto-assign next available player ID
 	}
 	if playerID == 0 {
@@ -422,7 +422,7 @@ func (gs *GameSession) handleChatMessage(clientID string, req map[string]any) {
 		"message":   message,
 		"timestamp": time.Now().Unix(),
 	}
-	gs.broadcast(chatMsg, clientID)
+	gs.broadcast(chatMsg)
 }
 
 func (gs *GameSession) handlePlayerAction(clientID string, req map[string]any) {
@@ -702,7 +702,7 @@ func (gs *GameSession) handleSpectatorChatMessage(spectatorID string, req map[st
 		"message":   message,
 		"timestamp": time.Now().Unix(),
 	}
-	gs.broadcast(chatMsg, spectatorID)
+	gs.broadcast(chatMsg)
 }
 
 // sendToSpectator sends a message to a specific spectator

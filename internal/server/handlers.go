@@ -740,5 +740,5 @@ func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Re
 }
 
 func isSessionV2(sessionID string) bool {
-	return strings.Contains(sessionID, "v2")
+	return !strings.Contains(sessionID, "v1")
 }
