@@ -32,6 +32,7 @@ type PlayerInfo struct {
 	Name     string
 	Avatar   string
 	JoinedAt time.Time
+	writeMu  sync.Mutex // protects writes to Conn
 }
 
 func (p PlayerInfo) GetAvatar() string {
@@ -45,6 +46,7 @@ type Spectator struct {
 	SpectatorID string // unique spectator ID for each unique device
 	Conn        *websocket.Conn
 	Name        string
+	writeMu     sync.Mutex // protects writes to Conn
 }
 
 // GameSession represents a multiplayer game session
@@ -105,7 +107,6 @@ func NewGameSession(sessionID string, maxPlayers int, turnTimeoutInSecond int, a
 // AddPlayer adds a player to the session
 func (gs *GameSession) AddPlayer(playerID int, clientID string, name string, avatar string, conn *websocket.Conn) error {
 	gs.mu.Lock()
-	defer gs.mu.Unlock()
 
 	if clientID == "" {
 		clientID = fmt.Sprintf("client_%d", time.Now().UnixNano())
@@ -121,6 +122,7 @@ func (gs *GameSession) AddPlayer(playerID int, clientID string, name string, ava
 	if gs.status == GameStatusWaiting {
 		err := gs.addToWaitingList(clientID, name, avatar, conn)
 		if err != nil {
+			gs.mu.Unlock()
 			return fmt.Errorf("failed to add player to waiting list: %w", err)
 		}
 	}
@@ -128,9 +130,13 @@ func (gs *GameSession) AddPlayer(playerID int, clientID string, name string, ava
 	if gs.status == GameStatusPlaying {
 		err := gs.addPlayerToGame(playerID, clientID, name, avatar, conn)
 		if err != nil {
+			gs.mu.Unlock()
 			return fmt.Errorf("failed to add player to game: %w", err)
 		}
 	}
+
+	// Unlock before calling broadcast functions (which acquire RLock)
+	gs.mu.Unlock()
 
 	go gs.handlePlayerMessage(clientID, conn)
 
@@ -148,17 +154,16 @@ func (gs *GameSession) AddPlayer(playerID int, clientID string, name string, ava
 
 func (gs *GameSession) StartGame() error {
 	gs.mu.Lock()
-	defer gs.mu.Unlock()
 
 	// Check that game is in waiting status
 	if gs.status != GameStatusWaiting {
-		// gs.mu.Unlock()
+		gs.mu.Unlock()
 		return fmt.Errorf("game is not in waiting status")
 	}
 
 	// Check that we have at least 2 players
 	if len(gs.connectedPlayers) < 2 {
-		// gs.mu.Unlock()
+		gs.mu.Unlock()
 		return fmt.Errorf("need at least 2 players")
 	}
 
@@ -211,6 +216,9 @@ func (gs *GameSession) StartGame() error {
 			gs.logger.Warn("Failed to store initial game state", zap.Error(resp.Error))
 		}
 	}
+
+	// Unlock before sending messages/broadcasting
+	gs.mu.Unlock()
 
 	// Send playerAssigned messages to all players
 	for clientID, playerInfo := range gs.connectedPlayers {
@@ -338,13 +346,14 @@ func (gs *GameSession) addToWaitingList(clientID string, name string, avatar str
 
 func (gs *GameSession) handleRemovePlayer(clientID string) {
 	gs.mu.Lock()
-	defer gs.mu.Unlock()
 
 	p := gs.connectedPlayers[clientID]
 	if p == nil {
+		gs.mu.Unlock()
 		return
 	}
 
+	playerName := p.Name
 	if p.Conn != nil {
 		p.Conn.Close()
 	}
@@ -353,14 +362,17 @@ func (gs *GameSession) handleRemovePlayer(clientID string) {
 	}
 	delete(gs.connectedPlayers, clientID)
 
+	// Unlock before broadcast
+	gs.mu.Unlock()
+
 	// broadcast that player left the game
-	gs.broadcastMemberStatusChanged(clientID, p.Name, false, false)
+	gs.broadcastMemberStatusChanged(clientID, playerName, false, false)
 	gs.broadcastState()
 
 	gs.logger.Info("player left the game",
 		zap.String("clientID", clientID),
 		zap.Int("playerID", p.PlayerID),
-		zap.String("name", p.Name),
+		zap.String("name", playerName),
 	)
 }
 
@@ -575,7 +587,6 @@ func (gs *GameSession) handlePlayerAction(clientID string, req map[string]any) {
 // - Starts message handler goroutine
 func (gs *GameSession) AddSpectator(name string, conn *websocket.Conn) error {
 	gs.mu.Lock()
-	defer gs.mu.Unlock()
 
 	if name == "" {
 		name = fmt.Sprintf("Spectator %d", len(gs.spectators)+1)
@@ -590,6 +601,9 @@ func (gs *GameSession) AddSpectator(name string, conn *websocket.Conn) error {
 	}
 	gs.spectators[spectatorID] = spectatorInfo
 	gs.LastActivity = time.Now()
+
+	// Unlock before calling send/broadcast functions
+	gs.mu.Unlock()
 
 	// Send spectator assignment message
 	assignedMsg := map[string]interface{}{
@@ -619,12 +633,13 @@ func (gs *GameSession) AddSpectator(name string, conn *websocket.Conn) error {
 // handleRemoveSpectator removes a spectator from the session
 func (gs *GameSession) handleRemoveSpectator(spectatorID string) {
 	gs.mu.Lock()
-	defer gs.mu.Unlock()
 
 	spectator := gs.spectators[spectatorID]
 	if spectator == nil {
+		gs.mu.Unlock()
 		return
 	}
+	spectatorName := spectator.Name
 	delete(gs.spectators, spectatorID)
 
 	// Close connection if still open
@@ -632,12 +647,15 @@ func (gs *GameSession) handleRemoveSpectator(spectatorID string) {
 		spectator.Conn.Close()
 	}
 
+	// Unlock before broadcast
+	gs.mu.Unlock()
+
 	// Broadcast that spectator is leaving before removing
-	gs.broadcastMemberStatusChanged(spectatorID, spectator.Name, true, false)
+	gs.broadcastMemberStatusChanged(spectatorID, spectatorName, true, false)
 
 	gs.logger.Info("spectator removed from session",
 		zap.String("spectatorID", spectatorID),
-		zap.String("name", spectator.Name),
+		zap.String("name", spectatorName),
 	)
 }
 
@@ -702,16 +720,18 @@ func (gs *GameSession) handleSpectatorChatMessage(spectatorID string, req map[st
 
 // sendToSpectator sends a message to a specific spectator
 func (gs *GameSession) sendToSpectator(spectatorID string, data map[string]any) error {
-	// gs.mu.RLock()
-	// defer gs.mu.RUnlock()
-
+	gs.mu.RLock()
 	spectatorInfo := gs.spectators[spectatorID]
+	gs.mu.RUnlock()
+
 	if spectatorInfo == nil || spectatorInfo.Conn == nil {
 		return nil
 	}
 
 	msg, _ := json.Marshal(data)
 
+	spectatorInfo.writeMu.Lock()
+	defer spectatorInfo.writeMu.Unlock()
 	spectatorInfo.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 	return spectatorInfo.Conn.WriteMessage(websocket.TextMessage, msg)
 }
@@ -783,40 +803,46 @@ func (gs *GameSession) broadcastMemberStatusChanged(clientID string, name string
 
 // broadcast sends a message to all connected players and spectators
 func (gs *GameSession) broadcast(data map[string]any, excludeClientIDs ...string) {
-	// gs.mu.RLock()
-	// defer gs.mu.RUnlock()
+	gs.mu.RLock()
+	defer gs.mu.RUnlock()
 
 	msg, _ := json.Marshal(data)
 
 	// Send to all players
 	for _, player := range gs.connectedPlayers {
 		if player.Conn != nil && !slices.Contains(excludeClientIDs, player.ClientID) {
+			player.writeMu.Lock()
 			player.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			player.Conn.WriteMessage(websocket.TextMessage, msg)
+			player.writeMu.Unlock()
 		}
 	}
 
 	// Send to all spectators
 	for _, spectatorInfo := range gs.spectators {
 		if spectatorInfo.Conn != nil && !slices.Contains(excludeClientIDs, spectatorInfo.SpectatorID) {
+			spectatorInfo.writeMu.Lock()
 			spectatorInfo.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			spectatorInfo.Conn.WriteMessage(websocket.TextMessage, msg)
+			spectatorInfo.writeMu.Unlock()
 		}
 	}
 }
 
 // SendToPlayer sends a message to a specific player
 func (gs *GameSession) sendToPlayer(clientID string, data map[string]any) error {
-	// gs.mu.RLock()
-	// defer gs.mu.RUnlock()
-
+	gs.mu.RLock()
 	player := gs.connectedPlayers[clientID]
+	gs.mu.RUnlock()
+
 	if player == nil || player.Conn == nil {
 		return nil
 	}
 
 	msg, _ := json.Marshal(data)
 
+	player.writeMu.Lock()
+	defer player.writeMu.Unlock()
 	player.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 	return player.Conn.WriteMessage(websocket.TextMessage, msg)
 }
@@ -1000,8 +1026,8 @@ func (gs *GameSession) GetSerializedState() map[string]interface{} {
 
 // serializeState serializes the game state for JSON transmission
 func (gs *GameSession) serializeState() map[string]interface{} {
-	// gs.mu.RLock()
-	// defer gs.mu.RUnlock()
+	gs.mu.RLock()
+	defer gs.mu.RUnlock()
 
 	if gs.status == GameStatusWaiting {
 		waitingPlayers := make([]map[string]interface{}, 0, len(gs.connectedPlayers))
