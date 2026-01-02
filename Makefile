@@ -188,3 +188,6 @@ fe-release:
 
 be-release:
 	docker-compose -f docker-compose.yml up -d --build
+
+static-update:
+	scp -r web/static/* root@157.66.101.66:/opt/nginx/apps/assets/

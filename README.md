@@ -22,4 +22,4 @@
 - tar -czvf /opt/nginx/apps/images/golem-data.tar.gz ./golem_game
 
 ## copy assets to nginx server
-- scp -r web/react-frontend/public/* root@<nginx-server-ip>:/opt/nginx/apps/assets/
+- `scp -r web/react-frontend/static/* root@157.66.101.66:/opt/nginx/apps/assets/`
