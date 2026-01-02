@@ -4,6 +4,15 @@
 - update .env.* in `web/react-frontend/` as needed.
 - for backend development, use `cp .env.example .env` for environment variables in the root directory.
 
+## Features
+### Telegram Notifications
+Get notified when new game rooms are created! See [docs/TELEGRAM_NOTIFICATIONS.md](docs/TELEGRAM_NOTIFICATIONS.md) for setup instructions.
+
+```bash
+export TELEGRAM_BOT_TOKEN="your_bot_token"
+export TELEGRAM_CHAT_ID="your_chat_id"
+```
+
 ## backend
 - local: `go run cmd/server/main.go`
 - release: `make be-release`

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -16,8 +15,8 @@ import (
 )
 
 func main() {
-	port := flag.Int("port", 8080, "Port to run the server on")
-	flag.Parse()
+	// Load configuration
+	cfg := config.LoadConfig()
 
 	// Initialize logger
 	log, err := logger.NewLogger(true) // true for development mode
@@ -25,9 +24,6 @@ func main() {
 		panic(fmt.Sprintf("Failed to initialize logger: %v", err))
 	}
 	defer log.Sync()
-
-	// Load configuration
-	cfg := config.LoadConfig()
 
 	// Initialize event store
 	eventStoreConfig := eventstore.EventStoreConfig{
@@ -102,7 +98,7 @@ func main() {
 		log.Info("Serving vanilla JS frontend from ./web/static")
 	}
 
-	addr := fmt.Sprintf(":%d", *port)
+	addr := fmt.Sprintf(":%s", cfg.ServerPort)
 	log.Info("Century: Golem Edition - Web Server")
 	log.Info("Server starting", zap.String("url", fmt.Sprintf("http://localhost%s", addr)))
 

@@ -173,6 +173,7 @@ Docker images: `Dockerfile` (backend), `Dockerfile.fe` (frontend-only). Producti
 ## Coding Standards
 - use logger both on backend and frontend for debugging and monitoring
 - include context in backend logs for traceability
+- log every significant event (player joins, game starts, errors, etc.) with appropriate log levels
 
 ## UI/UX Guidelines 
 - for frontend, mobile responsiveness is a must

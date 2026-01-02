@@ -19,6 +19,8 @@ type Config struct {
 	LogFormat                   string
 	DefaultTurnTimeoutInSeconds int
 	MaxChatMessages             int
+	TelegramBotToken            string
+	TelegramChatID              string
 }
 
 // LoadConfig loads configuration from environment variables with defaults
@@ -36,6 +38,8 @@ func LoadConfig() Config {
 		LogFormat:                   getEnv("LOG_FORMAT", "json"),
 		DefaultTurnTimeoutInSeconds: getEnvInt("DEFAULT_TURN_TIMEOUT_SECONDS", 60),
 		MaxChatMessages:             getEnvInt("MAX_CHAT_MESSAGES", 10),
+		TelegramBotToken:            getEnv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramChatID:              getEnv("TELEGRAM_CHAT_ID", ""),
 	}
 }
 

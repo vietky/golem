@@ -12,6 +12,7 @@ import (
 	"golem_century/internal/game"
 	"golem_century/internal/logger"
 	"golem_century/internal/session"
+	"golem_century/internal/telegram"
 
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
@@ -190,12 +191,13 @@ func (gs *GameSession) SendToPlayer(playerID int, message []byte) error {
 
 // GameServer manages multiple game sessions
 type GameServer struct {
-	Sessions   map[string]*GameSession
-	SessionsV2 map[string]*session.GameSession
-	EventStore eventstore.EventStore
-	Logger     *logger.Logger
-	mu         sync.RWMutex
-	config     *config.Config
+	Sessions         map[string]*GameSession
+	SessionsV2       map[string]*session.GameSession
+	EventStore       eventstore.EventStore
+	Logger           *logger.Logger
+	TelegramNotifier *telegram.Notifier
+	mu               sync.RWMutex
+	config           *config.Config
 }
 
 // NewGameServerRequest represents request to create a new game server
@@ -215,12 +217,14 @@ func NewGameServer(req NewGameServerRequest) *GameServer {
 		cfg := config.LoadConfig()
 		req.Config = &cfg
 	}
+	telegramNotifier := telegram.NewNotifier(req.Config.TelegramBotToken, req.Config.TelegramChatID, log)
 	return &GameServer{
-		Sessions:   make(map[string]*GameSession),
-		SessionsV2: make(map[string]*session.GameSession),
-		EventStore: req.EventStore,
-		Logger:     log,
-		config:     req.Config,
+		Sessions:         make(map[string]*GameSession),
+		SessionsV2:       make(map[string]*session.GameSession),
+		EventStore:       req.EventStore,
+		Logger:           log,
+		TelegramNotifier: telegramNotifier,
+		config:           req.Config,
 	}
 }
 

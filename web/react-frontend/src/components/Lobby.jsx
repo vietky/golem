@@ -91,6 +91,7 @@ const Lobby = ({ onJoinGame }) => {
           numPlayers,
           seed: Date.now(),
           sessionID: customSessionId || undefined,
+          creatorName: playerName,
         }),
       });
 

@@ -429,6 +429,7 @@ func (gs *GameServer) HandleWebSocketV2(w http.ResponseWriter, r *http.Request) 
 	}
 
 	log.Info("Adding player to session")
+
 	err = session.AddPlayer(playerID, clientID, playerName, playerAvatar, conn)
 	if err != nil {
 		log.Error("❌ Failed to add player to session", zap.Error(err))
@@ -441,6 +442,7 @@ func (gs *GameServer) HandleWebSocketV2(w http.ResponseWriter, r *http.Request) 
 			conn.WriteMessage(websocket.TextMessage, data)
 		}
 		conn.Close()
+		return
 	}
 }
 
@@ -461,6 +463,7 @@ func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request
 		Seed        int64  `json:"seed"`
 		SessionID   string `json:"sessionID"`   // Optional custom session ID
 		TurnTimeout int    `json:"turnTimeout"` // Optional turn timeout in seconds (default 60)
+		CreatorName string `json:"creatorName"` // Optional creator name for notifications
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -494,6 +497,26 @@ func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request
 	} else {
 		sessionID = fmt.Sprintf("session_%d", time.Now().UnixNano())
 	}
+
+	defer func() {
+		gs.Logger.Debug("Created new game session")
+		// Send Telegram notification
+		if gs.TelegramNotifier.IsEnabled() {
+			creatorName := req.CreatorName
+			if creatorName == "" {
+				creatorName = "Anonymous"
+			}
+			go func() {
+				err := gs.TelegramNotifier.SendRoomCreatedNotification(sessionID, creatorName, req.NumPlayers)
+				if err != nil {
+					gs.Logger.Warn("Failed to send Telegram notification",
+						zap.String("sessionID", sessionID),
+						zap.Error(err),
+					)
+				}
+			}()
+		}
+	}()
 
 	if isSessionV2(sessionID) {
 		gs.CreateSessionV2(sessionID, req.NumPlayers, game.NewRestOnlyAI(), req.TurnTimeout)
