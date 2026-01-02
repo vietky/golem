@@ -698,3 +698,54 @@ func serializeCardWithCost(card *game.Card, cost *game.Resources) map[string]int
 	}
 	return result
 }
+
+// Shutdown gracefully shuts down the game server, closing all sessions and connections
+func (gs *GameServer) Shutdown() error {
+	gs.Logger.Info("Starting graceful shutdown of game server")
+
+	gs.mu.Lock()
+	defer gs.mu.Unlock()
+
+	// Close all V1 sessions
+	for sessionID, session := range gs.Sessions {
+		gs.Logger.Info("Closing V1 session", zap.String("sessionID", sessionID))
+		session.mu.Lock()
+		// Close all connections
+		for playerID, conn := range session.Connections {
+			if conn != nil {
+				closeMsg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Server shutting down")
+				conn.WriteControl(websocket.CloseMessage, closeMsg, time.Now().Add(5*time.Second))
+				conn.Close()
+			}
+			gs.Logger.Debug("Closed V1 player connection", zap.Int("playerID", playerID))
+		}
+		// Close all spectators
+		for spectatorID, conn := range session.Spectators {
+			if conn != nil {
+				closeMsg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Server shutting down")
+				conn.WriteControl(websocket.CloseMessage, closeMsg, time.Now().Add(5*time.Second))
+				conn.Close()
+			}
+			gs.Logger.Debug("Closed V1 spectator connection", zap.String("spectatorID", spectatorID))
+		}
+		session.mu.Unlock()
+	}
+
+	// Close all V2 sessions
+	for sessionID, session := range gs.SessionsV2 {
+		gs.Logger.Info("Closing V2 session", zap.String("sessionID", sessionID))
+		if err := session.Close(); err != nil {
+			gs.Logger.Error("Error closing V2 session",
+				zap.String("sessionID", sessionID),
+				zap.Error(err),
+			)
+		}
+	}
+
+	// Clear session maps
+	gs.Sessions = make(map[string]*GameSession)
+	gs.SessionsV2 = make(map[string]*session.GameSession)
+
+	gs.Logger.Info("Game server shutdown complete")
+	return nil
+}

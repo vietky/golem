@@ -1334,3 +1334,66 @@ func serializeCardWithCost(card *game.Card, cost *game.Resources) map[string]int
 	}
 	return result
 }
+
+// Close gracefully closes the game session, disconnecting all players and spectators
+func (gs *GameSession) Close() error {
+	gs.mu.Lock()
+	defer gs.mu.Unlock()
+
+	gs.logger.Info("Closing game session",
+		zap.String("sessionID", gs.ID),
+		zap.Int("players", len(gs.connectedPlayers)),
+		zap.Int("spectators", len(gs.spectators)),
+	)
+
+	// Close all player connections
+	for clientID, player := range gs.connectedPlayers {
+		if player.Conn != nil {
+			// Send close message
+			closeMsg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Server shutting down")
+			player.Conn.WriteControl(websocket.CloseMessage, closeMsg, time.Now().Add(5*time.Second))
+			player.Conn.Close()
+		}
+		// Close write channel if not already closed
+		select {
+		case <-player.WriteChan:
+			// Already closed
+		default:
+			close(player.WriteChan)
+		}
+		gs.logger.Debug("Closed player connection",
+			zap.String("clientID", clientID),
+			zap.String("name", player.Name),
+		)
+	}
+
+	// Close all spectator connections
+	for spectatorID, spectator := range gs.spectators {
+		if spectator.Conn != nil {
+			closeMsg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Server shutting down")
+			spectator.Conn.WriteControl(websocket.CloseMessage, closeMsg, time.Now().Add(5*time.Second))
+			spectator.Conn.Close()
+		}
+		// Close write channel if not already closed
+		select {
+		case <-spectator.WriteChan:
+			// Already closed
+		default:
+			close(spectator.WriteChan)
+		}
+		gs.logger.Debug("Closed spectator connection",
+			zap.String("spectatorID", spectatorID),
+		)
+	}
+
+	// Clear all maps
+	gs.connectedPlayers = make(map[string]*PlayerInfo)
+	gs.assignedPlayers = make(map[int]string)
+	gs.spectators = make(map[string]*Spectator)
+
+	// Close action channel
+	close(gs.ActionChan)
+
+	gs.logger.Info("Game session closed successfully", zap.String("sessionID", gs.ID))
+	return nil
+}

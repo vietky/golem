@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"golem_century/internal/config"
 	"golem_century/internal/eventstore"
@@ -106,7 +110,51 @@ func main() {
 	// upgrade requests receive the appropriate CORS headers.
 	handler := server.WrapWithCORS(mux)
 
-	if err := http.ListenAndServe(addr, handler); err != nil {
-		log.Fatal("Server failed to start", zap.Error(err))
+	// Create HTTP server
+	httpServer := &http.Server{
+		Addr:    addr,
+		Handler: handler,
+	}
+
+	// Channel to listen for errors coming from the HTTP server
+	serverErrors := make(chan error, 1)
+
+	// Start the HTTP server in a goroutine
+	go func() {
+		log.Info("HTTP server starting")
+		serverErrors <- httpServer.ListenAndServe()
+	}()
+
+	// Channel to listen for interrupt or terminate signals from the OS
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+
+	// Block until we receive a signal or the server errors out
+	select {
+	case err := <-serverErrors:
+		log.Fatal("Server error", zap.Error(err))
+
+	case sig := <-shutdown:
+		log.Info("Shutdown signal received", zap.String("signal", sig.String()))
+
+		// Give outstanding requests a deadline for completion
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		// Gracefully shutdown the game server (close all WebSocket connections)
+		log.Info("Shutting down game sessions...")
+		if err := gameServer.Shutdown(); err != nil {
+			log.Error("Error during game server shutdown", zap.Error(err))
+		}
+
+		// Gracefully shutdown the HTTP server
+		log.Info("Shutting down HTTP server...")
+		if err := httpServer.Shutdown(ctx); err != nil {
+			log.Error("Error during HTTP server shutdown", zap.Error(err))
+			// Force close if graceful shutdown fails
+			httpServer.Close()
+		}
+
+		log.Info("Server shutdown complete")
 	}
 }
