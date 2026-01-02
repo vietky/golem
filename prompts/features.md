@@ -76,6 +76,7 @@ let's revamp #collapsibleinfo to display chat messages and all user actions ther
     - ensure sounds are not overlapping and play smoothly.
     - script to create symlink to static/assets folders.
 - fix round numbers
-- send to telegram chat when a new game is created with game id and host name.
-    - implement game routing so that users can join a game directly via the link.
+- implement game routing so that users can join a game directly via the link.
     - ensure only valid game ids can be accessed.
+    - send to telegram chat when a new game is created with game id and host name.
+    - add a telegram room config (could be override) to .env.local file.
