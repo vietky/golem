@@ -15,6 +15,12 @@ const useGameStore = create((set, get) => ({
   playerName: "",
   playerAvatar: "4",
   connected: false,
+  isReconnecting: false,
+  reconnectAttempts: 0,
+  maxReconnectAttempts: 10,
+  reconnectDelay: 1000, // Start with 1 second
+  maxReconnectDelay: 30000, // Max 30 seconds
+  reconnectTimeoutId: null,
 
   // Game state
   gameState: null,
@@ -42,6 +48,13 @@ const useGameStore = create((set, get) => ({
 
   // Actions
   connectWebSocket: (sessionId, playerName, playerAvatar, asSpectator = false) => {
+    // Cancel any pending reconnect attempts
+    const existingTimeoutId = get().reconnectTimeoutId;
+    if (existingTimeoutId) {
+      clearTimeout(existingTimeoutId);
+      set({ reconnectTimeoutId: null });
+    }
+
     // In development with Vite, always connect to the dev server (localhost:3000)
     // which will proxy WebSocket connections to the backend
     // In production, use the configured API host or current window location
@@ -82,7 +95,15 @@ const useGameStore = create((set, get) => ({
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
-      set({ connected: true, ws, isSpectator: asSpectator });
+      // Reset reconnection state on successful connection
+      set({ 
+        connected: true, 
+        ws, 
+        isSpectator: asSpectator,
+        isReconnecting: false,
+        reconnectAttempts: 0,
+        reconnectDelay: 1000,
+      });
       logger.info(`✅ WebSocket connected successfully${asSpectator ? ' as spectator' : ''}`);
       logger.info(`   Ready state: ${ws.readyState}`);
       showToast('Connected to game server', 'success');
@@ -97,9 +118,9 @@ const useGameStore = create((set, get) => ({
         set({ spectatorId: message.spectatorID, isSpectator: true });
       } else if (message.type === "memberStatusChanged") {
         // Handle both join and leave events for players and spectators
-        const action = message.online ? "joined" : "left";
+        const action = message.online ? "rejoined" : "left";
         const statusMessage = message.isSpectator
-          ? `${message.playerName} ${action === "joined" ? "is now spectating" : "stopped spectating"}`
+          ? `${message.playerName} ${action === "rejoined" ? "is now spectating" : "stopped spectating"}`
           : `${message.playerName} ${action} the game`;
         logger.info(statusMessage);
         // Show toast notification in top right corner
@@ -335,15 +356,7 @@ const useGameStore = create((set, get) => ({
       logger.error(`   URL attempted: ${wsUrl}`);
       set({ connected: false });
       
-      // Show user-friendly error message
-      const errorMsg = `Failed to connect to game server. Please check if the server is running.`;
-      showToast(errorMsg, 'error');
-      
-      // Log additional debugging info
-      logger.error('Debugging info:');
-      logger.error(`  - Check if backend is running on port 8080`);
-      logger.error(`  - Check if Vite dev server is running on port 3000 (dev mode)`);
-      logger.error(`  - Verify VITE_API_HOST in .env.local`);
+      // Don't show error here - let onclose handle it with better messages
     };
 
     ws.onclose = (event) => {
@@ -353,6 +366,25 @@ const useGameStore = create((set, get) => ({
       logger.warn(`   Reason: ${event.reason || 'No reason provided'}`);
       logger.warn(`   Clean: ${event.wasClean}`);
       
+      // Code 1000 is normal closure, don't reconnect
+      if (event.code === 1000) {
+        logger.info(`Normal WebSocket closure, not reconnecting`);
+        return;
+      }
+
+      // Get current state
+      const currentState = get();
+      const sessionId = currentState.sessionId;
+      const reconnectAttempts = currentState.reconnectAttempts || 0;
+      const maxReconnectAttempts = currentState.maxReconnectAttempts || 10;
+      
+      // Check if we've exceeded max reconnect attempts
+      if (reconnectAttempts >= maxReconnectAttempts) {
+        logger.error(`❌ Max reconnection attempts (${maxReconnectAttempts}) exceeded`);
+        showToast(`Failed to reconnect after ${maxReconnectAttempts} attempts. Please refresh the page.`, 'error');
+        return;
+      }
+
       // Show appropriate message based on close code
       if (!event.wasClean) {
         const closeMessages = {
@@ -360,18 +392,79 @@ const useGameStore = create((set, get) => ({
           1001: 'Going away',
           1002: 'Protocol error',
           1003: 'Unsupported data',
-          1006: 'Connection lost - server may be down',
+          1006: 'Connection lost - attempting to reconnect...',
           1007: 'Invalid frame payload',
           1008: 'Policy violation',
           1009: 'Message too big',
           1011: 'Server error',
         };
-        const message = closeMessages[event.code] || `Connection closed (code: ${event.code})`;
+        const message = closeMessages[event.code] || `Connection closed (code: ${event.code}) - reconnecting...`;
         showToast(message, 'warning');
       }
+
+      // Implement exponential backoff reconnection
+      const newAttempts = reconnectAttempts + 1;
+      let reconnectDelay = currentState.reconnectDelay * Math.pow(1.5, reconnectAttempts); // 1.5x multiplier
+      reconnectDelay = Math.min(reconnectDelay, currentState.maxReconnectDelay); // Cap at max delay
+      
+      logger.info(`🔄 Attempting to reconnect... (attempt ${newAttempts}/${maxReconnectAttempts})`);
+      logger.info(`   Waiting ${Math.round(reconnectDelay / 1000)} seconds before retry...`);
+      
+      set({ 
+        isReconnecting: true, 
+        reconnectAttempts: newAttempts,
+        reconnectDelay: reconnectDelay,
+      });
+
+      const timeoutId = setTimeout(() => {
+        logger.info(`🔄 Reconnecting now (attempt ${newAttempts})...`);
+        get().connectWebSocket(sessionId, currentState.playerName, currentState.playerAvatar, currentState.isSpectator);
+        set({ reconnectTimeoutId: null });
+      }, reconnectDelay);
+
+      set({ reconnectTimeoutId: timeoutId });
     };
 
     set({ ws, sessionId });
+  },
+
+  // Manual reconnection trigger (for testing)
+  forceReconnect: () => {
+    const { sessionId, playerName, playerAvatar, isSpectator } = get();
+    if (!sessionId) {
+      logger.warn("Cannot reconnect: no session ID");
+      return;
+    }
+    logger.info(`🔄 Force reconnecting...`);
+    get().connectWebSocket(sessionId, playerName, playerAvatar, isSpectator);
+  },
+
+  // Cancel reconnection attempt
+  cancelReconnect: () => {
+    const timeoutId = get().reconnectTimeoutId;
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      set({ 
+        reconnectTimeoutId: null,
+        isReconnecting: false,
+        reconnectAttempts: 0,
+        reconnectDelay: 1000,
+      });
+      logger.info(`🔴 Reconnection attempt cancelled`);
+    }
+  },
+
+  // Get reconnection status
+  getReconnectionStatus: () => {
+    const state = get();
+    return {
+      isReconnecting: state.isReconnecting,
+      reconnectAttempts: state.reconnectAttempts,
+      maxReconnectAttempts: state.maxReconnectAttempts,
+      reconnectDelay: state.reconnectDelay,
+      canRetry: state.reconnectAttempts < state.maxReconnectAttempts,
+    };
+  },
   },
 
   sendAction: (actionType, cardIndex = null, inputResources = null, outputResources = null, multiplier = null, deposits = null) => {

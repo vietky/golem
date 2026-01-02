@@ -102,7 +102,7 @@ func NewGameSession(sessionID string, maxPlayers int, turnTimeoutInSecond int, a
 	}
 }
 
-// AddPlayer adds a player to the session
+// AddPlayer adds a player to the session, or reconnects an existing player
 func (gs *GameSession) AddPlayer(playerID int, clientID string, name string, avatar string, conn *websocket.Conn) error {
 	gs.mu.Lock()
 	defer gs.mu.Unlock()
@@ -118,6 +118,40 @@ func (gs *GameSession) AddPlayer(playerID int, clientID string, name string, ava
 	}
 	gs.LastActivity = time.Now() // Update activity time
 
+	// Check if player is reconnecting (client ID already exists)
+	existingPlayer, isReconnection := gs.connectedPlayers[clientID]
+	if isReconnection {
+		gs.logger.Info("Player reconnected",
+			zap.String("clientID", clientID),
+			zap.Int("playerID", existingPlayer.PlayerID),
+			zap.String("name", existingPlayer.Name),
+		)
+		// Close old connection gracefully if it exists
+		if existingPlayer.Conn != nil {
+			existingPlayer.Conn.Close()
+		}
+		// Don't close the old write channel - let the goroutine exit naturally
+		// Just update the connection and create new write channel
+		existingPlayer.Conn = conn
+		existingPlayer.WriteChan = make(chan []byte, 100)
+		// Update player name/avatar if provided
+		if name != "" {
+			existingPlayer.Name = name
+		}
+		if avatar != "" {
+			existingPlayer.Avatar = avatar
+		}
+		// Start new read and write handlers
+		go gs.runPlayerWriteHandler(existingPlayer)
+		go gs.runPlayerReadHandler(existingPlayer)
+		// Send current game state to reconnected player
+		gs.sendToPlayer(clientID, gs.serializeState())
+		// Notify others that player is back online
+		gs.broadcastMemberStatusChanged(clientID, existingPlayer.Name, true, true)
+		return nil
+	}
+
+	// New player joining
 	if gs.status == GameStatusWaiting {
 		err := gs.addToWaitingList(clientID, name, avatar, conn)
 		if err != nil {
@@ -387,25 +421,40 @@ func (gs *GameSession) handleRemovePlayer(clientID string) {
 		return
 	}
 
-	// Close write channel to signal write goroutine to stop
-	close(p.WriteChan)
 	if p.Conn != nil {
 		p.Conn.Close()
 	}
-	if p.PlayerID > 0 {
-		delete(gs.assignedPlayers, p.PlayerID)
+
+	// If game is still waiting/not started, completely remove the player
+	switch gs.status {
+	case GameStatusWaiting:
+		// Close write channel to signal write goroutine to stop
+		close(p.WriteChan)
+		if p.PlayerID > 0 {
+			delete(gs.assignedPlayers, p.PlayerID)
+		}
+		delete(gs.connectedPlayers, clientID)
+
+		gs.logger.Info("player left waiting lobby",
+			zap.String("clientID", clientID),
+			zap.Int("playerID", p.PlayerID),
+			zap.String("name", p.Name),
+		)
+	case GameStatusPlaying:
+		// During active game, keep player in system for reconnection
+		// Don't close the WriteChan - they might reconnect and we'll send them state updates
+		// The old write handler goroutine will exit when it tries to write to a closed Conn
+		// A new write handler will be started on reconnection with a new WriteChan
+		gs.logger.Info("player disconnected during game (kept in session for potential reconnection)",
+			zap.String("clientID", clientID),
+			zap.Int("playerID", p.PlayerID),
+			zap.String("name", p.Name),
+		)
 	}
-	delete(gs.connectedPlayers, clientID)
 
 	// broadcast that player left the game
 	gs.broadcastMemberStatusChanged(clientID, p.Name, false, false)
 	gs.broadcastState()
-
-	gs.logger.Info("player left the game",
-		zap.String("clientID", clientID),
-		zap.Int("playerID", p.PlayerID),
-		zap.String("name", p.Name),
-	)
 }
 
 func (gs *GameSession) runPlayerReadHandler(player *PlayerInfo) {
@@ -836,22 +885,37 @@ func (gs *GameSession) broadcast(data map[string]any, excludeClientIDs ...string
 
 	// Send to all players except the ones in the exclude list
 	for _, player := range gs.connectedPlayers {
-		if player.Conn != nil && !slices.Contains(excludeClientIDs, player.ClientID) {
-			// Blocking write - ensures message is queued synchronously
-			player.WriteChan <- msg
+		// Skip if no connection or connection is closed
+		if player == nil || player.Conn == nil || player.WriteChan == nil {
+			continue
+		}
+		if slices.Contains(excludeClientIDs, player.ClientID) {
+			continue
+		}
+		// Use non-blocking send to avoid panic on closed channels
+		select {
+		case player.WriteChan <- msg:
+			// Message queued successfully
+		default:
+			// Channel is full or closed - this is okay during reconnection
+			// Don't log to avoid spam during high traffic
 		}
 	}
 
 	// Send to all spectators except the ones in the exclude list
 	// Asynchronous writes for spectators - non-blocking, drops message if channel is full
 	for _, spectatorInfo := range gs.spectators {
-		if spectatorInfo.Conn != nil && !slices.Contains(excludeClientIDs, spectatorInfo.SpectatorID) {
-			select {
-			case spectatorInfo.WriteChan <- msg:
-				// Message queued successfully
-			default:
-				// Channel is full or closed - drop message for spectators
-			}
+		if spectatorInfo == nil || spectatorInfo.Conn == nil || spectatorInfo.WriteChan == nil {
+			continue
+		}
+		if slices.Contains(excludeClientIDs, spectatorInfo.SpectatorID) {
+			continue
+		}
+		select {
+		case spectatorInfo.WriteChan <- msg:
+			// Message queued successfully
+		default:
+			// Channel is full or closed - drop message for spectators
 		}
 	}
 }
@@ -861,8 +925,14 @@ func (gs *GameSession) sendToPlayer(clientID string, data map[string]any) error 
 	player := gs.connectedPlayers[clientID]
 	if player != nil {
 		msg, _ := json.Marshal(data)
-		// Blocking write - ensures message is queued synchronously
-		player.WriteChan <- msg
+		// Use non-blocking send to avoid panic on closed channels
+		select {
+		case player.WriteChan <- msg:
+			// Message queued successfully
+		default:
+			// Channel is full or closed
+			return fmt.Errorf("failed to send message to player %s: channel closed or full", clientID)
+		}
 	}
 	return nil
 }
