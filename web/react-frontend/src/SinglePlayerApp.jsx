@@ -11,15 +11,20 @@ import GameOverModal from './components/GameOverModal'
 import Toast from './components/Toast'
 import WebGameLayout from './components/WebGameLayout'
 import ThemeToggleButton from './components/ThemeToggleButton'
+import SoundToggleButton from './components/SoundToggleButton'
 import FantasyGameLayout from './components/FantasyGameLayout'
 import useGameStore from './store/gameStore'
 import useOrientation from './hooks/useOrientation'
+import useGameSounds from './hooks/useGameSounds'
 import { MobileLayoutProvider } from './contexts/MobileLayoutContext'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
 
 // Game Content with Theme Support
 function GameContentWithTheme({ useWebLayout, isMobile, isPortrait, sessionId, setInGame, setGameMode }) {
   const { isFantasy } = useTheme()
+  
+  // Initialize game sounds hook
+  useGameSounds()
 
   const handleNewGame = () => {
     setInGame(false)
@@ -38,6 +43,7 @@ function GameContentWithTheme({ useWebLayout, isMobile, isPortrait, sessionId, s
     return (
       <>
         <ThemeToggleButton />
+        <SoundToggleButton />
         <FantasyGameLayout 
           onNewGame={handleNewGame}
           onBackToMenu={handleBackToMenu}
@@ -52,6 +58,9 @@ function GameContentWithTheme({ useWebLayout, isMobile, isPortrait, sessionId, s
     <>
       {/* Theme Toggle Button - Always visible */}
       <ThemeToggleButton />
+      
+      {/* Sound Toggle Button - Always visible */}
+      <SoundToggleButton />
 
       {/* Blurred Background Layer */}
       <div className="fixed inset-0 z-0"

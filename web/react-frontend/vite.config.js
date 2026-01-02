@@ -67,6 +67,12 @@ export default ({ mode }) => {
           changeOrigin: true,
           // If your nginx uses HTTPS with self-signed certs in dev, you may set secure: false
           // secure: false
+        },
+        '/static/sounds': {
+          target: nginxHost,
+          changeOrigin: true,
+          // If your nginx uses HTTPS with self-signed certs in dev, you may set secure: false
+          // secure: false
         }
       }
     }

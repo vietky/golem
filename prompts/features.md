@@ -64,3 +64,18 @@ let's revamp #collapsibleinfo to display chat messages and all user actions ther
     - notify all players/spectators in the room before cleanup with a countdown timer
 
 
+- in react-frontend, please setup sounds for the following events:
+    - playing a card - play_card.mp3
+    - acquiring a merchant - acquire_merchant.mp3
+    - claiming a point card - claim_point_card.mp3
+    - resting - rest.mp3
+    - end of game - game_over.mp3
+    - my turn - my_turn.mp3
+    - notify when someone reachs 4 golems - nearly_end.mp3
+    - allow users to mute/unmute sounds from settings.
+    - ensure sounds are not overlapping and play smoothly.
+    - script to create symlink to static/assets folders.
+- fix round numbers
+- send to telegram chat when a new game is created with game id and host name.
+    - implement game routing so that users can join a game directly via the link.
+    - ensure only valid game ids can be accessed.

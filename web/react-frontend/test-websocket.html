@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket Connection Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1000px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      background: #f9f9f9;
+      border-left: 4px solid #4CAF50;
+      border-radius: 4px;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    pre {
+      background: #282c34;
+      color: #abb2bf;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 12px;
+      line-height: 1.5;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px;
+      border-bottom: 1px solid #444;
+    }
+    .log-entry.info { color: #61afef; }
+    .log-entry.success { color: #98c379; }
+    .log-entry.error { color: #e06c75; }
+    .log-entry.warn { color: #e5c07b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔌 WebSocket Connection Test</h1>
+    
+    <div class="test-section">
+      <h2>Test Configuration</h2>
+      <div id="config" class="status info">
+        Backend: <span id="backend-url">Loading...</span><br>
+        Frontend: <span id="frontend-url">Loading...</span><br>
+        WebSocket: <span id="ws-url">Loading...</span>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>1. Create Session</h2>
+      <button id="createSessionBtn" onclick="createSession()">Create Single Player Session</button>
+      <div id="sessionStatus" class="status info">Click button to create session</div>
+      <div>Session ID: <strong id="sessionId">-</strong></div>
+    </div>
+
+    <div class="test-section">
+      <h2>2. Connect WebSocket</h2>
+      <button id="connectBtn" onclick="connectWebSocket()" disabled>Connect to WebSocket</button>
+      <button id="disconnectBtn" onclick="disconnectWebSocket()" disabled>Disconnect</button>
+      <div id="wsStatus" class="status info">Create a session first</div>
+    </div>
+
+    <div class="test-section">
+      <h2>3. Send Test Message</h2>
+      <button id="sendBtn" onclick="sendTestAction()" disabled>Send Test Action</button>
+      <div id="sendStatus" class="status info">Connect WebSocket first</div>
+    </div>
+
+    <div class="test-section">
+      <h2>4. Connection Log</h2>
+      <button onclick="clearLog()">Clear Log</button>
+      <pre id="logOutput"></pre>
+    </div>
+  </div>
+
+  <script type="module">
+    let ws = null;
+    let currentSessionId = null;
+
+    // Display configuration
+    const backendUrl = import.meta.env.VITE_API_HOST || window.location.origin;
+    const frontendUrl = window.location.origin;
+    const isDev = import.meta.env.DEV;
+    
+    document.getElementById('backend-url').textContent = backendUrl;
+    document.getElementById('frontend-url').textContent = frontendUrl;
+    document.getElementById('ws-url').textContent = isDev 
+      ? `${frontendUrl}/ws (proxied to ${backendUrl}/ws)`
+      : `${backendUrl}/ws`;
+
+    function log(message, type = 'info') {
+      const logOutput = document.getElementById('logOutput');
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${timestamp}] ${message}`;
+      logOutput.appendChild(entry);
+      logOutput.scrollTop = logOutput.scrollHeight;
+      console.log(`[${type}] ${message}`);
+    }
+
+    window.createSession = async function() {
+      log('Creating single-player session...', 'info');
+      const btn = document.getElementById('createSessionBtn');
+      btn.disabled = true;
+
+      try {
+        const response = await fetch('/api/single', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            playerName: 'TestPlayer',
+            avatar: '1',
+            numAI: 1
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        log(`Session created: ${JSON.stringify(data)}`, 'success');
+        
+        currentSessionId = data.sessionID;
+        document.getElementById('sessionId').textContent = currentSessionId;
+        document.getElementById('sessionStatus').className = 'status success';
+        document.getElementById('sessionStatus').textContent = '✅ Session created successfully';
+        document.getElementById('connectBtn').disabled = false;
+      } catch (error) {
+        log(`Error creating session: ${error.message}`, 'error');
+        document.getElementById('sessionStatus').className = 'status error';
+        document.getElementById('sessionStatus').textContent = `❌ Failed: ${error.message}`;
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    window.connectWebSocket = function() {
+      if (!currentSessionId) {
+        log('No session ID available', 'error');
+        return;
+      }
+
+      const isDevelopment = import.meta.env.DEV;
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      
+      // In development, connect to Vite dev server which proxies to backend
+      // In production, connect directly to backend
+      const wsHost = isDevelopment 
+        ? window.location.host  // localhost:3000 (Vite dev server)
+        : (import.meta.env.VITE_API_HOST || window.location.host).replace(/^https?:\/\//, '');
+      
+      const wsUrl = `${wsProtocol}//${wsHost}/ws?session=${currentSessionId}&name=TestPlayer&avatar=1`;
+      
+      log(`Connecting to: ${wsUrl}`, 'info');
+      document.getElementById('wsStatus').className = 'status info';
+      document.getElementById('wsStatus').textContent = 'Connecting...';
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        log('✅ WebSocket connected!', 'success');
+        document.getElementById('wsStatus').className = 'status success';
+        document.getElementById('wsStatus').textContent = '✅ Connected';
+        document.getElementById('connectBtn').disabled = true;
+        document.getElementById('disconnectBtn').disabled = false;
+        document.getElementById('sendBtn').disabled = false;
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        log(`Received: ${JSON.stringify(data)}`, 'info');
+      };
+
+      ws.onerror = (error) => {
+        log(`❌ WebSocket error: ${error}`, 'error');
+        document.getElementById('wsStatus').className = 'status error';
+        document.getElementById('wsStatus').textContent = '❌ Connection error';
+      };
+
+      ws.onclose = (event) => {
+        log(`WebSocket closed (code: ${event.code}, reason: ${event.reason})`, 'warn');
+        document.getElementById('wsStatus').className = 'status info';
+        document.getElementById('wsStatus').textContent = 'Disconnected';
+        document.getElementById('connectBtn').disabled = false;
+        document.getElementById('disconnectBtn').disabled = true;
+        document.getElementById('sendBtn').disabled = true;
+      };
+    };
+
+    window.disconnectWebSocket = function() {
+      if (ws) {
+        log('Disconnecting...', 'info');
+        ws.close();
+        ws = null;
+      }
+    };
+
+    window.sendTestAction = function() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        log('WebSocket not connected', 'error');
+        return;
+      }
+
+      const testAction = {
+        type: 'action',
+        actionType: 'rest'
+      };
+
+      log(`Sending: ${JSON.stringify(testAction)}`, 'info');
+      ws.send(JSON.stringify(testAction));
+      
+      document.getElementById('sendStatus').className = 'status success';
+      document.getElementById('sendStatus').textContent = '✅ Test action sent';
+    };
+
+    window.clearLog = function() {
+      document.getElementById('logOutput').innerHTML = '';
+      log('Log cleared', 'info');
+    };
+
+    log('WebSocket Test Page Loaded', 'success');
+    log(`Environment: ${isDev ? 'Development' : 'Production'}`, 'info');
+  </script>
+</body>
+</html>

@@ -33,28 +33,42 @@ func (gs *GameServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	playerName := r.URL.Query().Get("name")
 	spectateMode := r.URL.Query().Get("spectate") == "true"
 
+	gs.Logger.Info("🔌 WebSocket connection attempt",
+		zap.String("sessionID", sessionID),
+		zap.String("playerID", playerIDStr),
+		zap.String("playerName", playerName),
+		zap.Bool("spectateMode", spectateMode),
+		zap.String("remoteAddr", r.RemoteAddr),
+		zap.String("userAgent", r.UserAgent()),
+	)
+
 	if sessionID == "" {
+		gs.Logger.Warn("❌ WebSocket rejected: Missing session ID")
 		sendJSONError(w, http.StatusBadRequest, "Missing session ID")
 		return
 	}
 
 	if isSessionV2(sessionID) {
+		gs.Logger.Debug("Routing to WebSocket V2 handler")
 		gs.HandleWebSocketV2(w, r)
 		return
 	}
 
 	session, ok := gs.GetSession(sessionID)
 	if !ok {
+		gs.Logger.Warn("❌ WebSocket rejected: Session not found", zap.String("sessionID", sessionID))
 		sendJSONError(w, http.StatusNotFound, "Session not found")
 		return
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("WebSocket upgrade error: %v", err)
+		gs.Logger.Error("❌ WebSocket upgrade failed", zap.Error(err))
 		return
 	}
 	defer conn.Close()
+
+	gs.Logger.Info("✅ WebSocket upgraded successfully", zap.String("sessionID", sessionID))
 
 	// Handle spectator mode
 	if spectateMode {
@@ -360,16 +374,19 @@ func (gs *GameServer) HandleWebSocketV2(w http.ResponseWriter, r *http.Request) 
 		zap.String("clientID", clientID),
 		zap.String("playerName", playerName),
 		zap.Bool("spectateMode", spectateMode),
+		zap.String("remoteAddr", r.RemoteAddr),
 	)
-	log.Debug("start handling WebSocket V2")
+	log.Info("🔌 WebSocket V2 connection attempt")
 
 	if sessionID == "" {
+		log.Warn("❌ WebSocket rejected: Missing session ID")
 		sendJSONError(w, http.StatusBadRequest, "Missing session ID")
 		return
 	}
 
 	session, ok := gs.GetSessionV2(sessionID)
 	if !ok {
+		log.Warn("❌ WebSocket rejected: Session not found")
 		sendJSONError(w, http.StatusNotFound, "Session not found")
 		return
 	}
@@ -377,6 +394,7 @@ func (gs *GameServer) HandleWebSocketV2(w http.ResponseWriter, r *http.Request) 
 	var playerID int
 	if playerIDStr != "" {
 		if _, err := fmt.Sscanf(playerIDStr, "%d", &playerID); err != nil {
+			log.Warn("❌ WebSocket rejected: Invalid player ID", zap.Error(err))
 			sendJSONError(w, http.StatusBadRequest, "Invalid player ID")
 			return
 		}
@@ -384,24 +402,44 @@ func (gs *GameServer) HandleWebSocketV2(w http.ResponseWriter, r *http.Request) 
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Error("WebSocket upgrade error", zap.Error(err))
+		log.Error("❌ WebSocket upgrade failed", zap.Error(err))
 		return
 	}
 	// defer conn.Close()
 
+	log.Info("✅ WebSocket upgraded successfully")
+
 	// Handle spectator mode
 	if spectateMode {
+		log.Info("Adding spectator to session")
 		err = session.AddSpectator(playerName, conn)
 		if err != nil {
-			log.Error("failed to add spectator to session", zap.Error(err))
+			log.Error("❌ Failed to add spectator to session", zap.Error(err))
+			// Send error message to client before closing
+			errorMsg := map[string]interface{}{
+				"type":  "error",
+				"error": fmt.Sprintf("Failed to join as spectator: %v", err),
+			}
+			if data, _ := json.Marshal(errorMsg); data != nil {
+				conn.WriteMessage(websocket.TextMessage, data)
+			}
 			conn.Close()
 		}
 		return
 	}
 
+	log.Info("Adding player to session")
 	err = session.AddPlayer(playerID, clientID, playerName, playerAvatar, conn)
 	if err != nil {
-		log.Error("failed to add player to session", zap.Error(err))
+		log.Error("❌ Failed to add player to session", zap.Error(err))
+		// Send error message to client before closing
+		errorMsg := map[string]interface{}{
+			"type":  "error",
+			"error": fmt.Sprintf("Failed to join game: %v", err),
+		}
+		if data, _ := json.Marshal(errorMsg); data != nil {
+			conn.WriteMessage(websocket.TextMessage, data)
+		}
 		conn.Close()
 	}
 }
@@ -679,7 +717,7 @@ func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Re
 
 	// Validate number of AI opponents (player + AI = 2-4 total)
 	if req.NumAI < 1 || req.NumAI > 4 {
-		sendJSONError(w, http.StatusBadRequest, "Number of AI opponents must be 1-3")
+		sendJSONError(w, http.StatusBadRequest, "Number of AI opponents must be 1-4")
 		return
 	}
 
@@ -740,5 +778,7 @@ func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Re
 }
 
 func isSessionV2(sessionID string) bool {
-	return !strings.Contains(sessionID, "v1")
+	// V2 sessions don't contain "v1" AND don't contain "single_"
+	// V1 sessions contain "v1" OR contain "single_"
+	return !strings.Contains(sessionID, "v1") && !strings.Contains(sessionID, "single_")
 }

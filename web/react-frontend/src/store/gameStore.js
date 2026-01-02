@@ -36,12 +36,29 @@ const useGameStore = create((set, get) => ({
   tradeModalCardIndex: null, // Card index for trade modal
   acquiringCardIds: [], // Array of card IDs that are being acquired (for animation)
   acquiredCardOverlay: null, // { card, type: 'market'|'golem', playerName } for overlay animation
+  
+  // Sound settings
+  soundsMuted: typeof window !== 'undefined' ? localStorage.getItem('gameSoundsMuted') === 'true' : false,
 
   // Actions
   connectWebSocket: (sessionId, playerName, playerAvatar, asSpectator = false) => {
-    // Allow overriding backend host via Vite env `VITE_API_HOST`.
-    // Example: VITE_API_HOST="http://backend-host:8080"
-    const configuredHost = import.meta.env.VITE_API_HOST || `${window.location.protocol}//${window.location.host}`;
+    // In development with Vite, always connect to the dev server (localhost:3000)
+    // which will proxy WebSocket connections to the backend
+    // In production, use the configured API host or current window location
+    const isDevelopment = import.meta.env.DEV;
+    
+    // Log environment detection
+    logger.info(`Environment: ${isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'}`);
+    logger.info(`import.meta.env.DEV: ${import.meta.env.DEV}`);
+    logger.info(`import.meta.env.VITE_API_HOST: ${import.meta.env.VITE_API_HOST}`);
+    logger.info(`window.location: ${window.location.protocol}//${window.location.host}`);
+    
+    const configuredHost = isDevelopment 
+      ? `${window.location.protocol}//${window.location.host}` // Use Vite dev server
+      : (import.meta.env.VITE_API_HOST || `${window.location.protocol}//${window.location.host}`);
+    
+    logger.info(`Configured host for WebSocket: ${configuredHost}`);
+    
     const toWs = (host) => {
       if (host.startsWith('https://')) return host.replace(/^https:\/\//, 'wss://')
       if (host.startsWith('http://')) return host.replace(/^http:\/\//, 'ws://')
@@ -56,11 +73,19 @@ const useGameStore = create((set, get) => ({
     const clientIDParam = clientID ? `&clientID=${encodeURIComponent(clientID)}` : ''
     const wsUrl = `${wsBase}/ws?session=${sessionId}&name=${encodeURIComponent(playerName)}&avatar=${playerAvatar}${spectateParam}${clientIDParam}`
 
+    logger.info(`🔌 Attempting WebSocket connection...`);
+    logger.info(`   URL: ${wsUrl}`);
+    logger.info(`   Session: ${sessionId}`);
+    logger.info(`   Player: ${playerName} (avatar: ${playerAvatar})`);
+    logger.info(`   Spectator: ${asSpectator}`);
+
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
       set({ connected: true, ws, isSpectator: asSpectator });
-      logger.info(`WebSocket connected${asSpectator ? ' as spectator' : ''}`);
+      logger.info(`✅ WebSocket connected successfully${asSpectator ? ' as spectator' : ''}`);
+      logger.info(`   Ready state: ${ws.readyState}`);
+      showToast('Connected to game server', 'success');
     };
 
     ws.onmessage = (event) => {
@@ -300,17 +325,50 @@ const useGameStore = create((set, get) => ({
         }
       } else if (message.type === "error") {
         logger.error("Game error:", message.error);
+        showToast(`Error: ${message.error}`, 'error');
       }
     };
 
     ws.onerror = (error) => {
-      logger.error("WebSocket error:", error);
+      logger.error("❌ WebSocket error occurred:", error);
+      logger.error(`   Ready state: ${ws.readyState}`);
+      logger.error(`   URL attempted: ${wsUrl}`);
       set({ connected: false });
+      
+      // Show user-friendly error message
+      const errorMsg = `Failed to connect to game server. Please check if the server is running.`;
+      showToast(errorMsg, 'error');
+      
+      // Log additional debugging info
+      logger.error('Debugging info:');
+      logger.error(`  - Check if backend is running on port 8080`);
+      logger.error(`  - Check if Vite dev server is running on port 3000 (dev mode)`);
+      logger.error(`  - Verify VITE_API_HOST in .env.local`);
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       set({ connected: false, ws: null });
-      logger.info("WebSocket disconnected");
+      logger.warn(`🔌 WebSocket disconnected`);
+      logger.warn(`   Code: ${event.code}`);
+      logger.warn(`   Reason: ${event.reason || 'No reason provided'}`);
+      logger.warn(`   Clean: ${event.wasClean}`);
+      
+      // Show appropriate message based on close code
+      if (!event.wasClean) {
+        const closeMessages = {
+          1000: 'Normal closure',
+          1001: 'Going away',
+          1002: 'Protocol error',
+          1003: 'Unsupported data',
+          1006: 'Connection lost - server may be down',
+          1007: 'Invalid frame payload',
+          1008: 'Policy violation',
+          1009: 'Message too big',
+          1011: 'Server error',
+        };
+        const message = closeMessages[event.code] || `Connection closed (code: ${event.code})`;
+        showToast(message, 'warning');
+      }
     };
 
     set({ ws, sessionId });
@@ -621,6 +679,23 @@ const useGameStore = create((set, get) => ({
     } catch (error) {
       logger.error("Error starting game:", error);
       return { success: false, error: error.message || 'Failed to start game' };
+    }
+  },
+
+  // Sound settings actions
+  toggleSoundsMuted: () => {
+    const newMutedState = !get().soundsMuted;
+    set({ soundsMuted: newMutedState });
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('gameSoundsMuted', newMutedState.toString());
+    }
+    return newMutedState;
+  },
+
+  setSoundsMuted: (muted) => {
+    set({ soundsMuted: muted });
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('gameSoundsMuted', muted.toString());
     }
   },
 }));
