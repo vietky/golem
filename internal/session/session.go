@@ -202,6 +202,30 @@ func (gs *GameSession) AddPlayer(playerID int, clientID string, name string, ava
 	// Broadcast updated state to all players so they see the new player's name
 	gs.broadcastState()
 
+	// // Auto-start game for single player sessions when first player joins
+	// isSinglePlayer := strings.HasPrefix(gs.ID, "single")
+	// isWaiting := gs.status == GameStatusWaiting
+	// playerCount := len(gs.connectedPlayers)
+
+	// gs.logger.Debug("Checking auto-start conditions",
+	// 	zap.Bool("isSinglePlayer", isSinglePlayer),
+	// 	zap.Bool("isWaiting", isWaiting),
+	// 	zap.Int("playerCount", playerCount),
+	// )
+
+	// shouldAutoStart := isSinglePlayer && isWaiting && playerCount == 1
+
+	// if shouldAutoStart {
+	// 	gs.logger.Info("Auto-starting single player game", zap.String("sessionID", gs.ID))
+	// 	gs.mu.Unlock()
+	// 	if err := gs.StartGame(); err != nil {
+	// 		gs.logger.Error("Failed to auto-start single player game", zap.Error(err))
+	// 	}
+	// 	return nil
+	// }
+
+	// // Normal path - unlock and return
+	// gs.mu.Unlock()
 	return nil
 }
 
@@ -224,7 +248,19 @@ func (gs *GameSession) StartGame() error {
 
 	// Initialize game state
 	seed := time.Now().UnixNano()
-	gameState := game.NewGameState(len(gs.connectedPlayers), seed)
+
+	// For single player mode, use maxPlayers (includes AI)
+	// For multiplayer, use connected players count
+	numPlayers := len(gs.connectedPlayers)
+	if strings.HasPrefix(gs.ID, "single") {
+		numPlayers = gs.maxPlayers
+		gs.logger.Info("Single player mode: using maxPlayers for game state",
+			zap.Int("maxPlayers", gs.maxPlayers),
+			zap.Int("connectedPlayers", len(gs.connectedPlayers)),
+		)
+	}
+
+	gameState := game.NewGameState(numPlayers, seed)
 
 	var aiPlayer game.AIStrategy
 	aiPlayer = game.NewRestOnlyAI()
@@ -260,6 +296,15 @@ func (gs *GameSession) StartGame() error {
 		gs.GameState.Players[i].IsAI = false // Human player
 	}
 
+	// For single player mode, mark remaining players as AI
+	if strings.HasPrefix(gs.ID, "single") {
+		numHumans := len(gs.connectedPlayers)
+		for i := numHumans; i < len(gs.GameState.Players); i++ {
+			gs.GameState.Players[i].IsAI = true
+			gs.GameState.Players[i].Name = fmt.Sprintf("AI %d", i+1-numHumans)
+		}
+	}
+
 	// Store initial game state in event store
 	if gs.EventStore != nil {
 		req := eventstore.StoreEventRequest{
@@ -292,7 +337,7 @@ func (gs *GameSession) StartGame() error {
 
 	gs.logger.Info("Game started",
 		zap.String("sessionID", gs.ID),
-		zap.Int("totalPlayers", len(gs.connectedPlayers)),
+		zap.Int("totalPlayers", len(gs.GameState.Players)),
 	)
 
 	return nil
@@ -1177,9 +1222,10 @@ func (gs *GameSession) runGameLoop() {
 				// Skip timeout check for first turn to allow setup
 				continue
 			}
+
 			gs.logger.Debug("Checking turn timeout", zap.Bool("isAI", currentPlayer.IsAI), zap.Int("playerID", currentPlayer.ID), zap.Duration("turnDuration", turnDuration), zap.Duration("timeout", timeout))
 			if !currentPlayer.IsAI && turnDuration >= timeout {
-				gs.logger.Info("[1] AI taking action", zap.Duration("turnDuration", turnDuration), zap.Duration("timeout", timeout))
+				gs.logger.Info("[1] AI taking action due to timeout", zap.Duration("turnDuration", turnDuration), zap.Duration("timeout", timeout))
 				// Timeout! Let AI make the move
 				gs.handleTurnTimeout(currentPlayer)
 				continue

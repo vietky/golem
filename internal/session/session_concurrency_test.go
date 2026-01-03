@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"golem_century/internal/game"
 	"golem_century/internal/logger"
 
 	"github.com/gorilla/websocket"
@@ -51,7 +50,7 @@ func TestConcurrentWebsocketWrites(t *testing.T) {
 	defer server.Close()
 
 	// Create game session
-	gs := NewGameSession("test-session", 4, 60, nil, nil, log)
+	gs := NewGameSession("test-session", 4, 60, nil, log)
 
 	// Connect multiple players
 	numPlayers := 4
@@ -243,7 +242,7 @@ func TestConcurrentChatMessages(t *testing.T) {
 	defer server.Close()
 
 	// Create game session
-	gs := NewGameSession("test-session", 4, 60, nil, nil, log)
+	gs := NewGameSession("test-session", 4, 60, nil, log)
 
 	// Connect multiple players
 	numPlayers := 4
@@ -320,7 +319,7 @@ func TestConcurrentPlayerActions(t *testing.T) {
 	defer server.Close()
 
 	// Create game session and start game
-	gs := NewGameSession("test-session", 2, 60, game.NewAIPlayer(nil), nil, log)
+	gs := NewGameSession("test-session", 2, 60, nil, log)
 
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
 
@@ -396,7 +395,7 @@ func TestBroadcastStateWithConcurrentReads(t *testing.T) {
 	}))
 	defer server.Close()
 
-	gs := NewGameSession("test-session", 3, 60, nil, nil, log)
+	gs := NewGameSession("test-session", 3, 60, nil, log)
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
 
 	// Add players
@@ -470,7 +469,7 @@ func TestPlayerJoinLeaveWithConcurrentBroadcasts(t *testing.T) {
 	}))
 	defer server.Close()
 
-	gs := NewGameSession("test-session", 10, 60, nil, nil, log)
+	gs := NewGameSession("test-session", 10, 60, nil, log)
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
 
 	// Concurrent player joins and broadcasts
@@ -566,7 +565,7 @@ func TestConcurrentWritesToSamePlayer(t *testing.T) {
 	}))
 	defer server.Close()
 
-	gs := NewGameSession("test-session", 4, 60, nil, nil, log)
+	gs := NewGameSession("test-session", 4, 60, nil, log)
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
 
 	// Add a single player
@@ -644,7 +643,7 @@ func TestConcurrentWritesToSameSpectator(t *testing.T) {
 	}))
 	defer server.Close()
 
-	gs := NewGameSession("test-session", 4, 60, nil, nil, log)
+	gs := NewGameSession("test-session", 4, 60, nil, log)
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
 
 	// Add a single spectator
@@ -733,7 +732,7 @@ func TestConcurrentWritesDuringConnectionClose(t *testing.T) {
 	}))
 	defer server.Close()
 
-	gs := NewGameSession("test-session", 4, 60, nil, nil, log)
+	gs := NewGameSession("test-session", 4, 60, nil, log)
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
 
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
@@ -803,7 +802,7 @@ func TestHighFrequencyConcurrentBroadcasts(t *testing.T) {
 	}))
 	defer server.Close()
 
-	gs := NewGameSession("test-session", 4, 60, nil, nil, log)
+	gs := NewGameSession("test-session", 4, 60, nil, log)
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
 
 	// Add multiple players
@@ -872,7 +871,7 @@ func TestConcurrentWritesWithPlayerRemoval(t *testing.T) {
 	}))
 	defer server.Close()
 
-	gs := NewGameSession("test-session", 4, 60, nil, nil, log)
+	gs := NewGameSession("test-session", 4, 60, nil, log)
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
 
 	// Add players
@@ -968,7 +967,7 @@ func TestConcurrentBroadcastAndStateRead(t *testing.T) {
 	}))
 	defer server.Close()
 
-	gs := NewGameSession("test-session", 3, 60, nil, nil, log)
+	gs := NewGameSession("test-session", 3, 60, nil, log)
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
 
 	// Add players and start game
@@ -1043,7 +1042,7 @@ func TestWriteChannelOverflow(t *testing.T) {
 	}))
 	defer server.Close()
 
-	gs := NewGameSession("test-session", 4, 60, nil, nil, log)
+	gs := NewGameSession("test-session", 4, 60, nil, log)
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
 
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
@@ -1108,7 +1107,7 @@ func TestConcurrentSpectatorAddRemoveWithWrites(t *testing.T) {
 	}))
 	defer server.Close()
 
-	gs := NewGameSession("test-session", 4, 60, nil, nil, log)
+	gs := NewGameSession("test-session", 4, 60, nil, log)
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
 
 	// Continuous broadcasts

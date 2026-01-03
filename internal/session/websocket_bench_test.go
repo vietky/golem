@@ -12,7 +12,7 @@ import (
 // BenchmarkBroadcastCurrent benchmarks the current broadcast implementation
 func BenchmarkBroadcastCurrent(b *testing.B) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("bench-session", 4, 60, nil, nil, log)
+	session := NewGameSession("bench-session", 4, 60, nil, log)
 
 	// Create mock players with buffered channels
 	players := make([]*PlayerInfo, 100)
@@ -51,7 +51,7 @@ func BenchmarkBroadcastCurrent(b *testing.B) {
 // BenchmarkBroadcastSmallPayload benchmarks with small messages
 func BenchmarkBroadcastSmallPayload(b *testing.B) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("bench-session-small", 4, 60, nil, nil, log)
+	session := NewGameSession("bench-session-small", 4, 60, nil, log)
 
 	players := make([]*PlayerInfo, 10)
 	for i := 0; i < 10; i++ {
@@ -117,7 +117,7 @@ func BenchmarkJSONMarshal(b *testing.B) {
 // BenchmarkPingPongOverhead benchmarks the ping/pong mechanism overhead
 func BenchmarkPingPongOverhead(b *testing.B) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("bench-ping", 2, 60, nil, nil, log)
+	session := NewGameSession("bench-ping", 2, 60, nil, log)
 	session.pingInterval = 1 * time.Millisecond // Very frequent for testing
 
 	player := &PlayerInfo{
@@ -153,7 +153,7 @@ func BenchmarkPingPongOverhead(b *testing.B) {
 // BenchmarkConcurrentBroadcasts benchmarks concurrent broadcast calls
 func BenchmarkConcurrentBroadcasts(b *testing.B) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("bench-concurrent", 4, 60, nil, nil, log)
+	session := NewGameSession("bench-concurrent", 4, 60, nil, log)
 
 	players := make([]*PlayerInfo, 50)
 	for i := 0; i < 50; i++ {
@@ -226,7 +226,7 @@ func BenchmarkWriteChannelSaturation(b *testing.B) {
 // BenchmarkMutexContention benchmarks mutex contention in broadcast
 func BenchmarkMutexContention(b *testing.B) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("bench-mutex", 4, 60, nil, nil, log)
+	session := NewGameSession("bench-mutex", 4, 60, nil, log)
 
 	// Add players
 	for i := 0; i < 20; i++ {

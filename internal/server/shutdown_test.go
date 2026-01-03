@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"golem_century/internal/config"
-	"golem_century/internal/game"
 	"golem_century/internal/logger"
 
 	"github.com/gorilla/websocket"
@@ -37,8 +36,8 @@ func TestGracefulShutdown(t *testing.T) {
 	// Create some sessions
 	sessionID1 := "test_session_1"
 	sessionID2 := "test_session_2"
-	gameServer.CreateSessionV2(sessionID1, 2, game.NewRestOnlyAI(), 60)
-	gameServer.CreateSessionV2(sessionID2, 2, game.NewRestOnlyAI(), 60)
+	gameServer.CreateSessionV2(sessionID1, 2, 60)
+	gameServer.CreateSessionV2(sessionID2, 2, 60)
 
 	// Connect some WebSocket clients
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?session=" + sessionID1 + "&name=Player1&avatar=1&clientID=client1"
@@ -100,7 +99,7 @@ func TestSessionClose(t *testing.T) {
 
 	// Create V2 session
 	sessionID := "test_session_close"
-	gameServer.CreateSessionV2(sessionID, 2, game.NewRestOnlyAI(), 60)
+	gameServer.CreateSessionV2(sessionID, 2, 60)
 
 	// Get the session
 	gameServer.mu.RLock()
@@ -172,7 +171,7 @@ func TestShutdownWithActiveConnections(t *testing.T) {
 
 	// Create session and connect multiple clients
 	sessionID := "test_shutdown_active"
-	gameServer.CreateSessionV2(sessionID, 4, game.NewRestOnlyAI(), 60)
+	gameServer.CreateSessionV2(sessionID, 4, 60)
 
 	// Connect 4 players
 	connections := make([]*websocket.Conn, 4)
