@@ -102,11 +102,10 @@ func (gs *GameServer) HandleListGames(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get list of all game IDs by querying distinct game_ids from events
-	// For now, we'll return active sessions
+	// Get list of all game IDs from V2 sessions
 	gs.mu.RLock()
-	gameIDs := make([]string, 0, len(gs.Sessions))
-	for id := range gs.Sessions {
+	gameIDs := make([]string, 0, len(gs.SessionsV2))
+	for id := range gs.SessionsV2 {
 		gameIDs = append(gameIDs, id)
 	}
 	gs.mu.RUnlock()
