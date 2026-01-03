@@ -290,7 +290,7 @@ func (gs *GameServer) HandleListSessions(w http.ResponseWriter, r *http.Request)
 
 	// Process v2 sessions (all sessions are now V2)
 	for sessionID, ss := range gs.SessionsV2 {
-		connectedPlayers := ss.GetConnectedPlayersCount()
+		connectedPlayers := ss.GetActivelyConnectedPlayersCount()
 		spectatorCount := ss.GetConnectedSpectatorsCount()
 		maxPlayers := ss.GetMaxPlayers()
 		playerNames := ss.GetPlayerNames()

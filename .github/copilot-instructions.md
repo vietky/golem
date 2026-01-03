@@ -198,6 +198,7 @@ Docker images: `Dockerfile` (backend), `Dockerfile.fe` (frontend-only). Producti
 - all markdown documentation files are located in `/docs/` directory
 - only README.md are allowed in the root directory
 - when writing integration tests, set a reasonable timeout (5-10 seconds) to avoid hanging tests, automatically fail tests that exceed the timeout limit
+- when fixing bugs, add regression tests to prevent future occurrences of the same issues
 
 ## UI/UX Guidelines 
 - for frontend, mobile responsiveness is a must

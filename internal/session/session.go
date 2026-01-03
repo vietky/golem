@@ -164,6 +164,14 @@ func (gs *GameSession) AddPlayer(playerID int, clientID string, name string, ava
 		// Start new read and write handlers
 		go gs.runPlayerWriteHandler(existingPlayer)
 		go gs.runPlayerReadHandler(existingPlayer)
+
+		// Send playerAssigned message first so client knows its player ID
+		assignedMsg := map[string]interface{}{
+			"type":     "playerAssigned",
+			"playerID": existingPlayer.PlayerID,
+		}
+		gs.sendToPlayer(clientID, assignedMsg)
+
 		// Send current game state to reconnected player
 		gs.sendToPlayer(clientID, gs.serializeState())
 		// Notify others that player is back online
@@ -182,6 +190,17 @@ func (gs *GameSession) AddPlayer(playerID int, clientID string, name string, ava
 	if gs.status == GameStatusPlaying {
 		err := gs.addPlayerToGame(playerID, clientID, name, avatar, conn)
 		if err != nil {
+			// If room is full and this looks like a reconnection attempt (player has same name or was recently in game),
+			// we should still clean up old goroutines to prevent "websocket: close sent" errors
+			// This ensures old write handlers don't try to write after we've closed the connection
+			gs.logger.Debug("Failed to add player to game, will close new connection",
+				zap.String("clientID", clientID),
+				zap.Error(err),
+			)
+			// Close the new connection to prevent dangling references
+			if conn != nil {
+				conn.Close()
+			}
 			return fmt.Errorf("failed to add player to game: %w", err)
 		}
 	}
@@ -468,7 +487,19 @@ func (gs *GameSession) runPlayerWriteHandler(player *PlayerInfo) {
 				err := player.Conn.WriteMessage(websocket.TextMessage, msg)
 
 				if err != nil {
-					// Log error and continue processing messages
+					// Check if this is a connection closed error
+					if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) ||
+						strings.Contains(err.Error(), "close sent") ||
+						strings.Contains(err.Error(), "use of closed network connection") {
+						// Connection is closed, stop this goroutine
+						gs.logger.Debug("write handler detected closed connection, exiting",
+							zap.String("clientID", player.ClientID),
+							zap.String("name", player.Name),
+							zap.Error(err),
+						)
+						return
+					}
+					// Log error and continue processing messages for other errors
 					gs.logger.Error("failed to write message to player",
 						zap.String("clientID", player.ClientID),
 						zap.String("name", player.Name),
@@ -485,6 +516,17 @@ func (gs *GameSession) runPlayerWriteHandler(player *PlayerInfo) {
 				err := player.Conn.WriteMessage(websocket.PingMessage, nil)
 
 				if err != nil {
+					// Check if this is a connection closed error
+					if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) ||
+						strings.Contains(err.Error(), "close sent") ||
+						strings.Contains(err.Error(), "use of closed network connection") {
+						// Connection is closed, stop this goroutine
+						gs.logger.Debug("ping ticker detected closed connection, exiting",
+							zap.String("clientID", player.ClientID),
+							zap.Error(err),
+						)
+						return
+					}
 					gs.logger.Debug("failed to send ping to player",
 						zap.String("clientID", player.ClientID),
 						zap.Error(err),
@@ -517,7 +559,18 @@ func (gs *GameSession) runSpectatorWriteHandler(spectator *Spectator) {
 				err := spectator.Conn.WriteMessage(websocket.TextMessage, msg)
 
 				if err != nil {
-					// Log error and continue processing messages
+					// Check if this is a connection closed error
+					if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) ||
+						strings.Contains(err.Error(), "close sent") ||
+						strings.Contains(err.Error(), "use of closed network connection") {
+						// Connection is closed, stop this goroutine
+						gs.logger.Debug("spectator write handler detected closed connection, exiting",
+							zap.String("spectatorID", spectator.SpectatorID),
+							zap.Error(err),
+						)
+						return
+					}
+					// Log error and continue processing messages for other errors
 					gs.logger.Error("failed to write message to spectator",
 						zap.String("spectatorID", spectator.SpectatorID),
 						zap.Error(err),
@@ -532,6 +585,17 @@ func (gs *GameSession) runSpectatorWriteHandler(spectator *Spectator) {
 				err := spectator.Conn.WriteMessage(websocket.PingMessage, nil)
 
 				if err != nil {
+					// Check if this is a connection closed error
+					if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) ||
+						strings.Contains(err.Error(), "close sent") ||
+						strings.Contains(err.Error(), "use of closed network connection") {
+						// Connection is closed, stop this goroutine
+						gs.logger.Debug("spectator ping ticker detected closed connection, exiting",
+							zap.String("spectatorID", spectator.SpectatorID),
+							zap.Error(err),
+						)
+						return
+					}
 					gs.logger.Debug("failed to send ping to spectator",
 						zap.String("spectatorID", spectator.SpectatorID),
 						zap.Error(err),
@@ -553,6 +617,7 @@ func (gs *GameSession) handleRemovePlayer(clientID string) {
 
 	if p.Conn != nil {
 		p.Conn.Close()
+		p.Conn = nil // Set to nil so GetActivelyConnectedPlayersCount doesn't count this player
 	}
 
 	// If game is still waiting/not started, completely remove the player
@@ -1012,6 +1077,24 @@ func (gs *GameSession) GetConnectedPlayersCount() int {
 	gs.mu.RLock()
 	defer gs.mu.RUnlock()
 	return len(gs.connectedPlayers)
+}
+
+// GetActivelyConnectedPlayersCount returns the number of players with active connections
+// This counts only players who have an open WebSocket connection (not disconnected/offline players)
+// Used by the /list endpoint to determine if room is full for new joins
+func (gs *GameSession) GetActivelyConnectedPlayersCount() int {
+	gs.mu.RLock()
+	defer gs.mu.RUnlock()
+
+	count := 0
+	for _, player := range gs.connectedPlayers {
+		// Count only players with active connections
+		// During gameplay, disconnected players are kept for reconnection but have Conn = nil
+		if player.Conn != nil {
+			count++
+		}
+	}
+	return count
 }
 
 // GetConnectedSpectatorsCount returns the number of connected spectators
