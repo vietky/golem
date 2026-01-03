@@ -13,3 +13,4 @@ web/react
 node_modules/
 
 .vscode/
+*.log

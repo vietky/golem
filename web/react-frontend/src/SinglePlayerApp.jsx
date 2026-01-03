@@ -141,7 +141,20 @@ function GameContentWithTheme({ useWebLayout, isMobile, isPortrait, sessionId, s
 function SinglePlayerApp() {
   const [gameMode, setGameMode] = useState(null) // null, 'single', 'multi'
   const [inGame, setInGame] = useState(false)
-  const { connectWebSocket, gameState, connected, sessionId } = useGameStore()
+  const { 
+    connectWebSocket, 
+    gameState, 
+    connected, 
+    sessionId,
+    isConnecting,
+    connectionError,
+    isReconnecting,
+    reconnectAttempts,
+    forceReconnect,
+    playerName: storedPlayerName,
+    playerAvatar: storedPlayerAvatar,
+    isSpectator,
+  } = useGameStore()
   const { isPortrait, isLandscape, isMobile, isTablet, isDesktop, width } = useOrientation()
 
   const handleStartSinglePlayer = (sessionId, playerName, playerAvatar) => {
@@ -279,6 +292,8 @@ function SinglePlayerApp() {
 
   // Show loading screen while connecting or waiting for game state
   if (!connected || !gameState) {
+    const showRetryButton = connectionError || (isReconnecting && reconnectAttempts >= 2);
+    
     return (
       <>
         <Toast />
@@ -297,16 +312,87 @@ function SinglePlayerApp() {
         >
           <div className={`
             bg-white/90 backdrop-blur-md rounded-2xl text-center
-            ${isMobile ? 'p-4 max-w-[280px]' : 'p-8'}
+            ${isMobile ? 'p-4 max-w-[280px]' : 'p-8 max-w-md'}
           `}>
-            <div className={`
-              animate-spin rounded-full border-b-2 border-purple-500 mx-auto mb-4
-              ${isMobile ? 'h-8 w-8' : 'h-12 w-12'}
-            `}></div>
+            {/* Spinner - only show when actively connecting */}
+            {(isConnecting || isReconnecting) && !showRetryButton && (
+              <div className={`
+                animate-spin rounded-full border-b-2 border-purple-500 mx-auto mb-4
+                ${isMobile ? 'h-8 w-8' : 'h-12 w-12'}
+              `}></div>
+            )}
+
+            {/* Error Icon */}
+            {showRetryButton && (
+              <div className={`
+                mx-auto mb-4 flex items-center justify-center rounded-full bg-red-100
+                ${isMobile ? 'h-12 w-12' : 'h-16 w-16'}
+              `}>
+                <svg className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-red-600`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            )}
+
+            {/* Title */}
             <h2 className={`font-bold text-gray-800 mb-2 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-              {!connected ? 'Connecting...' : 'Loading...'}
+              {connectionError 
+                ? 'Connection Failed' 
+                : isReconnecting 
+                  ? `Reconnecting (${reconnectAttempts}/${10})`
+                  : !connected 
+                    ? 'Connecting...' 
+                    : 'Loading...'}
             </h2>
-            <p className={`text-gray-600 ${isMobile ? 'text-sm' : ''}`}>Please wait...</p>
+
+            {/* Error Message */}
+            {connectionError && (
+              <p className={`text-red-600 mb-4 ${isMobile ? 'text-sm' : 'text-base'}`}>
+                {connectionError}
+              </p>
+            )}
+
+            {/* Status Message */}
+            {!connectionError && (
+              <p className={`text-gray-600 ${isMobile ? 'text-sm' : ''}`}>
+                {isReconnecting ? 'Attempting to reconnect...' : 'Please wait...'}
+              </p>
+            )}
+
+            {/* Retry Button */}
+            {showRetryButton && (
+              <button
+                onClick={() => {
+                  if (sessionId && storedPlayerName) {
+                    forceReconnect();
+                  }
+                }}
+                className={`
+                  mt-4 px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg
+                  transition-colors duration-200 shadow-md hover:shadow-lg
+                  ${isMobile ? 'text-sm' : 'text-base'}
+                `}
+              >
+                Retry Connection
+              </button>
+            )}
+
+            {/* Back to Menu - show after multiple failed attempts */}
+            {reconnectAttempts >= 3 && (
+              <button
+                onClick={() => {
+                  setInGame(false);
+                  setGameMode(null);
+                }}
+                className={`
+                  mt-2 px-4 py-2 text-gray-600 hover:text-gray-800 font-medium
+                  transition-colors duration-200
+                  ${isMobile ? 'text-xs' : 'text-sm'}
+                `}
+              >
+                Back to Menu
+              </button>
+            )}
           </div>
         </div>
       </>
