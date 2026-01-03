@@ -32,7 +32,8 @@ type PlayerInfo struct {
 	Name      string
 	Avatar    string
 	JoinedAt  time.Time
-	WriteChan chan []byte // channel for writing to Conn
+	WriteChan chan []byte   // channel for writing to Conn
+	Done      chan struct{} // signal to stop goroutines
 }
 
 func (p PlayerInfo) GetAvatar() string {
@@ -46,7 +47,8 @@ type Spectator struct {
 	SpectatorID string // unique spectator ID for each unique device
 	Conn        *websocket.Conn
 	Name        string
-	WriteChan   chan []byte // channel for writing to Conn
+	WriteChan   chan []byte   // channel for writing to Conn
+	Done        chan struct{} // signal to stop goroutines
 }
 
 // GameSession represents a multiplayer game session
@@ -136,14 +138,24 @@ func (gs *GameSession) AddPlayer(playerID int, clientID string, name string, ava
 			zap.Int("playerID", existingPlayer.PlayerID),
 			zap.String("name", existingPlayer.Name),
 		)
-		// Close old connection gracefully if it exists
+		// Stop old goroutines first
+		if existingPlayer.Done != nil {
+			close(existingPlayer.Done) // Signal old goroutines to stop
+		}
+		// Close old connection and write channel
 		if existingPlayer.Conn != nil {
 			existingPlayer.Conn.Close()
 		}
-		// Don't close the old write channel - let the goroutine exit naturally
-		// Just update the connection and create new write channel
+		if existingPlayer.WriteChan != nil {
+			close(existingPlayer.WriteChan)
+		}
+		// Small delay to allow old goroutines to exit
+		time.Sleep(50 * time.Millisecond)
+
+		// Create new connection, channels, and done signal
 		existingPlayer.Conn = conn
 		existingPlayer.WriteChan = make(chan []byte, 100)
+		existingPlayer.Done = make(chan struct{})
 		// Update player name/avatar if provided
 		if name != "" {
 			existingPlayer.Name = name
@@ -157,7 +169,7 @@ func (gs *GameSession) AddPlayer(playerID int, clientID string, name string, ava
 		// Send current game state to reconnected player
 		gs.sendToPlayer(clientID, gs.serializeState())
 		// Notify others that player is back online
-		gs.broadcastMemberStatusChanged(clientID, existingPlayer.Name, true, true)
+		gs.broadcastMemberStatusChanged(clientID, existingPlayer.Name, false, true)
 		return nil
 	}
 
@@ -335,6 +347,7 @@ func (gs *GameSession) addPlayerToGame(playerID int, clientID string, name strin
 		ClientID:  clientID,
 		JoinedAt:  time.Now(),
 		WriteChan: make(chan []byte, 100),
+		Done:      make(chan struct{}),
 	}
 
 	// add mapping from player ID to client ID
@@ -375,6 +388,7 @@ func (gs *GameSession) addToWaitingList(clientID string, name string, avatar str
 		Avatar:    avatar,
 		JoinedAt:  time.Now(),
 		WriteChan: make(chan []byte, 100),
+		Done:      make(chan struct{}),
 	}
 	gs.logger.Info("added player to waiting list",
 		zap.String("clientID", clientID),
@@ -393,6 +407,9 @@ func (gs *GameSession) runPlayerWriteHandler(player *PlayerInfo) {
 
 	for {
 		select {
+		case <-player.Done:
+			// Stop signal received, exit goroutine
+			return
 		case msg, ok := <-player.WriteChan:
 			if !ok {
 				// Channel closed, exit goroutine
@@ -439,6 +456,9 @@ func (gs *GameSession) runSpectatorWriteHandler(spectator *Spectator) {
 
 	for {
 		select {
+		case <-spectator.Done:
+			// Stop signal received, exit goroutine
+			return
 		case msg, ok := <-spectator.WriteChan:
 			if !ok {
 				// Channel closed, exit goroutine
@@ -490,8 +510,13 @@ func (gs *GameSession) handleRemovePlayer(clientID string) {
 	// If game is still waiting/not started, completely remove the player
 	switch gs.status {
 	case GameStatusWaiting:
-		// Close write channel to signal write goroutine to stop
-		close(p.WriteChan)
+		// Signal goroutines to stop and close channels
+		if p.Done != nil {
+			close(p.Done)
+		}
+		if p.WriteChan != nil {
+			close(p.WriteChan)
+		}
 		if p.PlayerID > 0 {
 			delete(gs.assignedPlayers, p.PlayerID)
 		}
@@ -756,6 +781,7 @@ func (gs *GameSession) AddSpectator(name string, conn *websocket.Conn) error {
 		Conn:        conn,
 		Name:        name,
 		WriteChan:   make(chan []byte, 100),
+		Done:        make(chan struct{}),
 	}
 	gs.spectators[spectatorID] = spectator
 	gs.LastActivity = time.Now()
@@ -793,8 +819,13 @@ func (gs *GameSession) handleRemoveSpectator(spectatorID string) {
 	if spectator == nil {
 		return
 	}
-	// Close write channel to signal write goroutine to stop
-	close(spectator.WriteChan)
+	// Signal goroutines to stop and close channels
+	if spectator.Done != nil {
+		close(spectator.Done)
+	}
+	if spectator.WriteChan != nil {
+		close(spectator.WriteChan)
+	}
 	delete(gs.spectators, spectatorID)
 
 	// Close connection if still open
@@ -1443,11 +1474,12 @@ func (gs *GameSession) Close() error {
 			player.Conn.WriteControl(websocket.CloseMessage, closeMsg, time.Now().Add(5*time.Second))
 			player.Conn.Close()
 		}
+		// Signal goroutines to stop
+		if player.Done != nil {
+			close(player.Done)
+		}
 		// Close write channel if not already closed
-		select {
-		case <-player.WriteChan:
-			// Already closed
-		default:
+		if player.WriteChan != nil {
 			close(player.WriteChan)
 		}
 		gs.logger.Debug("Closed player connection",
@@ -1463,11 +1495,12 @@ func (gs *GameSession) Close() error {
 			spectator.Conn.WriteControl(websocket.CloseMessage, closeMsg, time.Now().Add(5*time.Second))
 			spectator.Conn.Close()
 		}
+		// Signal goroutines to stop
+		if spectator.Done != nil {
+			close(spectator.Done)
+		}
 		// Close write channel if not already closed
-		select {
-		case <-spectator.WriteChan:
-			// Already closed
-		default:
+		if spectator.WriteChan != nil {
 			close(spectator.WriteChan)
 		}
 		gs.logger.Debug("Closed spectator connection",

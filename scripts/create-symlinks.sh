@@ -6,8 +6,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STATIC_DIR="$SCRIPT_DIR/web/static"
-PUBLIC_DIR="$SCRIPT_DIR/web/react-frontend/public"
+STATIC_DIR="$SCRIPT_DIR/../web/static"
+PUBLIC_DIR="$SCRIPT_DIR/../web/react-frontend/public"
 
 echo "🔗 Creating symlinks from static to public..."
 echo "   Source: $STATIC_DIR"
