@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
-import useGameStore from '../store/gameStore'
-import useOrientation from '../hooks/useOrientation'
-import CompactCard from './CompactCard'
-import UpgradeModal from './UpgradeModal'
-import TradeModal from './TradeModal'
-import PlayedCardsView from './PlayedCardsView'
+import useGameStore from '../../store/gameStore'
+import useOrientation from '../../hooks/useOrientation'
+import CompactCard from '../CompactCard'
+import UpgradeModal from '../UpgradeModal'
+import TradeModal from '../TradeModal'
+import PlayedCardsView from '../PlayedCardsView'
 
 const CompactPlayerHand = () => {
   const { myPlayer, currentPlayer, playCard, playCardWithUpgrade, playCardWithTrade, rest } = useGameStore()

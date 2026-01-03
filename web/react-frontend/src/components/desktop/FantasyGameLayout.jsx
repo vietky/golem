@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import FantasyMarketArea from './FantasyMarketArea'
-import DiscardModal from './DiscardModal'
-import AcquiredCardOverlay from './AcquiredCardOverlay'
-import GameOverModal from './GameOverModal'
-import useGameStore from '../store/gameStore'
-import { getCardSpriteStyle, getCardImagePath } from '../utils/cardNames'
+import FantasyMarketArea from '../FantasyMarketArea'
+import DiscardModal from '../DiscardModal'
+import AcquiredCardOverlay from '../AcquiredCardOverlay'
+import GameOverModal from '../GameOverModal'
+import useGameStore from '../../store/gameStore'
+import { getCardSpriteStyle, getCardImagePath } from '../../utils/cardNames'
 
 // ============================================
 // LAYOUT SETTINGS - Everything uses % based positioning

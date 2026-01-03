@@ -94,6 +94,24 @@ events := eventStore.GetEvents(GetEventsRequest{GameID: id})
 
 ## Frontend Integration Points
 
+### Component Organization
+- **`components/mobile/`**: Mobile-specific components (< 768px width)
+  - `CompactGameBoard.jsx`: Main game board for mobile with waiting mode support
+  - `CompactPlayerHand.jsx`: Player hand display optimized for mobile
+  - `MobileNavBar.jsx`: Navigation bar for mobile portrait mode
+  - `MobileHistoryButton.jsx`: History/chat button for mobile
+- **`components/desktop/`**: Desktop/tablet components (≥ 768px width)
+  - `WebGameLayout.jsx`: Main game layout for desktop with grid-based design
+  - `FantasyGameLayout.jsx`: Fantasy-themed layout variant
+- **`components/`**: Shared components used by both mobile and desktop
+  - `CompactCard.jsx`, `PlayerCard.jsx`, `DepositModal.jsx`, etc.
+
+**IMPORTANT**: When making UI changes, you MUST update BOTH mobile and desktop versions:
+- Mobile waiting mode: `components/mobile/CompactGameBoard.jsx`
+- Desktop waiting mode: `components/desktop/WebGameLayout.jsx`
+- The app switches layouts at 768px breakpoint (controlled in `SinglePlayerApp.jsx`)
+- Always test UI changes on both mobile (< 768px) and desktop (≥ 768px) viewports
+
 ### WebSocket Connection
 ```javascript
 // Players connect with client_id for reconnection

@@ -2,17 +2,17 @@ import React, { useState } from 'react'
 import SinglePlayerLobby from './components/SinglePlayerLobby'
 import Lobby from './components/Lobby'
 import PlayersInfoBar from './components/PlayersInfoBar'
-import CompactGameBoard from './components/CompactGameBoard'
-import CompactPlayerHand from './components/CompactPlayerHand'
+import CompactGameBoard from './components/mobile/CompactGameBoard'
+import CompactPlayerHand from './components/mobile/CompactPlayerHand'
 import CollapsibleInfo from './components/CollapsibleInfo'
 import DiscardModal from './components/DiscardModal'
 import AcquiredCardOverlay from './components/AcquiredCardOverlay'
 import GameOverModal from './components/GameOverModal'
 import Toast from './components/Toast'
-import WebGameLayout from './components/WebGameLayout'
+import WebGameLayout from './components/desktop/WebGameLayout'
 import ThemeToggleButton from './components/ThemeToggleButton'
 import SoundToggleButton from './components/SoundToggleButton'
-import FantasyGameLayout from './components/FantasyGameLayout'
+import FantasyGameLayout from './components/desktop/FantasyGameLayout'
 import useGameStore from './store/gameStore'
 import useOrientation from './hooks/useOrientation'
 import useGameSounds from './hooks/useGameSounds'
@@ -74,17 +74,15 @@ function GameContentWithTheme({ useWebLayout, isMobile, isPortrait, sessionId, s
       />
       
       {useWebLayout ? (
-        /* Desktop/Tablet - New WebGameLayout */
+        /* Desktop/Tablet - WebGameLayout */
         <div className="h-screen h-[100dvh] relative z-10">
           <WebGameLayout />
 
-
           {/* Discard Modal (when crystals exceed max) */}
           <DiscardModal />
-
         </div>
       ) : (
-        /* Mobile - Original Layout */
+        /* Mobile - CompactGameBoard with mobile-specific layout */
         <div className={`
           ${isPortrait 
             ? 'h-screen h-[100dvh] flex flex-col relative z-10 overflow-hidden' 
@@ -315,13 +313,13 @@ function SinglePlayerApp() {
     )
   }
 
-  // Use new WebGameLayout for desktop/tablet, old layout for mobile
+  // Use WebGameLayout for desktop/tablet (>= 768px), CompactGameBoard for mobile (< 768px)
   const useWebLayout = !isMobile
 
   return (
     <ThemeProvider>
       <MobileLayoutProvider>
-        <GameContentWithTheme 
+        <GameContentWithTheme
           useWebLayout={useWebLayout}
           isMobile={isMobile}
           isPortrait={isPortrait}

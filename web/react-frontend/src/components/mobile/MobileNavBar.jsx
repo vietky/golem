@@ -1,8 +1,8 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import useGameStore from '../store/gameStore'
-import { useMobileLayout } from '../contexts/MobileLayoutContext'
-import useOrientation from '../hooks/useOrientation'
+import useGameStore from '../../store/gameStore'
+import { useMobileLayout } from '../../contexts/MobileLayoutContext'
+import useOrientation from '../../hooks/useOrientation'
 
 const MobileNavBar = () => {
   const { rest } = useGameStore()

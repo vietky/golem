@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react'
-import useGameStore from '../store/gameStore'
-import useOrientation from '../hooks/useOrientation'
-import CompactCard from './CompactCard'
-import DepositModal from './DepositModal'
-import ConfirmGolemModal from './ConfirmGolemModal'
-import { showToast } from '../utils/toast'
+import useGameStore from '../../store/gameStore'
+import useOrientation from '../../hooks/useOrientation'
+import CompactCard from '../CompactCard'
+import DepositModal from '../DepositModal'
+import ConfirmGolemModal from '../ConfirmGolemModal'
+import { showToast } from '../../utils/toast'
 
 const CompactGameBoard = () => {
   const { gameState, myPlayer, currentPlayer, acquireCard, claimPointCard, startGame, isSpectator } = useGameStore()

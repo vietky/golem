@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
-import useGameStore from '../store/gameStore'
-import { getCardSpriteStyle, getCardImagePath } from '../utils/cardNames'
+import useGameStore from '../../store/gameStore'
+import { getCardSpriteStyle, getCardImagePath } from '../../utils/cardNames'
 
 const MobileHistoryButton = () => {
   const { actionHistory, roundNumber, setChatMessageCallback } = useGameStore()
