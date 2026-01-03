@@ -5,6 +5,17 @@
 - for backend development, use `cp .env.example .env` for environment variables in the root directory.
 
 ## Features
+
+### Fast Disconnection Detection
+The server now detects disconnected players in ~500ms (previously 60+ seconds) using WebSocket ping/pong. See [docs/DISCONNECTION_DETECTION.md](docs/DISCONNECTION_DETECTION.md) for details.
+
+Configuration:
+```bash
+export WEBSOCKET_PING_INTERVAL=15    # Seconds between ping messages (default 15)
+export WEBSOCKET_READ_TIMEOUT=60     # Read timeout in seconds (default 60)
+export WEBSOCKET_WRITE_TIMEOUT=10    # Write timeout in seconds (default 10)
+```
+
 ### Telegram Notifications
 Get notified when new game rooms are created! See [docs/TELEGRAM_NOTIFICATIONS.md](docs/TELEGRAM_NOTIFICATIONS.md) for setup instructions.
 

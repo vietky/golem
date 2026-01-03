@@ -70,6 +70,11 @@ type GameSession struct {
 	spectators       map[string]*Spectator  // Spectator ID -> SpectatorInfo
 	status           GameStatus
 	aiPlayer         game.AIStrategy // AI player strategy, created at construction time
+
+	// WebSocket connection health check settings
+	pingInterval time.Duration // Interval for sending ping messages (default 15s)
+	readTimeout  time.Duration // Timeout for read operations (default 60s)
+	writeTimeout time.Duration // Timeout for write operations (default 10s)
 }
 
 // PlayerAction represents an action from a player
@@ -99,6 +104,11 @@ func NewGameSession(sessionID string, maxPlayers int, turnTimeoutInSecond int, a
 		spectators:       make(map[string]*Spectator),
 		status:           GameStatusWaiting,
 		aiPlayer:         aiPlayer,
+
+		// WebSocket health check defaults
+		pingInterval: 15 * time.Second, // Send ping every 15 seconds
+		readTimeout:  60 * time.Second, // Read timeout 60 seconds
+		writeTimeout: 10 * time.Second, // Write timeout 10 seconds
 	}
 }
 
@@ -377,18 +387,44 @@ func (gs *GameSession) addToWaitingList(clientID string, name string, avatar str
 // runPlayerWriteHandler handles writes to the player's websocket connection
 // Should be invoked in a goroutine by the caller
 func (gs *GameSession) runPlayerWriteHandler(player *PlayerInfo) {
-	for msg := range player.WriteChan {
-		if player.Conn != nil {
-			player.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if err := player.Conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-				// Log error and continue processing messages
-				gs.logger.Error("failed to write message to player",
-					zap.String("clientID", player.ClientID),
-					zap.String("name", player.Name),
-					zap.Int("playerID", player.PlayerID),
-					zap.Error(err),
-				)
-				continue
+	// Start ping ticker to keep connection alive
+	ticker := time.NewTicker(gs.pingInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case msg, ok := <-player.WriteChan:
+			if !ok {
+				// Channel closed, exit goroutine
+				return
+			}
+			if player.Conn != nil {
+				player.Conn.SetWriteDeadline(time.Now().Add(gs.writeTimeout))
+				err := player.Conn.WriteMessage(websocket.TextMessage, msg)
+
+				if err != nil {
+					// Log error and continue processing messages
+					gs.logger.Error("failed to write message to player",
+						zap.String("clientID", player.ClientID),
+						zap.String("name", player.Name),
+						zap.Int("playerID", player.PlayerID),
+						zap.Error(err),
+					)
+					continue
+				}
+			}
+		case <-ticker.C:
+			// Send ping message to keep connection alive
+			if player.Conn != nil {
+				player.Conn.SetWriteDeadline(time.Now().Add(gs.writeTimeout))
+				err := player.Conn.WriteMessage(websocket.PingMessage, nil)
+
+				if err != nil {
+					gs.logger.Debug("failed to send ping to player",
+						zap.String("clientID", player.ClientID),
+						zap.Error(err),
+					)
+				}
 			}
 		}
 	}
@@ -397,16 +433,42 @@ func (gs *GameSession) runPlayerWriteHandler(player *PlayerInfo) {
 // runSpectatorWriteHandler handles writes to the spectator's websocket connection
 // Should be invoked in a goroutine by the caller
 func (gs *GameSession) runSpectatorWriteHandler(spectator *Spectator) {
-	for msg := range spectator.WriteChan {
-		if spectator.Conn != nil {
-			spectator.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if err := spectator.Conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-				// Log error and continue processing messages
-				gs.logger.Error("failed to write message to spectator",
-					zap.String("spectatorID", spectator.SpectatorID),
-					zap.Error(err),
-				)
-				continue
+	// Start ping ticker to keep connection alive
+	ticker := time.NewTicker(gs.pingInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case msg, ok := <-spectator.WriteChan:
+			if !ok {
+				// Channel closed, exit goroutine
+				return
+			}
+			if spectator.Conn != nil {
+				spectator.Conn.SetWriteDeadline(time.Now().Add(gs.writeTimeout))
+				err := spectator.Conn.WriteMessage(websocket.TextMessage, msg)
+
+				if err != nil {
+					// Log error and continue processing messages
+					gs.logger.Error("failed to write message to spectator",
+						zap.String("spectatorID", spectator.SpectatorID),
+						zap.Error(err),
+					)
+					continue
+				}
+			}
+		case <-ticker.C:
+			// Send ping message to keep connection alive
+			if spectator.Conn != nil {
+				spectator.Conn.SetWriteDeadline(time.Now().Add(gs.writeTimeout))
+				err := spectator.Conn.WriteMessage(websocket.PingMessage, nil)
+
+				if err != nil {
+					gs.logger.Debug("failed to send ping to spectator",
+						zap.String("spectatorID", spectator.SpectatorID),
+						zap.Error(err),
+					)
+				}
 			}
 		}
 	}
@@ -459,12 +521,26 @@ func (gs *GameSession) handleRemovePlayer(clientID string) {
 
 func (gs *GameSession) runPlayerReadHandler(player *PlayerInfo) {
 	log := gs.logger.With(zap.String("clientID", player.ClientID)).With(zap.String("name", player.Name))
+
+	// Set up pong handler to reset read deadline when receiving pong messages
+	player.Conn.SetPongHandler(func(string) error {
+		player.Conn.SetReadDeadline(time.Now().Add(gs.readTimeout))
+		log.Debug("received pong from player")
+		return nil
+	})
+
+	// Set initial read deadline
+	player.Conn.SetReadDeadline(time.Now().Add(gs.readTimeout))
+
 	for {
 		_, message, err := player.Conn.ReadMessage()
 		if err != nil {
 			log.Error("read error", zap.Error(err))
 			break
 		}
+
+		// Reset read deadline on each message
+		player.Conn.SetReadDeadline(time.Now().Add(gs.readTimeout))
 
 		var req map[string]interface{}
 		if err := json.Unmarshal(message, &req); err != nil {
@@ -739,12 +815,25 @@ func (gs *GameSession) handleRemoveSpectator(spectatorID string) {
 func (gs *GameSession) runSpectatorReadHandler(spectatorID string, conn *websocket.Conn) {
 	log := gs.logger.With(zap.String("spectatorID", spectatorID))
 
+	// Set up pong handler to reset read deadline when receiving pong messages
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(gs.readTimeout))
+		log.Debug("received pong from spectator")
+		return nil
+	})
+
+	// Set initial read deadline
+	conn.SetReadDeadline(time.Now().Add(gs.readTimeout))
+
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
 			log.Error("read error", zap.Error(err))
 			break
 		}
+
+		// Reset read deadline on each message
+		conn.SetReadDeadline(time.Now().Add(gs.readTimeout))
 
 		var req map[string]interface{}
 		if err := json.Unmarshal(message, &req); err != nil {
