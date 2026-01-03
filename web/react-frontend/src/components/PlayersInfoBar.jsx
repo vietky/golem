@@ -35,7 +35,7 @@ const PlayersInfoBar = () => {
 
   if (!gameState?.players) return null
 
-  const otherPlayers = gameState.players.filter(p => p.id !== myPlayer?.id)
+  const otherPlayers = gameState.players; //.filter(p => p.id !== myPlayer?.id)
   if (otherPlayers.length === 0) return null
 
   return (
