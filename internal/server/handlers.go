@@ -7,7 +7,6 @@ import (
 	"slices"
 	"time"
 
-	"golem_century/internal/game"
 	"golem_century/internal/session"
 
 	"github.com/gorilla/websocket"
@@ -203,7 +202,7 @@ func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request
 	}()
 
 	// All sessions are now V2
-	gs.CreateSessionV2(sessionID, req.NumPlayers, game.NewRestOnlyAI(), req.TurnTimeout)
+	gs.CreateSessionV2(sessionID, req.NumPlayers, req.TurnTimeout)
 
 	response := map[string]any{
 		"sessionID":   sessionID,
@@ -386,9 +385,7 @@ func (gs *GameServer) HandleCreateSinglePlayer(w http.ResponseWriter, r *http.Re
 	// Total players = 1 human + numAI
 	totalPlayers := 1 + req.NumAI
 
-	// Create V2 session with AI strategy
-	aiStrategy := game.NewRestOnlyAI()
-	gs.CreateSessionV2(sessionID, totalPlayers, aiStrategy, req.TurnTimeout)
+	gs.CreateSessionV2(sessionID, totalPlayers, req.TurnTimeout)
 
 	response := map[string]interface{}{
 		"sessionID":   sessionID,

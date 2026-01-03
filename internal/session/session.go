@@ -71,7 +71,6 @@ type GameSession struct {
 	assignedPlayers  map[int]string         // Player ID -> Client ID
 	spectators       map[string]*Spectator  // Spectator ID -> SpectatorInfo
 	status           GameStatus
-	aiPlayer         game.AIStrategy // AI player strategy, created at construction time
 
 	// WebSocket connection health check settings
 	pingInterval time.Duration // Interval for sending ping messages (default 15s)
@@ -87,7 +86,7 @@ type PlayerAction struct {
 }
 
 // NewGameSession creates a new game session
-func NewGameSession(sessionID string, maxPlayers int, turnTimeoutInSecond int, aiPlayer game.AIStrategy, eventstore eventstore.EventStore, logger *logger.Logger) *GameSession {
+func NewGameSession(sessionID string, maxPlayers int, turnTimeoutInSecond int, eventstore eventstore.EventStore, logger *logger.Logger) *GameSession {
 	now := time.Now()
 	return &GameSession{
 		ID:            sessionID,
@@ -105,7 +104,6 @@ func NewGameSession(sessionID string, maxPlayers int, turnTimeoutInSecond int, a
 		assignedPlayers:  make(map[int]string),
 		spectators:       make(map[string]*Spectator),
 		status:           GameStatusWaiting,
-		aiPlayer:         aiPlayer,
 
 		// WebSocket health check defaults
 		pingInterval: 15 * time.Second, // Send ping every 15 seconds
@@ -216,17 +214,22 @@ func (gs *GameSession) StartGame() error {
 		return fmt.Errorf("game is not in waiting status")
 	}
 
-	// Check that we have at least 2 players
-	if len(gs.connectedPlayers) < 2 {
-		return fmt.Errorf("need at least 2 players")
+	if !strings.HasPrefix(gs.ID, "single") {
+		// Check that we have at least 2 players
+		// When it's player vs player room
+		if len(gs.connectedPlayers) < 2 {
+			return fmt.Errorf("need at least 2 players")
+		}
 	}
 
 	// Initialize game state
 	seed := time.Now().UnixNano()
 	gameState := game.NewGameState(len(gs.connectedPlayers), seed)
 
-	aiPlayer := gs.aiPlayer
-	if aiPlayer == nil {
+	var aiPlayer game.AIStrategy
+	aiPlayer = game.NewRestOnlyAI()
+	if strings.HasPrefix(gs.ID, "single") {
+		// When it's player vs AI room
 		aiPlayer = game.NewAIPlayer(gameState.RNG)
 	}
 

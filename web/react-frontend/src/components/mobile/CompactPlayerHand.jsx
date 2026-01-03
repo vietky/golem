@@ -16,20 +16,6 @@ const CompactPlayerHand = () => {
   const [rowHeight, setRowHeight] = useState(null)
   const containerRef = useRef(null)
 
-  if (!myPlayer) return null
-
-  const isMyTurn = currentPlayer?.id === myPlayer.id
-  const hand = myPlayer.hand || []
-  const playedCards = myPlayer.playedCards || []
-  const myGolems = myPlayer.pointCards || []
-  const canRest = isMyTurn && playedCards.length > 0
-
-  const handleRest = () => {
-    if (canRest) {
-      rest()
-    }
-  }
-
   // Calculate row height based on viewport height
   // Formula: (viewport - playersInfoBar) / 5 rows = rowHeight
   useEffect(() => {
@@ -84,6 +70,20 @@ const CompactPlayerHand = () => {
       document.documentElement.style.setProperty('--hand-height', '')
     }
   }, [isMobile, isPortrait, height])
+
+  if (!myPlayer) return null
+
+  const isMyTurn = currentPlayer?.id === myPlayer.id
+  const hand = myPlayer.hand || []
+  const playedCards = myPlayer.playedCards || []
+  const myGolems = myPlayer.pointCards || []
+  const canRest = isMyTurn && playedCards.length > 0
+
+  const handleRest = () => {
+    if (canRest) {
+      rest()
+    }
+  }
 
   const handleCardClick = (card, index) => {
     if (!isMyTurn) return

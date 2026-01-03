@@ -31,6 +31,7 @@ export default ({ mode }) => {
   return defineConfig({
     base: base, 
     plugins: [react()],
+    minify: isDev ? false : 'esbuild',
     
     // Make log level available to app
     define: {

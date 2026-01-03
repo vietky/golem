@@ -7,7 +7,6 @@ import (
 
 	"golem_century/internal/config"
 	"golem_century/internal/eventstore"
-	"golem_century/internal/game"
 	"golem_century/internal/logger"
 	"golem_century/internal/session"
 	"golem_century/internal/telegram"
@@ -59,11 +58,11 @@ func NewGameServer(req NewGameServerRequest) *GameServer {
 	}
 }
 
-func (gs *GameServer) CreateSessionV2(sessionID string, maxPlayers int, aiPlayer game.AIStrategy, turnTimeoutInSeconds int) *session.GameSession {
+func (gs *GameServer) CreateSessionV2(sessionID string, maxPlayers int, turnTimeoutInSeconds int) *session.GameSession {
 	gs.mu.Lock()
 	defer gs.mu.Unlock()
 
-	session := session.NewGameSession(sessionID, maxPlayers, turnTimeoutInSeconds, aiPlayer, gs.EventStore, gs.Logger)
+	session := session.NewGameSession(sessionID, maxPlayers, turnTimeoutInSeconds, gs.EventStore, gs.Logger)
 	gs.SessionsV2[sessionID] = session
 
 	gs.Logger.Info("Session V2 created",

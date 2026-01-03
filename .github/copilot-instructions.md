@@ -187,6 +187,7 @@ Docker images: `Dockerfile` (backend), `Dockerfile.fe` (frontend-only). Producti
 - always apply SOLID principles in game logic for easy unit testing
 - tests include normal cases, edge cases, and error handling
 - always test and verify after refactoring or adding features yourself
+- only stop when all the issues are fixed and tests pass successfully
 
 ## Coding Standards
 - use logger both on backend and frontend for debugging and monitoring
@@ -196,6 +197,7 @@ Docker images: `Dockerfile` (backend), `Dockerfile.fe` (frontend-only). Producti
 - all sh files are located in `/scripts/` directory for consistency
 - all markdown documentation files are located in `/docs/` directory
 - only README.md are allowed in the root directory
+
 ## UI/UX Guidelines 
 - for frontend, mobile responsiveness is a must
 - ensure accessibility standards are met in UI components

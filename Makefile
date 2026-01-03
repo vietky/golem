@@ -191,3 +191,9 @@ be-release:
 
 static-update:
 	scp -r web/static/* root@157.66.101.66:/opt/nginx/apps/assets/
+
+symlinks-create:
+	sh scripts/create-symlinks.sh
+
+kill-dev:
+	lsof -ti :8080 | xargs kill -INT 2>/dev/null; sleep 2; lsof -ti :8080 | xargs kill -9 2>/dev/null; killall -9 main 2>/dev/null; echo "All servers killed"
