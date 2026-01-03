@@ -174,7 +174,10 @@ Docker images: `Dockerfile` (backend), `Dockerfile.fe` (frontend-only). Producti
 - use logger both on backend and frontend for debugging and monitoring
 - include context in backend logs for traceability
 - log every significant event (player joins, game starts, errors, etc.) with appropriate log levels
-
+- make sure all code (frontend and backend) is compiled without warnings or errors
+- all sh files are located in `/scripts/` directory for consistency
+- all markdown documentation files are located in `/docs/` directory
+- only README.md are allowed in the root directory
 ## UI/UX Guidelines 
 - for frontend, mobile responsiveness is a must
 - ensure accessibility standards are met in UI components

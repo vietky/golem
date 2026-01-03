@@ -465,7 +465,6 @@ const useGameStore = create((set, get) => ({
       canRetry: state.reconnectAttempts < state.maxReconnectAttempts,
     };
   },
-  },
 
   sendAction: (actionType, cardIndex = null, inputResources = null, outputResources = null, multiplier = null, deposits = null) => {
     const { ws, isSpectator } = get();
