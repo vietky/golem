@@ -7,6 +7,7 @@ import (
 
 	"golem_century/internal/config"
 	"golem_century/internal/eventstore"
+	"golem_century/internal/firebase"
 	"golem_century/internal/logger"
 	"golem_century/internal/session"
 	"golem_century/internal/telegram"
@@ -27,15 +28,17 @@ type GameServer struct {
 	EventStore       eventstore.EventStore
 	Logger           *logger.Logger
 	TelegramNotifier *telegram.Notifier
+	FirebaseClient   *firebase.Client
 	mu               sync.RWMutex
 	config           *config.Config
 }
 
 // NewGameServerRequest represents request to create a new game server
 type NewGameServerRequest struct {
-	EventStore eventstore.EventStore
-	Logger     *logger.Logger
-	Config     *config.Config
+	EventStore     eventstore.EventStore
+	Logger         *logger.Logger
+	Config         *config.Config
+	FirebaseClient *firebase.Client
 }
 
 // NewGameServer creates a new game server
@@ -52,6 +55,7 @@ func NewGameServer(req NewGameServerRequest) *GameServer {
 	return &GameServer{
 		SessionsV2:       make(map[string]*session.GameSession),
 		EventStore:       req.EventStore,
+		FirebaseClient:   req.FirebaseClient,
 		Logger:           log,
 		TelegramNotifier: telegramNotifier,
 		config:           req.Config,

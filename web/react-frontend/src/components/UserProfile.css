@@ -1,0 +1,93 @@
+.user-profile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  line-height: 1.2;
+}
+
+.user-email {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.2;
+}
+
+.sign-out-btn {
+  padding: 8px 16px;
+  background: rgba(255, 59, 48, 0.9);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.sign-out-btn:hover {
+  background: rgba(255, 59, 48, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 59, 48, 0.3);
+}
+
+.sign-out-btn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .user-profile {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .user-name {
+    font-size: 13px;
+  }
+
+  .user-email {
+    font-size: 11px;
+  }
+
+  .sign-out-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}

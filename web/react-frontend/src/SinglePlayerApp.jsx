@@ -13,11 +13,13 @@ import WebGameLayout from './components/desktop/WebGameLayout'
 import ThemeToggleButton from './components/ThemeToggleButton'
 import SoundToggleButton from './components/SoundToggleButton'
 import FantasyGameLayout from './components/desktop/FantasyGameLayout'
+import UserProfile from './components/UserProfile'
 import useGameStore from './store/gameStore'
 import useOrientation from './hooks/useOrientation'
 import useGameSounds from './hooks/useGameSounds'
 import { MobileLayoutProvider } from './contexts/MobileLayoutContext'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
+import { useAuth } from './contexts/AuthContext'
 
 // Game Content with Theme Support
 function GameContentWithTheme({ useWebLayout, isMobile, isPortrait, sessionId, setInGame, setGameMode }) {
@@ -156,15 +158,16 @@ function SinglePlayerApp() {
     isSpectator,
   } = useGameStore()
   const { isPortrait, isLandscape, isMobile, isTablet, isDesktop, width } = useOrientation()
+  const { idToken } = useAuth()
 
   const handleStartSinglePlayer = (sessionId, playerName, playerAvatar) => {
-    connectWebSocket(sessionId, playerName, playerAvatar)
+    connectWebSocket(sessionId, playerName, playerAvatar, false, idToken)
     setGameMode('single')
     setInGame(true)
   }
 
   const handleJoinMultiplayer = (sessionId, playerName, playerAvatar, asSpectator) => {
-    connectWebSocket(sessionId, playerName, playerAvatar, asSpectator)
+    connectWebSocket(sessionId, playerName, playerAvatar, asSpectator, idToken)
     setGameMode('multi')
     setInGame(true)
   }
@@ -201,10 +204,15 @@ function SinglePlayerApp() {
         `}>
           <h1 className={`
             font-bold text-white text-center
-            ${isMobile ? 'text-xl mb-4' : 'text-3xl sm:text-4xl mb-8'}
+            ${isMobile ? 'text-xl mb-3' : 'text-3xl sm:text-4xl mb-6'}
           `}>
             {'Century: Golem Edition'}
           </h1>
+
+          {/* User Profile */}
+          <div className={isMobile ? 'mb-4' : 'mb-6'}>
+            <UserProfile />
+          </div>
           
           <div className={`space-y-3 ${isMobile ? '' : 'space-y-4'}`}>
             <button

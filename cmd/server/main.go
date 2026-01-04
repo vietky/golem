@@ -12,14 +12,20 @@ import (
 
 	"golem_century/internal/config"
 	"golem_century/internal/eventstore"
+	"golem_century/internal/firebase"
 	"golem_century/internal/logger"
 	"golem_century/internal/server"
 
+	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )
 
 func main() {
-	// Load configuration
+	// Load .env file (optional - won't fail if not found)
+	// This allows environment variables to be set from .env file
+	_ = godotenv.Load()
+
+	// Load configuration from environment variables
 	cfg := config.LoadConfig()
 
 	// Initialize logger
@@ -52,11 +58,32 @@ func main() {
 		defer store.Close()
 	}
 
-	// Create game server with event store
+	// Initialize Firebase (optional - only if credentials are provided)
+	var firebaseClient *firebase.Client
+	if cfg.FirebaseProjectID != "" && cfg.FirebaseCredentialsPath != "" {
+		fbClient, err := firebase.Initialize(context.Background(), cfg.FirebaseCredentialsPath, cfg.FirebaseProjectID)
+		if err != nil {
+			log.Warn("Failed to initialize Firebase - authentication will be disabled",
+				zap.Error(err),
+				zap.String("projectID", cfg.FirebaseProjectID),
+				zap.String("credentialsPath", cfg.FirebaseCredentialsPath))
+			firebaseClient = nil
+		} else {
+			firebaseClient = fbClient
+			log.Info("Firebase initialized successfully",
+				zap.String("projectID", cfg.FirebaseProjectID))
+			defer firebaseClient.Close()
+		}
+	} else {
+		log.Info("Firebase not configured - authentication disabled")
+	}
+
+	// Create game server with event store and firebase
 	gameServer := server.NewGameServer(server.NewGameServerRequest{
-		EventStore: store,
-		Logger:     log,
-		Config:     &cfg,
+		EventStore:     store,
+		Logger:         log,
+		Config:         &cfg,
+		FirebaseClient: firebaseClient,
 	})
 
 	// Setup routes on a ServeMux so we can wrap with CORS middleware

@@ -6,6 +6,11 @@
 
 ## Features
 
+### Firebase Authentication
+Secure Google OAuth authentication powered by Firebase. Only authenticated users can join games, and only registered users can rejoin their sessions. See [docs/FIREBASE_AUTH.md](docs/FIREBASE_AUTH.md) for detailed setup instructions.
+
+**Optional feature** - works without configuration for local development.
+
 ### Fast Disconnection Detection
 The server now detects disconnected players in ~500ms (previously 60+ seconds) using WebSocket ping/pong. See [docs/DISCONNECTION_DETECTION.md](docs/DISCONNECTION_DETECTION.md) for details.
 

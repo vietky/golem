@@ -182,6 +182,14 @@ Docker images: `Dockerfile` (backend), `Dockerfile.fe` (frontend-only). Producti
 - Integration tests: `*_integration_test.go` (require external dependencies)
 - Documentation: Uppercase markdown files in root/subdirs (`SPECTATE_MODE.md`, `WEBSOCKET_FIX.md`)
 
+## Deployment Topology
+- Support docker compose for local development and k3s for production deployment
+- Use environment variables for configuration management
+- Separate services for backend, frontend, and database for scalability
+- Implement health checks and monitoring for all services
+- Observability: centralized tracing, logging and metrics collection for performance tracking and debugging
+- Use CI/CD pipelines for automated testing and deployment
+- Use secrets management solutions for handling sensitive information like API keys and database credentials
 
 ## Testing Strategies
 - always apply SOLID principles in game logic for easy unit testing
@@ -199,6 +207,9 @@ Docker images: `Dockerfile` (backend), `Dockerfile.fe` (frontend-only). Producti
 - only README.md are allowed in the root directory
 - when writing integration tests, set a reasonable timeout (5-10 seconds) to avoid hanging tests, automatically fail tests that exceed the timeout limit
 - when fixing bugs, add regression tests to prevent future occurrences of the same issues
+- all secrets (API keys, tokens, credentials) must be stored in environment variables or secure vaults, never hard-coded in the source code or committed to version control
+- folder secrets/ is added to .gitignore for storing sensitive files like Firebase service account JSON and .env files
+- use snake case for json response fields and camel case for Go struct fields
 
 ## UI/UX Guidelines 
 - for frontend, mobile responsiveness is a must
@@ -209,3 +220,15 @@ Docker images: `Dockerfile` (backend), `Dockerfile.fe` (frontend-only). Producti
 - Security Best Practices
 - sanitize and validate all user inputs on backend
 - minimize data transferred over network, use HTTPS in production
+
+## Non-Functional Requirements
+- Scalability: design backend to handle increasing number of concurrent sessions and players
+- Maintainability: write clean, modular code with proper documentation for easy future enhancements (both frontend and backend) - follow SOLID principles
+- Reliability: implement error handling and recovery mechanisms to ensure smooth gameplay experience
+- Usability: design intuitive UI/UX for players and spectators, conduct user testing to gather feedback and improve the interface
+- Performance: optimize both frontend and backend for low latency and fast response times during gameplay
+- Testability: ensure code is easily testable with unit and integration tests, maintain high test coverage
+- Extensibility: design system to easily accommodate new features, game modes, and AI strategies in the future
+- Documentation: maintain comprehensive documentation for developers and users, including API references, setup guides, and gameplay instructions
+- Security: implement robust security measures to protect user data and prevent cheating or exploits in the game
+- Follow IaC best practices for deployment and infrastructure management

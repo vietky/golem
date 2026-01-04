@@ -52,6 +52,10 @@ services:
       - LOG_FORMAT=json
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CREDENTIALS_PATH=/app/firebase-service-account.json
+    volumes:
+      - ./sa/firebase-service-account.json:/app/firebase-service-account.json:ro
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s

@@ -21,6 +21,8 @@ type Config struct {
 	MaxChatMessages             int
 	TelegramBotToken            string
 	TelegramChatID              string
+	FirebaseProjectID           string
+	FirebaseCredentialsPath     string
 	WebSocketPingInterval       int // Interval in seconds for WebSocket ping messages (default 15s)
 	WebSocketReadTimeout        int // Timeout in seconds for WebSocket read operations (default 60s)
 	WebSocketWriteTimeout       int // Timeout in seconds for WebSocket write operations (default 10s)
@@ -43,6 +45,8 @@ func LoadConfig() Config {
 		MaxChatMessages:             getEnvInt("MAX_CHAT_MESSAGES", 10),
 		TelegramBotToken:            getEnv("TELEGRAM_BOT_TOKEN", ""),
 		TelegramChatID:              getEnv("TELEGRAM_CHAT_ID", ""),
+		FirebaseProjectID:           getEnv("FIREBASE_PROJECT_ID", ""),
+		FirebaseCredentialsPath:     getEnv("FIREBASE_CREDENTIALS_PATH", "./firebase-service-account.json"),
 		WebSocketPingInterval:       getEnvInt("WEBSOCKET_PING_INTERVAL", 15),
 		WebSocketReadTimeout:        getEnvInt("WEBSOCKET_READ_TIMEOUT", 60),
 		WebSocketWriteTimeout:       getEnvInt("WEBSOCKET_WRITE_TIMEOUT", 10),

@@ -50,6 +50,7 @@ func (gs *GameServer) HandleWebSocketV2(w http.ResponseWriter, r *http.Request) 
 	spectateMode := r.URL.Query().Get("spectate") == "true"
 	playerAvatar := r.URL.Query().Get("avatar")
 	clientID := r.URL.Query().Get("clientID")
+	idToken := r.URL.Query().Get("token") // Firebase ID token
 
 	log := gs.Logger.With(
 		zap.String("sessionID", sessionID),
@@ -60,6 +61,49 @@ func (gs *GameServer) HandleWebSocketV2(w http.ResponseWriter, r *http.Request) 
 		zap.String("remoteAddr", r.RemoteAddr),
 	)
 	log.Info("🔌 WebSocket V2 connection attempt")
+
+	// Declare playerID early since it might be set from Firestore
+	var playerID int
+	var userID string
+
+	// Verify Firebase ID token if Firebase is enabled
+	if gs.FirebaseClient != nil && idToken != "" {
+		uid, err := gs.FirebaseClient.VerifyIDToken(r.Context(), idToken)
+		if err != nil {
+			log.Warn("❌ WebSocket rejected: Invalid Firebase token", zap.Error(err))
+			sendJSONError(w, http.StatusUnauthorized, "Invalid authentication token")
+			return
+		}
+		userID = uid
+		log = log.With(zap.String("userID", userID))
+		log.Info("✅ Firebase authentication successful")
+
+		// Check if user is allowed in this session
+		if !spectateMode {
+			isAllowed, existingPlayerID, err := gs.FirebaseClient.IsUserInSession(r.Context(), sessionID, userID)
+			if err != nil {
+				log.Error("❌ Error checking user session membership", zap.Error(err))
+				sendJSONError(w, http.StatusInternalServerError, "Failed to verify session membership")
+				return
+			}
+
+			if !isAllowed {
+				log.Warn("❌ WebSocket rejected: User not authorized for this session")
+				sendJSONError(w, http.StatusForbidden, "You are not authorized to join this session")
+				return
+			}
+
+			// Use the player ID from Firestore if not provided
+			if playerIDStr == "" && existingPlayerID > 0 {
+				playerID = existingPlayerID
+				log.Info("Using player ID from session membership", zap.Int("playerID", playerID))
+			}
+		}
+	} else if gs.FirebaseClient != nil && idToken == "" {
+		log.Warn("❌ WebSocket rejected: Firebase is enabled but no token provided")
+		sendJSONError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
 
 	if sessionID == "" {
 		log.Warn("❌ WebSocket rejected: Missing session ID")
@@ -74,8 +118,8 @@ func (gs *GameServer) HandleWebSocketV2(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var playerID int
-	if playerIDStr != "" {
+	// Parse player ID from query parameter if not already set from Firestore
+	if playerID == 0 && playerIDStr != "" {
 		if _, err := fmt.Sscanf(playerIDStr, "%d", &playerID); err != nil {
 			log.Warn("❌ WebSocket rejected: Invalid player ID", zap.Error(err))
 			sendJSONError(w, http.StatusBadRequest, "Invalid player ID")

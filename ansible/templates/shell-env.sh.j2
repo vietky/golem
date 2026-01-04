@@ -1,0 +1,9 @@
+#!/bin/bash
+# Golem Century Environment Variables
+# Source this file to load environment variables for the application
+# Usage: source /etc/profile.d/golem-env.sh
+
+# Export all environment variables for deployment
+{% for key, value in env_vars.items() %}
+export {{ key }}="{{ value }}"
+{% endfor %}

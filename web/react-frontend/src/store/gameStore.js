@@ -50,7 +50,7 @@ const useGameStore = create((set, get) => ({
   soundsMuted: typeof window !== 'undefined' ? localStorage.getItem('gameSoundsMuted') === 'true' : false,
 
   // Actions
-  connectWebSocket: (sessionId, playerName, playerAvatar, asSpectator = false) => {
+  connectWebSocket: (sessionId, playerName, playerAvatar, asSpectator = false, idToken = null) => {
     // Cancel any pending reconnect attempts
     const existingTimeoutId = get().reconnectTimeoutId;
     if (existingTimeoutId) {
@@ -100,7 +100,8 @@ const useGameStore = create((set, get) => ({
     // Get client ID from cookie and add it as query parameter
     const clientID = getClientIDFromCookie()
     const clientIDParam = clientID ? `&clientID=${encodeURIComponent(clientID)}` : ''
-    const wsUrl = `${wsBase}/ws?session=${sessionId}&name=${encodeURIComponent(playerName)}&avatar=${playerAvatar}${spectateParam}${clientIDParam}`
+    const tokenParam = idToken ? `&token=${encodeURIComponent(idToken)}` : ''
+    const wsUrl = `${wsBase}/ws?session=${sessionId}&name=${encodeURIComponent(playerName)}&avatar=${playerAvatar}${spectateParam}${clientIDParam}${tokenParam}`
 
     logger.info(`🔌 Attempting WebSocket connection...`);
     logger.info(`   URL: ${wsUrl}`);

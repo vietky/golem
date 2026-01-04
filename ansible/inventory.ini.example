@@ -1,0 +1,104 @@
+# Ansible Inventory Example for Golem Century
+# Copy this file to inventory.ini and update with your server details
+
+[all:vars]
+# Python interpreter path (adjust for your system)
+ansible_python_interpreter=/usr/bin/python3
+
+# Application settings
+app_user=golem
+app_name=golem-century
+app_port=8080
+server_port=8080
+
+# Git configuration
+git_repo=https://github.com/vietky/golem.git
+git_branch=main
+
+# MongoDB configuration
+mongo_uri=mongodb://localhost:27017
+mongo_db=golem_game
+
+# Redis configuration (optional)
+redis_addr=localhost:6379
+redis_db=0
+
+# Game settings
+default_turn_timeout_seconds=60
+max_chat_messages=10
+
+# Logging
+log_level=info
+log_format=json
+
+# Telegram notifications (optional)
+# telegram_bot_token=YOUR_BOT_TOKEN
+# telegram_chat_id=YOUR_CHAT_ID
+
+[deployment_servers]
+# Replace with your deployment server
+# prod-server.example.com ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/deployment_key
+
+[deployment_servers:vars]
+# SSH configuration (adjust to your setup)
+# ansible_user=ubuntu
+# ansible_ssh_private_key_file=~/.ssh/deployment_key
+# ansible_become=yes
+# ansible_become_method=sudo
+
+# Production-specific settings can go here
+# server_port=8080
+# log_level=info
+
+[dev_servers]
+# For development deployments
+# dev-server.example.com ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/deployment_key
+
+[dev_servers:vars]
+# Development-specific settings
+git_branch=develop
+log_level=debug
+
+# Example configurations for common scenarios:
+
+# ===== LOCAL VAGRANT VM =====
+# [deployment_servers]
+# vagrant-server ansible_host=127.0.0.1 ansible_port=2222 ansible_user=vagrant
+#
+# [deployment_servers:vars]
+# ansible_ssh_private_key_file=~/.vagrant.d/insecure_private_key
+
+# ===== AWS EC2 INSTANCE =====
+# [deployment_servers]
+# aws-prod.example.com ansible_host=ec2-XX-XXX-XXX-XXX.compute.amazonaws.com
+#
+# [deployment_servers:vars]
+# ansible_user=ubuntu
+# ansible_ssh_private_key_file=~/.ssh/aws-golem-key.pem
+# ansible_become=yes
+
+# ===== DIGITALOCEAN DROPLET =====
+# [deployment_servers]
+# do-prod.example.com ansible_host=IP_ADDRESS ansible_user=root
+#
+# [deployment_servers:vars]
+# ansible_ssh_private_key_file=~/.ssh/digitalocean_key
+
+# ===== MULTIPLE SERVERS (LOAD BALANCING) =====
+# [deployment_servers]
+# golem-prod-1.example.com ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/deployment_key
+# golem-prod-2.example.com ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/deployment_key
+# golem-prod-3.example.com ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/deployment_key
+#
+# [deployment_servers:vars]
+# ansible_become=yes
+# load_balancer=yes
+
+# ===== STAGING ENVIRONMENT =====
+# [staging_servers]
+# golem-staging.example.com ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/deployment_key
+#
+# [staging_servers:vars]
+# git_branch=develop
+# server_port=8080
+# log_level=debug

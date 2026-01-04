@@ -43,6 +43,7 @@ services:
         condition: service_healthy
     volumes:
       - ./:/app
+      - ./sa/firebase-service-account.json:/app/firebase-service-account.json:ro
     working_dir: /app
     environment:
       - SERVER_HOST=0.0.0.0
@@ -53,6 +54,8 @@ services:
       - REDIS_DB=0
       - LOG_LEVEL=info
       - LOG_FORMAT=json
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CREDENTIALS_PATH=/app/firebase-service-account.json
     stdin_open: true
     tty: true
     command: ["tail", "-f", "/dev/null"]
