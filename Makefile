@@ -30,142 +30,9 @@ up: ## Start all services (MongoDB, Redis, Server)
 down: ## Stop all containers
 	docker-compose down
 
-logs: ## View container logs
-	docker-compose logs -f
-
-restart: ## Restart all containers
-	docker-compose restart
-
-status: ## Show container status
-	docker-compose ps
-
-# Database commands
-mongo-shell: ## Open MongoDB shell
-	docker-compose exec mongodb mongosh golem_game
-
-redis-cli: ## Open Redis CLI
-	docker-compose exec redis redis-cli
-
-# Testing commands
-test: ## Run all tests
-	go test -v ./...
-
-test-unit: ## Run unit tests
-	go test -v -short ./...
-
-test-integration: ## Run integration tests
-	go test -v -run Integration ./...
-
-# Admin interface commands
-admin-install: ## Install admin interface dependencies
-	cd web/admin-interface && npm install
-
-admin-dev: ## Run admin interface in development mode
-	cd web/admin-interface && npm run dev
-
-admin-build: ## Build admin interface for production
-	cd web/admin-interface && npm run build
-
-# Event store commands
-events-list: ## List events for a game (requires GAME_ID)
-	@if [ -z "$(GAME_ID)" ]; then \
-		echo "Error: GAME_ID not set. Usage: make events-list GAME_ID=session-123"; \
-		exit 1; \
-	fi
-	@curl -s "http://localhost:8080/api/events?gameId=$(GAME_ID)" | jq .
-
-events-snapshot: ## Get latest snapshot for a game (requires GAME_ID)
-	@if [ -z "$(GAME_ID)" ]; then \
-		echo "Error: GAME_ID not set. Usage: make events-snapshot GAME_ID=session-123"; \
-		exit 1; \
-	fi
-	@curl -s "http://localhost:8080/api/snapshot?gameId=$(GAME_ID)" | jq .
-
-# Ansible deployment commands
-generate-inventory: ## Generate inventory.yml from .env file
-	@echo "Generating inventory from .env file..."
-	@$(ANSIBLE_DIR)/generate-inventory.sh
-
-deploy: generate-inventory create-archive ## Deploy to remote server using Ansible (creates archive first)
-	@echo "Deploying $(APP_NAME) to remote server..."
-	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK) --ask-pass
-
-deploy-only: generate-inventory ## Deploy to remote server using Ansible (requires archive to exist)
-	@echo "Deploying $(APP_NAME) to remote server..."
-	@if [ ! -f /tmp/$(APP_NAME)-deploy.zip ]; then \
-		echo "Error: Archive not found. Run 'make create-archive' first."; \
-		exit 1; \
-	fi
-	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK) --ask-pass
-
-deploy-check: generate-inventory ## Check deployment without making changes (dry-run)
-	@echo "Checking deployment (dry-run)..."
-	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK) --check
-
-update: generate-inventory ## Update the application on remote server
-	@echo "Updating $(APP_NAME) on remote server..."
-	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK) --tags update
-
-stop-remote: generate-inventory ## Stop containers on remote server
-	@echo "Stopping containers on remote server..."
-	ansible all -i $(INVENTORY) -m shell -a "cd /opt/$(APP_NAME) && docker-compose down" --become --become-user golem
-
-start-remote: generate-inventory ## Start containers on remote server
-	@echo "Starting containers on remote server..."
-	ansible all -i $(INVENTORY) -m shell -a "cd /opt/$(APP_NAME) && docker-compose up -d" --become --become-user golem
-
-restart-remote: generate-inventory ## Restart containers on remote server
-	@echo "Restarting containers on remote server..."
-	ansible all -i $(INVENTORY) -m shell -a "cd /opt/$(APP_NAME) && docker-compose restart" --become --become-user golem
-
-logs-remote: generate-inventory ## View logs from remote server
-	@echo "Fetching logs from remote server..."
-	ansible all -i $(INVENTORY) -m shell -a "cd /opt/$(APP_NAME) && docker-compose logs --tail=100" --become --become-user golem
-
-status-remote: generate-inventory ## Check status on remote server
-	@echo "Checking status on remote server..."
-	ansible all -i $(INVENTORY) -m shell -a "cd /opt/$(APP_NAME) && docker-compose ps" --become --become-user golem
-
-# Utility commands
-clean: ## Remove local containers and images
-	docker-compose down -v
-	docker rmi $$(docker images -q $(APP_NAME)) 2>/dev/null || true
-
-clean-archive: ## Remove deployment archive
-	@rm -f /tmp/$(APP_NAME)-deploy.zip
-	@echo "Archive cleaned"
-
-create-archive: ## Create deployment archive (required before deploy)
-	@echo "Creating deployment archive..."
-	@$(ANSIBLE_DIR)/create-deploy-archive.sh
-	@echo ""
-	@echo "Archive created successfully. You can now run 'make deploy-only' to deploy."
-
-validate-ansible: generate-inventory ## Validate Ansible playbook syntax
-	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK) --syntax-check
-
-# Quick deployment with specific host
-deploy-to: ## Deploy to a specific host (usage: make deploy-to HOST=user@hostname)
-	@if [ -z "$(HOST)" ]; then \
-		echo "Error: HOST variable is required. Usage: make deploy-to HOST=user@hostname"; \
-		exit 1; \
-	fi
-	$(ANSIBLE_PLAYBOOK) -i "$(HOST)," $(PLAYBOOK)
-
-setup-jenkins:
-	ansible-playbook -i ansible/inventory.ini ansible/setup-jenkins-job.yml
-
 dev:
 	sudo docker compose -f docker-compose.dev.yml up -d
 	sudo docker exec -it golem-century-server sh
-
-check-data:
-	mkdir -p data/
-	docker exec -it golem-mongodb mongoexport \
-		--db=golem_game_test \
-		--collection=events \
-		--out=/data/events.json
-	docker cp golem-mongodb:/data/events.json ./data/events.json
 
 fe-build-local:
 # 	docker build --build-arg VITE_API_HOST=https://game.anhtran.dev/api/golem --build-arg VITE_NGINX_HOST=https://game.anhtran.dev -f Dockerfile.fe -t golem-frontend:latest .
@@ -197,3 +64,131 @@ symlinks-create:
 
 kill-dev:
 	lsof -ti :8080 | xargs kill -INT 2>/dev/null; sleep 2; lsof -ti :8080 | xargs kill -9 2>/dev/null; killall -9 main 2>/dev/null; echo "All servers killed"
+
+# Kubernetes/k3s deployment commands
+k3s-setup-registry: ## Setup local Docker registry on k3s server
+	@echo "Setting up Docker registry on k3s server..."
+	cd ansible && ansible-playbook -i inventory.ini setup-docker-registry.yml
+
+k3s-test: ## Test k3s deployment configuration
+	@echo "Testing k3s deployment configuration..."
+	./scripts/test-k3s-deploy.sh
+
+k3s-deploy: ## Deploy backend to k3s cluster (production)
+	@echo "Deploying backend to PRODUCTION environment..."
+	cd ansible && DEPLOY_ENV=production ansible-playbook -i inventory.ini deploy-k3s-backend.yml
+
+k3s-deploy-staging: ## Deploy backend to STAGING environment
+	@echo "Deploying backend to STAGING environment..."
+	cd ansible && DEPLOY_ENV=staging ansible-playbook -i inventory.ini deploy-k3s-backend.yml
+
+k3s-deploy-prod: ## Deploy backend to PRODUCTION environment (alias for k3s-deploy)
+	@echo "Deploying backend to PRODUCTION environment..."
+	cd ansible && DEPLOY_ENV=production ansible-playbook -i inventory.ini deploy-k3s-backend.yml
+
+k3s-deploy-version: ## Deploy specific backend version (usage: make k3s-deploy-version VERSION=v1.0.0 ENV=staging)
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION variable is required. Usage: make k3s-deploy-version VERSION=v1.0.0 ENV=staging"; \
+		exit 1; \
+	fi
+	@ENV_VAR=$${ENV:-production}; \
+	echo "Deploying version $(VERSION) to $$ENV_VAR environment..."; \
+	DEPLOY_ENV=$$ENV_VAR APP_VERSION=$(VERSION) cd ansible && ansible-playbook -i inventory.ini deploy-k3s-backend.yml
+
+k3s-frontend-test: ## Deploy frontend to TEST environment
+	@echo "Deploying frontend to TEST environment..."
+	cd ansible && DEPLOY_ENV=test ansible-playbook -i inventory.ini deploy-frontend.yml
+
+k3s-frontend-prod: ## Deploy frontend to PROD environment
+	@echo "Deploying frontend to PROD environment..."
+	cd ansible && DEPLOY_ENV=prod ansible-playbook -i inventory.ini deploy-frontend.yml
+
+k3s-deploy-full-test: ## Deploy full stack to TEST environment
+	@echo "Deploying full stack to TEST environment..."
+	cd ansible && DEPLOY_ENV=test ansible-playbook -i inventory.ini deploy-k3s.yml
+
+k3s-deploy-full-prod: ## Deploy full stack to PROD environment
+	@echo "Deploying full stack to PROD environment..."
+	cd ansible && DEPLOY_ENV=prod ansible-playbook -i inventory.ini deploy-k3s.yml
+
+k3s-status: ## Check k3s deployment status (usage: make k3s-status ENV=staging)
+	@ENV_VAR=$${ENV:-production}; \
+	if [ "$$ENV_VAR" = "staging" ]; then \
+		NAMESPACE=golem-staging; \
+	else \
+		NAMESPACE=golem; \
+	fi; \
+	echo "Checking $$ENV_VAR environment (namespace: $$NAMESPACE)..."; \
+	ssh root@157.66.101.66 "kubectl get all -n $$NAMESPACE && kubectl get ingress -n $$NAMESPACE"
+
+k3s-status-all: ## Check status of both staging and production
+	@echo "=== STAGING Environment ==="
+	@ssh root@157.66.101.66 "kubectl get all -n golem-staging 2>/dev/null" || echo "Staging not deployed"
+	@echo ""
+	@echo "=== PRODUCTION Environment ==="
+	@ssh root@157.66.101.66 "kubectl get all -n golem 2>/dev/null" || echo "Production not deployed"
+
+k3s-logs: ## View k3s application logs (usage: make k3s-logs ENV=staging)
+	@ENV_VAR=$${ENV:-production}; \
+	if [ "$$ENV_VAR" = "staging" ]; then \
+		NAMESPACE=golem-staging; \
+	else \
+		NAMESPACE=golem; \
+	fi; \
+	echo "Fetching logs from $$ENV_VAR (namespace: $$NAMESPACE)..."; \
+	ssh root@157.66.101.66 "kubectl logs -f -n $$NAMESPACE deployment/golem-century --tail=100"
+
+k3s-logs-db: ## View k3s database logs (usage: make k3s-logs-db ENV=staging)
+	@ENV_VAR=$${ENV:-production}; \
+	if [ "$$ENV_VAR" = "staging" ]; then \
+		NAMESPACE=golem-staging; \
+	else \
+		NAMESPACE=golem; \
+	fi; \
+	echo "Fetching database logs from $$ENV_VAR (namespace: $$NAMESPACE)..."; \
+	ssh root@157.66.101.66 "kubectl logs -f -n $$NAMESPACE deployment/mongodb --tail=100"
+
+k3s-logs-cache: ## View k3s cache logs (usage: make k3s-logs-cache ENV=staging)
+	@ENV_VAR=$${ENV:-production}; \
+	if [ "$$ENV_VAR" = "staging" ]; then \
+		NAMESPACE=golem-staging; \
+	else \
+		NAMESPACE=golem; \
+	fi; \
+	echo "Fetching cache logs from $$ENV_VAR (namespace: $$NAMESPACE)..."; \
+	ssh root@157.66.101.66 "kubectl logs -f -n $$NAMESPACE deployment/redis --tail=100"
+
+k3s-restart: ## Restart k3s application (usage: make k3s-restart ENV=staging)
+	@ENV_VAR=$${ENV:-production}; \
+	if [ "$$ENV_VAR" = "staging" ]; then \
+		NAMESPACE=golem-staging; \
+	else \
+		NAMESPACE=golem; \
+	fi; \
+	echo "Restarting application in $$ENV_VAR (namespace: $$NAMESPACE)..."; \
+	ssh root@157.66.101.66 "kubectl rollout restart deployment/golem-century -n $$NAMESPACE"
+
+k3s-scale: ## Scale k3s application (usage: make k3s-scale REPLICAS=3)
+	@if [ -z "$(REPLICAS)" ]; then \
+		echo "Error: REPLICAS variable is required. Usage: make k3s-scale REPLICAS=3"; \
+		exit 1; \
+# Legacy commands (deprecated, use specific environment commands above)
+k3s-frontend: k3s-frontend-test ## Deploy frontend (defaults to TEST) - DEPRECATED: use k3s-frontend-test or k3s-frontend-prod
+
+k3s-deploy-full: k3s-deploy-full-test ## Deploy full stack (defaults to TEST) - DEPRECATED: use k3s-deploy-full-test or k3s-deploy-full-prod deployment..."
+	ssh root@157.66.101.66 "kubectl describe deployment golem-century -n golem-app"
+
+k3s-frontend: ## Deploy only frontend to nginx
+	@echo "Deploying frontend to nginx..."
+	cd web/react-frontend && npm install && npm run build
+	mkdir -p web/react
+	rm -rf web/react/* || true
+	cp -rf web/react-frontend/dist/* web/react/
+	rsync -avz --delete web/react/ root@157.66.101.66:/opt/nginx/apps/golem/
+	rsync -avz web/static/ root@157.66.101.66:/opt/nginx/apps/assets/
+	@echo "Frontend deployment complete!"
+
+k3s-deploy-full: ## Deploy both backend (k3s) and frontend (nginx)
+	@echo "Starting full deployment (backend + frontend)..."
+	make k3s-deploy
+	@echo "Full deployment complete!"

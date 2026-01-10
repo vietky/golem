@@ -1,0 +1,133 @@
+---
+- name: Deploy Golem Century Frontend to Nginx
+  hosts: k3s_cluster
+  become: yes
+  vars:
+    # Environment: 'test' or 'prod'
+    deploy_env: "{{ lookup('env', 'DEPLOY_ENV') | default('test', true) }}"
+    frontend_source_dir: "{{ playbook_dir }}/../web/react-frontend"
+    frontend_build_dir: "{{ playbook_dir }}/../web/react"
+    static_assets_dir: "{{ playbook_dir }}/../web/static"
+    
+    # Environment-specific configuration
+    env_config:
+      test:
+        nginx_path: "/opt/nginx/apps/golem-test"
+        api_host: "https://game.anhtran.dev/api/golem-test"
+        nginx_host: "https://game.anhtran.dev"
+        url_path: "/golem-test"
+      prod:
+        nginx_path: "/opt/nginx/apps/golem"
+        api_host: "https://game.anhtran.dev/api/golem"
+        nginx_host: "https://game.anhtran.dev"
+        url_path: "/golem"
+
+  pre_tasks:
+    - name: Validate deploy environment
+      fail:
+        msg: "DEPLOY_ENV must be either 'test' or 'prod', got: {{ deploy_env }}"
+      when: deploy_env not in ['test', 'prod']
+
+    - name: Display deployment environment
+      debug:
+        msg:
+          - "Deploying frontend to: {{ deploy_env | upper }} environment"
+          - "Nginx path: {{ env_config[deploy_env].nginx_path }}"
+          - "API host: {{ env_config[deploy_env].api_host }}"
+          - "Access URL: {{ env_config[deploy_env].nginx_host }}{{ env_config[deploy_env].url_path }}"
+
+  tasks:
+    - name: Check if Node.js is installed locally
+      delegate_to: localhost
+      command: node --version
+      register: node_version
+      become: no
+      changed_when: false
+
+    - name: Display Node.js version
+      debug:
+        msg: "Using Node.js {{ node_version.stdout }}"
+
+    - name: Install frontend dependencies
+      delegate_to: localhost
+      command: npm install
+      args:
+        chdir: "{{ frontend_source_dir }}"
+      become: no
+
+    - name: Build frontend for {{ deploy_env }} environment
+      delegate_to: localhost
+      command: npm run build
+      args:
+        chdir: "{{ frontend_source_dir }}"
+      environment:
+        VITE_API_HOST: "{{ env_config[deploy_env].api_host }}"
+        VITE_NGINX_HOST: "{{ env_config[deploy_env].nginx_host }}"
+      become: no
+
+    - name: Prepare frontend build directory
+      delegate_to: localhost
+      file:
+        path: "{{ frontend_build_dir }}"
+        state: directory
+        mode: '0755'
+      become: no
+
+    - name: Copy build output to react directory
+      delegate_to: localhost
+      shell: |
+        rm -rf {{ frontend_build_dir }}/*
+        cp -rf {{ frontend_source_dir }}/dist/* {{ frontend_build_dir }}/
+      become: no
+
+    - name: Create nginx apps directory
+      file:
+        path: "{{ env_config[deploy_env].nginx_path }}"
+        state: directory
+        mode: '0755'
+        owner: www-data
+        group: www-data
+      ignore_errors: yes
+
+    - name: Deploy frontend to nginx ({{ deploy_env }}) using shell rsync
+      shell: |
+        rsync -avz --delete \
+          -e 'ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no' \
+          {{ frontend_build_dir }}/ root@{{ inventory_hostname }}:{{ env_config[deploy_env].nginx_path }}/
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no root@{{ inventory_hostname }} \
+          "find {{ env_config[deploy_env].nginx_path }} -type d -exec chmod 755 {} \; && \
+           find {{ env_config[deploy_env].nginx_path }} -type f -exec chmod 644 {} \; && \
+           chown -R www-data:www-data {{ env_config[deploy_env].nginx_path }}"
+      delegate_to: localhost
+      become: no
+
+    - name: Deploy static assets using shell rsync
+      shell: |
+        rsync -avz \
+          -e 'ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no' \
+          {{ static_assets_dir }}/ root@{{ inventory_hostname }}:/opt/nginx/apps/assets/
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no root@{{ inventory_hostname }} \
+          "find /opt/nginx/apps/assets -type d -exec chmod 755 {} \; && \
+           find /opt/nginx/apps/assets -type f -exec chmod 644 {} \; && \
+           chown -R www-data:www-data /opt/nginx/apps/assets"
+      delegate_to: localhost
+      become: no
+
+    - name: Reload nginx configuration
+      service:
+        name: nginx
+        state: reloaded
+      ignore_errors: yes
+
+    - name: Display deployment summary
+      debug:
+        msg:
+          - "========================================="
+          - "Frontend Deployment Complete!"
+          - "========================================="
+          - "Environment: {{ deploy_env | upper }}"
+          - "Frontend URL: {{ env_config[deploy_env].nginx_host }}{{ env_config[deploy_env].url_path }}"
+          - "API Endpoint: {{ env_config[deploy_env].api_host }}"
+          - "Deployment Path: {{ env_config[deploy_env].nginx_path }}"
+          - "Static Assets: /opt/nginx/apps/assets"
+          - "========================================="
