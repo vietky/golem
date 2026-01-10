@@ -61,6 +61,13 @@ func main() {
 
 	// Setup routes on a ServeMux so we can wrap with CORS middleware
 	mux := http.NewServeMux()
+
+	// Health check endpoint for k8s probes
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
 	mux.HandleFunc("/ws", gameServer.HandleWebSocket)
 	mux.HandleFunc("/api/create", gameServer.HandleCreateSession)
 	mux.HandleFunc("/api/single", gameServer.HandleCreateSinglePlayer)

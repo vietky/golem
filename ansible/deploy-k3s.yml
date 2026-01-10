@@ -1,0 +1,23 @@
+---
+- name: Deploy Golem Century Full Stack
+  hosts: k3s_cluster
+  gather_facts: no
+  vars:
+    deploy_env: "{{ lookup('env', 'DEPLOY_ENV') | default('test', true) }}"
+
+  tasks:
+    - name: Display deployment plan
+      debug:
+        msg:
+          - "========================================="
+          - "Full Stack Deployment"
+          - "========================================="
+          - "Backend: k3s cluster (MongoDB, Redis, App)"
+          - "Frontend: {{ deploy_env | upper }} environment"
+          - "========================================="
+
+- name: Deploy Backend to k3s
+  import_playbook: deploy-k3s-backend.yml
+
+- name: Deploy Frontend to Nginx
+  import_playbook: deploy-frontend.yml

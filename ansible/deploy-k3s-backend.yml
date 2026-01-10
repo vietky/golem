@@ -1,0 +1,303 @@
+---
+- name: Deploy Golem Century Backend to k3s
+  hosts: k3s_cluster
+  become: yes
+  vars:
+    app_name: golem-century
+    deployment_dir: /tmp/golem-deployment
+    build_dir: /tmp/golem-build
+    local_secrets_dir: "{{ playbook_dir }}/../secrets"
+    has_secrets: false
+    docker_registry: "localhost:5000"
+    app_version: "{{ lookup('env', 'APP_VERSION') | default('latest', true) }}"
+    full_image_name: "{{ docker_registry }}/{{ app_name }}:{{ app_version }}"
+    deploy_env: "{{ lookup('env', 'DEPLOY_ENV') | default('production', true) }}"
+    
+    # Environment-specific configurations
+    env_config:
+      staging:
+        namespace: golem-staging
+        replicas: 1
+        dns_name: staging.game.anhtran.dev
+        mongodb_storage: 5Gi
+        mongodb_memory: 512Mi
+        redis_storage: 2Gi
+      production:
+        namespace: golem
+        replicas: 2
+        dns_name: prod.game.anhtran.dev
+        mongodb_storage: 10Gi
+        mongodb_memory: 1Gi
+        redis_storage: 5Gi
+
+  pre_tasks:
+    - name: Validate deploy environment
+      fail:
+        msg: "Invalid DEPLOY_ENV. Must be 'staging' or 'production'"
+      when: deploy_env not in ['staging', 'production']
+
+    - name: Display deployment environment
+      debug:
+        msg:
+          - "Deploying to environment: {{ deploy_env }}"
+          - "Namespace: {{ env_config[deploy_env].namespace }}"
+          - "DNS: {{ env_config[deploy_env].dns_name }}"
+          - "Replicas: {{ env_config[deploy_env].replicas }}"
+
+    - name: Check if secrets directory exists locally
+      local_action:
+        module: stat
+        path: "{{ local_secrets_dir }}"
+      register: secrets_dir_stat
+      become: no
+
+    - name: Set has_secrets fact
+      set_fact:
+        has_secrets: "{{ secrets_dir_stat.stat.exists and secrets_dir_stat.stat.isdir }}"
+
+    - name: Check if .env file exists in secrets
+      local_action:
+        module: stat
+        path: "{{ local_secrets_dir }}/.env"
+      register: env_file_stat
+      become: no
+      when: has_secrets
+
+    - name: Load environment variables from .env file
+      set_fact:
+        telegram_bot_token: "{{ lookup('file', local_secrets_dir + '/.env') | regex_search('TELEGRAM_BOT_TOKEN=(.+)', '\\1') | first | default('', true) }}"
+        telegram_chat_id: "{{ lookup('file', local_secrets_dir + '/.env') | regex_search('TELEGRAM_CHAT_ID=(.+)', '\\1') | first | default('', true) }}"
+      when: has_secrets and env_file_stat.stat.exists
+      no_log: true
+
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - curl
+          - git
+        state: present
+        update_cache: no
+      ignore_errors: yes
+
+    - name: Check if k3s is installed
+      stat:
+        path: /usr/local/bin/k3s
+      register: k3s_installed
+
+    - name: Fail if k3s is not installed
+      fail:
+        msg: "k3s is not installed on this server. Please install k3s first."
+      when: not k3s_installed.stat.exists
+
+    - name: Create deployment directory
+      file:
+        path: "{{ deployment_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy Kubernetes manifests to server
+      copy:
+        src: "{{ playbook_dir }}/../deployment/"
+        dest: "{{ deployment_dir }}/"
+        mode: '0644'
+
+    - name: Create namespace for {{ deploy_env }}
+      command: kubectl apply -f {{ deployment_dir }}/namespaces/golem{% if deploy_env == 'staging' %}-staging{% endif %}.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Update Ingress host for {{ deploy_env }} environment
+      shell: |
+        sed -i 's/ENVIRONMENT\.game\.anhtran\.dev/{{ env_config[deploy_env].dns_name }}/g' {{ deployment_dir }}/golem-app/ingress.yaml
+      
+    - name: Update all namespace references for {{ deploy_env }}
+      shell: |
+        find {{ deployment_dir }} -type f \( -name "*.yaml" ! -name "*.template" \) -exec sed -i 's/namespace: golem$/namespace: {{ env_config[deploy_env].namespace }}/g' {} \;
+    - name: Update replica count for {{ deploy_env }}
+      shell: |
+        sed -i 's/^  replicas: [0-9]*$/  replicas: {{ env_config[deploy_env].replicas }}/g' {{ deployment_dir }}/golem-app/deployment.yaml
+    - name: Apply MongoDB manifests
+      command: kubectl apply -f {{ deployment_dir }}/mongodb/ -n {{ env_config[deploy_env].namespace }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Apply Redis manifests
+      command: kubectl apply -f {{ deployment_dir }}/redis/ -n {{ env_config[deploy_env].namespace }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Apply Golem app ConfigMap
+      command: kubectl apply -f {{ deployment_dir }}/golem-app/configmap.yaml -n {{ env_config[deploy_env].namespace }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Process secret template with actual values
+      template:
+        src: "{{ playbook_dir }}/../deployment/golem-app/secret.yaml.template"
+        dest: "{{ deployment_dir }}/golem-app/secret.yaml"
+        mode: '0600'
+      when: has_secrets
+      vars:
+        TELEGRAM_BOT_TOKEN: "{{ telegram_bot_token | default('') }}"
+        TELEGRAM_CHAT_ID: "{{ telegram_chat_id | default('') }}"
+      no_log: true
+
+    - name: Update secret namespace for {{ deploy_env }}
+      shell: |
+        sed -i 's/namespace: golem$/namespace: {{ env_config[deploy_env].namespace }}/g' {{ deployment_dir }}/golem-app/secret.yaml
+      when: has_secrets
+
+    - name: Apply Golem app Secret
+      command: kubectl apply -f {{ deployment_dir }}/golem-app/secret.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: has_secrets
+      no_log: true
+
+    - name: Apply Golem app Deployment
+      command: kubectl apply -f {{ deployment_dir }}/golem-app/deployment.yaml -n {{ env_config[deploy_env].namespace }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Apply Golem app Service
+      command: kubectl apply -f {{ deployment_dir }}/golem-app/service.yaml -n {{ env_config[deploy_env].namespace }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Apply Golem app Ingress
+      command: kubectl apply -f {{ deployment_dir }}/golem-app/ingress.yaml -n {{ env_config[deploy_env].namespace }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Check if local Docker registry is running
+      uri:
+        url: "http://localhost:5000/v2/"
+        status_code: 200
+      register: registry_check
+      failed_when: false
+
+    - name: Fail if registry is not running
+      fail:
+        msg: "Docker registry is not running. Please run 'make k3s-setup-registry' first."
+      when: registry_check.status != 200
+
+    - name: Set git repository path
+      set_fact:
+        git_repo_path: /opt/jenkins/repos/golem
+
+    - name: Check if git repository exists on server
+      stat:
+        path: "{{ git_repo_path }}/.git"
+      register: git_repo_stat
+
+    - name: Display git repository status
+      debug:
+        msg: |
+          Git repository exists: {{ git_repo_stat.stat.exists }}
+          Please ensure git repository is set up at {{ git_repo_path }} on the server.
+          Run: git clone <your-repo-url> {{ git_repo_path }}
+
+    - name: Fail if git repository doesn't exist
+      fail:
+        msg: |
+          Git repository not found at {{ git_repo_path }}
+          Please set up the repository first:
+          1. SSH to server: ssh root@{{ inventory_hostname }}
+          2. Create directory: mkdir -p /opt/jenkins/repos
+          3. Clone repository: git clone <your-repo-url> {{ git_repo_path }}
+      when: not git_repo_stat.stat.exists
+
+    - name: Pull latest code from git repository
+      git:
+        repo: "{{ git_repo_path }}"
+        dest: "{{ git_repo_path }}"
+        version: HEAD
+        update: yes
+        force: yes
+      register: git_pull_result
+
+    - name: Display git pull result
+      debug:
+        msg: "Git HEAD is now at: {{ git_pull_result.after }}"
+
+    - name: Build Docker image from git repository
+      command: >
+        docker build
+        -t {{ full_image_name }}
+        -f {{ git_repo_path }}/Dockerfile
+        {{ git_repo_path }}
+      args:
+        chdir: "{{ git_repo_path }}"
+
+    - name: Push image to local registry
+      command: docker push {{ full_image_name }}
+
+    - name: Update deployment image for {{ deploy_env }} environment
+      command: kubectl set image deployment/golem-century golem-century={{ full_image_name }} -n {{ env_config[deploy_env].namespace }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      ignore_errors: yes
+
+    - name: Apply secret if exists
+      command: kubectl apply -f {{ deployment_dir }}/golem-app/secret.yaml -n {{ env_config[deploy_env].namespace }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: has_secrets
+      no_log: true
+
+    - name: Wait for MongoDB to be ready
+      command: kubectl wait --for=condition=ready pod -l app=mongodb -n {{ env_config[deploy_env].namespace }} --timeout=300s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      retries: 3
+      delay: 10
+
+    - name: Wait for Redis to be ready
+      command: kubectl wait --for=condition=ready pod -l app=redis -n {{ env_config[deploy_env].namespace }} --timeout=300s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      retries: 3
+      delay: 10
+
+    - name: Wait for Golem app to be ready
+      command: kubectl wait --for=condition=ready pod -l app=golem-century -n {{ env_config[deploy_env].namespace }} --timeout=300s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      retries: 3
+      delay: 10
+
+    - name: Get deployment status
+      command: kubectl get all -n {{ env_config[deploy_env].namespace }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: deployment_status
+
+    - name: Display deployment status
+      debug:
+        var: deployment_status.stdout_lines
+
+    - name: Get Ingress status
+      shell: kubectl get ingress -n {{ env_config[deploy_env].namespace }} -o wide
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: ingress_status
+
+    - name: Display backend deployment status
+      debug:
+        msg: 
+          - "Backend deployment completed successfully!"
+          - "Environment: {{ deploy_env }}"
+          - "Namespace: {{ env_config[deploy_env].namespace }}"
+          - "API is accessible via Ingress at: https://{{ env_config[deploy_env].dns_name }}/api/golem"
+          - "WebSocket is accessible at: wss://{{ env_config[deploy_env].dns_name }}/ws"
+          - "All components (MongoDB, Redis, Application) are running"
+          - "Replicas: {{ env_config[deploy_env].replicas }}"
+          - "Ingress status:"
+          - "{{ ingress_status.stdout_lines }}"
+
+  post_tasks:
+    - name: Clean up deployment directory
+      file:
+        path: "{{ deployment_dir }}"
+        state: absent

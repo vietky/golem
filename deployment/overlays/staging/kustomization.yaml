@@ -1,0 +1,84 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: golem-staging
+
+resources:
+  - ../../namespaces/golem-staging.yaml
+
+# Include all manifests via absolute file paths
+components:
+
+patches:
+  # Update namespace references
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: replace
+        path: /metadata/namespace
+        value: golem-staging
+  - target:
+      kind: Service
+    patch: |-
+      - op: replace
+        path: /metadata/namespace
+        value: golem-staging
+  - target:
+      kind: PersistentVolumeClaim
+    patch: |-
+      - op: replace
+        path: /metadata/namespace
+        value: golem-staging
+  - target:
+      kind: ConfigMap
+    patch: |-
+      - op: replace
+        path: /metadata/namespace
+        value: golem-staging
+  - target:
+      kind: Secret
+    patch: |-
+      - op: replace
+        path: /metadata/namespace
+        value: golem-staging
+  - target:
+      kind: Ingress
+    patch: |-
+      - op: replace
+        path: /metadata/namespace
+        value: golem-staging
+      - op: replace
+        path: /spec/rules/0/host
+        value: staging.game.anhtran.dev
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: staging.game.anhtran.dev
+      - op: replace
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+        value: letsencrypt-staging
+  
+  # Reduce resources for staging
+  - target:
+      kind: Deployment
+      name: golem-century
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target:
+      kind: Deployment
+      name: mongodb
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: 512Mi
+  - target:
+      kind: PersistentVolumeClaim
+      name: mongodb-pvc
+    patch: |-
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: 5Gi
+
+commonLabels:
+  environment: staging

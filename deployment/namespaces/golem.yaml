@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: golem
+  labels:
+    app: golem-century
+    environment: production

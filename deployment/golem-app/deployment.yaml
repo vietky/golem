@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: golem-century
+  namespace: golem
+  labels:
+    app: golem-century
+    component: application
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: golem-century
+  template:
+    metadata:
+      labels:
+        app: golem-century
+    spec:
+      containers:
+      - name: golem-century
+        image: localhost:5000/golem-century:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+        envFrom:
+        - configMapRef:
+            name: golem-app-config
+        - secretRef:
+            name: golem-app-secrets
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 40
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

@@ -169,12 +169,53 @@ curl "http://localhost:8080/admin/sessions/state?sessionID=SESSION_ID" | jq
 
 ## Deployment
 
-Uses Ansible for deployment to remote servers:
+### Kubernetes (k3s) Deployment
+
+The application is deployed on k3s with the following architecture:
+
+#### Namespace Organization
+- **Single namespace**: All components (MongoDB, Redis, Application) are in the `golem` namespace
+- This simplifies management and RBAC policies
+
+#### Ingress Controller
+- **NGINX Ingress Controller** is used for:
+  - HTTP/HTTPS routing
+  - SSL termination with cert-manager
+  - WebSocket support
+  - Path-based routing for API endpoints
+- Install with: `make k3s-install-ingress`
+
+#### Git-Based Deployment
+- Source code is NOT copied during deployment
+- Server must have git repository at `/opt/jenkins/repos/golem`
+- Deployment pulls latest code from this repository
+- Setup: `git clone <your-repo-url> /opt/jenkins/repos/golem`
+
+#### Deployment Commands
 ```bash
-make deploy  # Generates inventory from .env, creates archive, deploys via Ansible
+# Setup (one-time)
+make k3s-setup-registry      # Setup local Docker registry
+make k3s-install-ingress     # Install NGINX Ingress Controller
+
+# Deploy
+make k3s-deploy              # Build and deploy backend from git repo
+make k3s-frontend-test       # Deploy frontend to test environment
+make k3s-frontend-prod       # Deploy frontend to production
+
+# Monitoring
+make k3s-status              # Check all resources in golem namespace
+make k3s-logs                # View application logs
+make k3s-logs-db             # View MongoDB logs
+make k3s-logs-cache          # View Redis logs
 ```
 
-Docker images: `Dockerfile` (backend), `Dockerfile.fe` (frontend-only). Production uses single image serving both.
+#### Access URLs
+- **Backend API**: https://game.anhtran.dev/api/golem (via Ingress)
+- **WebSocket**: wss://game.anhtran.dev/ws (via Ingress)
+- **Frontend (test)**: https://game.anhtran.dev/golem-test
+- **Frontend (prod)**: https://game.anhtran.dev/golem
+
+Uses Ansible for deployment to remote servers. Docker images: `Dockerfile` (backend), `Dockerfile.fe` (frontend-only). Production uses single image serving both.
 
 ## File Naming Conventions
 
@@ -182,12 +223,23 @@ Docker images: `Dockerfile` (backend), `Dockerfile.fe` (frontend-only). Producti
 - Integration tests: `*_integration_test.go` (require external dependencies)
 - Documentation: Uppercase markdown files in root/subdirs (`SPECTATE_MODE.md`, `WEBSOCKET_FIX.md`)
 
-
-## Testing Strategies
-- always apply SOLID principles in game logic for easy unit testing
-- tests include normal cases, edge cases, and error handling
-- always test and verify after refactoring or adding features yourself
-- only stop when all the issues are fixed and tests pass successfully
+## Deployment Topology
+- Support docker compose for local development and k3s for production deployment
+- Use environment variables for configuration management
+- Separate services for backend, frontend, and database for scalability
+- Implement health checks and monitoring for all services
+- Observability: centralized tracing, logging and metrics collection for performance tracking and debugging
+- Use CI/CD pipelines for automated testing and deployment
+- All credentials are put temporarily in user local `secrets/` folder which is gitignored, and mounted as Kubernetes configmaps and secrets in production
+- Ansible playbooks should detect changes in secrets and redeploy the affected services automatically. If there is no secret folder, ansible should skip the secret deployment step
+- All Kubernetes deployment charts are in `deployment/` folder
+- There should be clear separation between staging, and production environments with different configurations and resource allocations
+  - staging: golem-staging namespace
+  - production: golem namespace
+- **Single Namespace**: All components (MongoDB, Redis, Application) belong to the `golem` namespace for simplified management
+- Use local docker registry on k3s server (localhost:5000) to speed up image pulling during deployment
+- **NGINX Ingress Controller** is used for routing and SSL termination in production (later, might migrate to Gateway API when it matures)
+- **Git-based deployment**: Source code is NOT copied to server during deployment. Instead, git repository at `/opt/jenkins/repos/golem` is used to pull latest code, saving bandwidth and time
 
 ## Coding Standards
 - use logger both on backend and frontend for debugging and monitoring
@@ -199,6 +251,10 @@ Docker images: `Dockerfile` (backend), `Dockerfile.fe` (frontend-only). Producti
 - only README.md are allowed in the root directory
 - when writing integration tests, set a reasonable timeout (5-10 seconds) to avoid hanging tests, automatically fail tests that exceed the timeout limit
 - when fixing bugs, add regression tests to prevent future occurrences of the same issues
+- all secrets (API keys, tokens, credentials) must be stored in environment variables or secure vaults, never hard-coded in the source code or committed to version control
+- folder secrets/ is added to .gitignore for storing sensitive files like Firebase service account JSON and .env files
+- use snake case for json response fields and camel case for Go struct fields
+- NEVER hard-code any configuration values, always use environment variables or config files
 
 ## UI/UX Guidelines 
 - for frontend, mobile responsiveness is a must
@@ -209,3 +265,21 @@ Docker images: `Dockerfile` (backend), `Dockerfile.fe` (frontend-only). Producti
 - Security Best Practices
 - sanitize and validate all user inputs on backend
 - minimize data transferred over network, use HTTPS in production
+
+## Non-Functional Requirements
+- Scalability: design backend to handle increasing number of concurrent sessions and players
+- Maintainability: write clean, modular code with proper documentation for easy future enhancements (both frontend and backend) - follow SOLID principles
+- Reliability: implement error handling and recovery mechanisms to ensure smooth gameplay experience
+- Usability: design intuitive UI/UX for players and spectators, conduct user testing to gather feedback and improve the interface
+- Performance: optimize both frontend and backend for low latency and fast response times during gameplay
+- Testability: ensure code is easily testable with unit and integration tests, maintain high test coverage
+- Extensibility: design system to easily accommodate new features, game modes, and AI strategies in the future
+- Documentation: maintain comprehensive documentation for developers and users, including API references, setup guides, and gameplay instructions
+- Security: implement robust security measures to protect user data and prevent cheating or exploits in the game
+- Follow IaC best practices for deployment and infrastructure management
+
+## Testing Strategies
+- always apply SOLID principles in game logic for easy unit testing
+- tests include normal cases, edge cases, and error handling
+- only stop when all the issues are fixed and tests pass successfully
+- always test and verify after making any changes until the requirements are fully met

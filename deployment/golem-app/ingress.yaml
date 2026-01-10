@@ -1,0 +1,45 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: golem-century
+  namespace: golem
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/websocket-services: golem-century
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - game.anhtran.dev
+    secretName: golem-century-tls
+  rules:
+  - host: game.anhtran.dev
+    http:
+      paths:
+      # API endpoints
+      - path: /api/golem-test
+        pathType: Prefix
+        backend:
+          service:
+            name: golem-century
+            port:
+              number: 8080
+      - path: /api/golem
+        pathType: Prefix
+        backend:
+          service:
+            name: golem-century
+            port:
+              number: 8080
+      # WebSocket endpoint
+      - path: /ws
+        pathType: Prefix
+        backend:
+          service:
+            name: golem-century
+            port:
+              number: 8080

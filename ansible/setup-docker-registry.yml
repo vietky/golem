@@ -1,0 +1,100 @@
+---
+- name: Setup Local Docker Registry
+  hosts: k3s_cluster
+  become: yes
+  vars:
+    registry_port: 5000
+    registry_data_dir: /var/lib/docker-registry
+    registry_container_name: registry
+
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - docker.io
+          - docker-compose
+        state: present
+        update_cache: no
+      ignore_errors: yes
+
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Create registry data directory
+      file:
+        path: "{{ registry_data_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Check if registry container exists
+      command: docker ps -a -q -f name={{ registry_container_name }}
+      register: registry_container
+      changed_when: false
+
+    - name: Remove existing registry container if exists
+      command: docker rm -f {{ registry_container_name }}
+      when: registry_container.stdout != ""
+      ignore_errors: yes
+
+    - name: Start Docker registry container
+      command: >
+        docker run -d
+        --name {{ registry_container_name }}
+        --restart=always
+        -p 127.0.0.1:{{ registry_port }}:5000
+        -v {{ registry_data_dir }}:/var/lib/registry
+        registry:2
+
+    - name: Wait for registry to be ready
+      wait_for:
+        host: 127.0.0.1
+        port: "{{ registry_port }}"
+        delay: 2
+        timeout: 30
+
+    - name: Create k3s registries config directory
+      file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: '0755'
+
+    - name: Configure k3s to use local registry
+      copy:
+        dest: /etc/rancher/k3s/registries.yaml
+        content: |
+          mirrors:
+            "localhost:{{ registry_port }}":
+              endpoint:
+                - "http://localhost:{{ registry_port }}"
+        mode: '0644'
+
+    - name: Restart k3s to apply registry config
+      service:
+        name: k3s
+        state: restarted
+      when: ansible_facts.services['k3s.service'] is defined
+
+    - name: Test registry access
+      uri:
+        url: "http://localhost:{{ registry_port }}/v2/"
+        status_code: 200
+      register: registry_check
+      retries: 3
+      delay: 2
+
+    - name: Display registry information
+      debug:
+        msg:
+          - "========================================="
+          - "Docker Registry Setup Complete!"
+          - "========================================="
+          - "Registry URL: localhost:{{ registry_port }}"
+          - "Data Directory: {{ registry_data_dir }}"
+          - "Container Name: {{ registry_container_name }}"
+          - "k3s Configuration: /etc/rancher/k3s/registries.yaml"
+          - "========================================="
+          - "Registry is accessible at http://localhost:{{ registry_port }}/v2/"
+          - "========================================="
