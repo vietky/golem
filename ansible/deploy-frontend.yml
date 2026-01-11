@@ -5,9 +5,8 @@
   vars:
     # Environment: 'test' or 'prod'
     deploy_env: "{{ lookup('env', 'DEPLOY_ENV') | default('test', true) }}"
-    frontend_source_dir: "{{ playbook_dir }}/../web/react-frontend"
-    frontend_build_dir: "{{ playbook_dir }}/../web/react"
-    static_assets_dir: "{{ playbook_dir }}/../web/static"
+    git_repo_path: "/opt/jenkins/repos/golem"
+    temp_build_dir: "/tmp/golem-frontend-build"
     
     # Environment-specific configuration
     env_config:
@@ -32,53 +31,83 @@
       debug:
         msg:
           - "Deploying frontend to: {{ deploy_env | upper }} environment"
+          - "Git repo: {{ git_repo_path }}"
           - "Nginx path: {{ env_config[deploy_env].nginx_path }}"
           - "API host: {{ env_config[deploy_env].api_host }}"
           - "Access URL: {{ env_config[deploy_env].nginx_host }}{{ env_config[deploy_env].url_path }}"
 
   tasks:
-    - name: Check if Node.js is installed locally
-      delegate_to: localhost
-      command: node --version
-      register: node_version
-      become: no
+    - name: Verify git repository exists
+      stat:
+        path: "{{ git_repo_path }}"
+      register: git_repo_check
+      failed_when: not git_repo_check.stat.exists
       changed_when: false
 
-    - name: Display Node.js version
+    - name: Pull latest code from git repository
+      shell: |
+        cd {{ git_repo_path }}
+        git fetch origin
+        git checkout main
+        git pull origin main
+      register: git_pull_result
+      changed_when: "'Already up to date' not in git_pull_result.stdout"
+
+    - name: Display git pull result
       debug:
-        msg: "Using Node.js {{ node_version.stdout }}"
+        msg: "{{ git_pull_result.stdout_lines }}"
 
-    - name: Install frontend dependencies
-      delegate_to: localhost
-      command: npm install
-      args:
-        chdir: "{{ frontend_source_dir }}"
-      become: no
-
-    - name: Build frontend for {{ deploy_env }} environment
-      delegate_to: localhost
-      command: npm run build
-      args:
-        chdir: "{{ frontend_source_dir }}"
-      environment:
-        VITE_API_HOST: "{{ env_config[deploy_env].api_host }}"
-        VITE_NGINX_HOST: "{{ env_config[deploy_env].nginx_host }}"
-      become: no
-
-    - name: Prepare frontend build directory
-      delegate_to: localhost
+    - name: Create temporary build directory
       file:
-        path: "{{ frontend_build_dir }}"
+        path: "{{ temp_build_dir }}"
         state: directory
         mode: '0755'
-      become: no
 
-    - name: Copy build output to react directory
-      delegate_to: localhost
+    - name: Check if Docker is installed
+      command: docker --version
+      register: docker_version
+      changed_when: false
+
+    - name: Display Docker version
+      debug:
+        msg: "Using {{ docker_version.stdout }}"
+
+    - name: Build frontend Docker image for {{ deploy_env }} environment
       shell: |
-        rm -rf {{ frontend_build_dir }}/*
-        cp -rf {{ frontend_source_dir }}/dist/* {{ frontend_build_dir }}/
-      become: no
+        cd {{ git_repo_path }}
+        docker build \
+          --build-arg VITE_API_HOST={{ env_config[deploy_env].api_host }} \
+          --build-arg VITE_NGINX_HOST={{ env_config[deploy_env].nginx_host }} \
+          -f Dockerfile.fe \
+          -t golem-frontend:{{ deploy_env }}-latest \
+          .
+      register: docker_build_result
+
+    - name: Display Docker build result
+      debug:
+        msg: "Docker build completed successfully"
+
+    - name: Run Docker container to extract built frontend
+      shell: |
+        docker run --rm \
+          -v {{ temp_build_dir }}:/nginx-dest \
+          golem-frontend:{{ deploy_env }}-latest \
+          sh -c "cp -r /app/dist/* /nginx-dest/"
+      register: docker_run_result
+
+    - name: Verify build output exists
+      stat:
+        path: "{{ temp_build_dir }}"
+      register: build_output_check
+      failed_when: not build_output_check.stat.exists
+
+    - name: List build output files
+      shell: "ls -la {{ temp_build_dir }} | head -20"
+      register: build_files
+
+    - name: Display build files
+      debug:
+        msg: "{{ build_files.stdout_lines }}"
 
     - name: Create nginx apps directory
       file:
@@ -87,37 +116,57 @@
         mode: '0755'
         owner: www-data
         group: www-data
-      ignore_errors: yes
 
-    - name: Deploy frontend to nginx ({{ deploy_env }}) using shell rsync
+    - name: Deploy frontend to nginx ({{ deploy_env }})
       shell: |
-        rsync -avz --delete \
-          -e 'ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no' \
-          {{ frontend_build_dir }}/ root@{{ inventory_hostname }}:{{ env_config[deploy_env].nginx_path }}/
-        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no root@{{ inventory_hostname }} \
-          "find {{ env_config[deploy_env].nginx_path }} -type d -exec chmod 755 {} \; && \
-           find {{ env_config[deploy_env].nginx_path }} -type f -exec chmod 644 {} \; && \
-           chown -R www-data:www-data {{ env_config[deploy_env].nginx_path }}"
-      delegate_to: localhost
-      become: no
+        rm -rf {{ env_config[deploy_env].nginx_path }}/*
+        cp -r {{ temp_build_dir }}/* {{ env_config[deploy_env].nginx_path }}/
+        find {{ env_config[deploy_env].nginx_path }} -type d -exec chmod 755 {} \;
+        find {{ env_config[deploy_env].nginx_path }} -type f -exec chmod 644 {} \;
+        chown -R www-data:www-data {{ env_config[deploy_env].nginx_path }}
+      register: deploy_result
 
-    - name: Deploy static assets using shell rsync
+    - name: Deploy static assets
       shell: |
-        rsync -avz \
-          -e 'ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no' \
-          {{ static_assets_dir }}/ root@{{ inventory_hostname }}:/opt/nginx/apps/assets/
-        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no root@{{ inventory_hostname }} \
-          "find /opt/nginx/apps/assets -type d -exec chmod 755 {} \; && \
-           find /opt/nginx/apps/assets -type f -exec chmod 644 {} \; && \
-           chown -R www-data:www-data /opt/nginx/apps/assets"
-      delegate_to: localhost
-      become: no
+        if [ -d "{{ git_repo_path }}/web/static" ]; then
+          cp -r {{ git_repo_path }}/web/static/* /opt/nginx/apps/assets/
+          find /opt/nginx/apps/assets -type d -exec chmod 755 {} \;
+          find /opt/nginx/apps/assets -type f -exec chmod 644 {} \;
+          chown -R www-data:www-data /opt/nginx/apps/assets
+          echo "Static assets deployed"
+        else
+          echo "Static assets directory not found"
+        fi
+      register: static_deploy
+
+    - name: Display static assets deployment result
+      debug:
+        msg: "{{ static_deploy.stdout }}"
+
+    - name: Verify frontend deployment
+      stat:
+        path: "{{ env_config[deploy_env].nginx_path }}/index.html"
+      register: frontend_check
+      failed_when: not frontend_check.stat.exists
+
+    - name: List deployed frontend files
+      shell: "ls -la {{ env_config[deploy_env].nginx_path }} | head -10"
+      register: deployed_files
+
+    - name: Display deployed files
+      debug:
+        msg: "{{ deployed_files.stdout_lines }}"
 
     - name: Reload nginx configuration
       service:
         name: nginx
         state: reloaded
       ignore_errors: yes
+
+    - name: Clean up temporary build directory
+      file:
+        path: "{{ temp_build_dir }}"
+        state: absent
 
     - name: Display deployment summary
       debug:
