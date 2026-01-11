@@ -70,6 +70,15 @@ k3s-setup-registry: ## Setup local Docker registry on k3s server
 	@echo "Setting up Docker registry on k3s server..."
 	cd ansible && ansible-playbook -i inventory.ini setup-docker-registry.yml
 
+k3s-install-ingress: ## Install NGINX Ingress Controller on k3s server
+	@echo "Installing NGINX Ingress Controller..."
+	ssh root@157.66.101.66 'bash -s' < scripts/install-ingress-controller.sh
+
+k3s-cleanup: ## Cleanup namespaces (usage: make k3s-cleanup ENV=staging|production|all)
+	@ENV_VAR=$${ENV:-all}; \
+	echo "Cleaning up $$ENV_VAR environment(s)..."; \
+	ssh root@157.66.101.66 'bash -s' < scripts/cleanup-namespaces.sh $$ENV_VAR
+
 k3s-test: ## Test k3s deployment configuration
 	@echo "Testing k3s deployment configuration..."
 	./scripts/test-k3s-deploy.sh

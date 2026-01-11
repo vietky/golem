@@ -17,10 +17,10 @@ patches:
     patch: |-
       - op: replace
         path: /spec/rules/0/host
-        value: prod.game.anhtran.dev
+        value: game.anhtran.dev
       - op: replace
         path: /spec/tls/0/hosts/0
-        value: prod.game.anhtran.dev
+        value: game.anhtran.dev
 
 commonLabels:
   environment: production

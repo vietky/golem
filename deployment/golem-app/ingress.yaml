@@ -20,15 +20,8 @@ spec:
   - host: game.anhtran.dev
     http:
       paths:
-      # API endpoints
-      - path: /api/golem-test
-        pathType: Prefix
-        backend:
-          service:
-            name: golem-century
-            port:
-              number: 8080
-      - path: /api/golem
+      # API endpoints - backend expects /api/* paths
+      - path: /api
         pathType: Prefix
         backend:
           service:
