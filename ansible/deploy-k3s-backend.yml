@@ -212,7 +212,7 @@
       git:
         repo: "{{ git_repo_path }}"
         dest: "{{ git_repo_path }}"
-        version: HEAD
+        version: k3s
         update: yes
         force: yes
       register: git_pull_result

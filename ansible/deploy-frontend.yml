@@ -17,7 +17,7 @@
         url_path: "/golem-test"
       prod:
         nginx_path: "/opt/nginx/apps/golem"
-        api_host: "https://game.anhtran.dev/api/golem"
+        api_host: "https://game.anhtran.dev/api/golem-test"
         nginx_host: "https://game.anhtran.dev"
         url_path: "/golem"
 
@@ -47,9 +47,9 @@
     - name: Pull latest code from git repository
       shell: |
         cd {{ git_repo_path }}
+        git checkout k3s
         git fetch origin
-        git checkout main
-        git pull origin main
+        git reset --hard origin/k3s
       register: git_pull_result
       changed_when: "'Already up to date' not in git_pull_result.stdout"
 

@@ -21,7 +21,7 @@ spec:
     http:
       paths:
       # API endpoints - backend expects /api/* paths
-      - path: /api
+      - path: /api/golem-test
         pathType: Prefix
         backend:
           service:
@@ -29,7 +29,7 @@ spec:
             port:
               number: 8080
       # WebSocket endpoint
-      - path: /ws
+      - path: /api/golem-test/ws
         pathType: Prefix
         backend:
           service:
