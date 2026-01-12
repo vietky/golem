@@ -24,7 +24,7 @@
         redis_storage: 2Gi
       production:
         namespace: golem
-        replicas: 2
+        replicas: 1
         dns_name: prod.game.anhtran.dev
         mongodb_storage: 10Gi
         mongodb_memory: 1Gi
