@@ -6,8 +6,6 @@
     app_name: golem-century
     deployment_dir: /tmp/golem-deployment
     build_dir: /tmp/golem-build
-    local_secrets_dir: "{{ playbook_dir }}/../secrets"
-    has_secrets: false
     docker_registry: "localhost:5000"
     app_version: "{{ lookup('env', 'APP_VERSION') | default('latest', true) }}"
     full_image_name: "{{ docker_registry }}/{{ app_name }}:{{ app_version }}"
@@ -20,16 +18,12 @@
       staging:
         namespace: golem-staging
         replicas: 1
-        dns_name: staging.game.anhtran.dev
-        mongodb_storage: 5Gi
-        mongodb_memory: 512Mi
+        dns_name: game.anhtran.dev
         redis_storage: 2Gi
       production:
         namespace: golem
         replicas: 1
         dns_name: prod.game.anhtran.dev
-        mongodb_storage: 10Gi
-        mongodb_memory: 1Gi
         redis_storage: 5Gi
 
   pre_tasks:
@@ -46,32 +40,6 @@
           - "DNS: {{ env_config[deploy_env].dns_name }}"
           - "Replicas: {{ env_config[deploy_env].replicas }}"
           - "Branch: {{ deploy_branch }}"
-
-    - name: Check if secrets directory exists locally
-      local_action:
-        module: stat
-        path: "{{ local_secrets_dir }}"
-      register: secrets_dir_stat
-      become: no
-
-    - name: Set has_secrets fact
-      set_fact:
-        has_secrets: "{{ secrets_dir_stat.stat.exists and secrets_dir_stat.stat.isdir }}"
-
-    - name: Check if .env file exists in secrets
-      local_action:
-        module: stat
-        path: "{{ local_secrets_dir }}/.env"
-      register: env_file_stat
-      become: no
-      when: has_secrets
-
-    - name: Load environment variables from .env file
-      set_fact:
-        telegram_bot_token: "{{ lookup('file', local_secrets_dir + '/.env') | regex_search('TELEGRAM_BOT_TOKEN=(.+)', '\\1') | first | default('', true) }}"
-        telegram_chat_id: "{{ lookup('file', local_secrets_dir + '/.env') | regex_search('TELEGRAM_CHAT_ID=(.+)', '\\1') | first | default('', true) }}"
-      when: has_secrets and env_file_stat.stat.exists
-      no_log: true
 
   tasks:
     - name: Install required packages
@@ -199,10 +167,6 @@
     - name: Update replica count for {{ deploy_env }}
       shell: |
         sed -i 's/^  replicas: [0-9]*$/  replicas: {{ env_config[deploy_env].replicas }}/g' {{ deployment_dir }}/golem-app/deployment.yaml
-    - name: Apply MongoDB manifests
-      command: kubectl apply -f {{ deployment_dir }}/mongodb/ -n {{ env_config[deploy_env].namespace }}
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
     - name: Apply Redis manifests
       command: kubectl apply -f {{ deployment_dir }}/redis/ -n {{ env_config[deploy_env].namespace }}
@@ -213,46 +177,6 @@
       command: kubectl apply -f {{ deployment_dir }}/golem-app/configmap.yaml -n {{ env_config[deploy_env].namespace }}
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-
-    - name: Process secret template with actual values (has_secrets=true)
-      template:
-        src: "{{ playbook_dir }}/../deployment/golem-app/secret.yaml.template"
-        dest: "{{ deployment_dir }}/golem-app/secret.yaml"
-        mode: '0600'
-      when: has_secrets
-      vars:
-        TELEGRAM_BOT_TOKEN: "{{ telegram_bot_token | default('') }}"
-        TELEGRAM_CHAT_ID: "{{ telegram_chat_id | default('') }}"
-      no_log: true
-
-    - name: Create default secret if no secrets directory (has_secrets=false)
-      copy:
-        dest: "{{ deployment_dir }}/golem-app/secret.yaml"
-        mode: '0600'
-        content: |
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: golem-app-secrets
-            namespace: golem
-          type: Opaque
-          data:
-            TELEGRAM_BOT_TOKEN: ""
-            TELEGRAM_CHAT_ID: ""
-      when: not has_secrets
-
-    - name: Update secret namespace for {{ deploy_env }}
-      shell: |
-        sed -i 's/namespace: golem$/namespace: {{ env_config[deploy_env].namespace }}/g' {{ deployment_dir }}/golem-app/secret.yaml
-      register: namespace_update
-      changed_when: false
-
-    - name: Apply Golem app Secret
-      command: kubectl apply -f {{ deployment_dir }}/golem-app/secret.yaml -n {{ env_config[deploy_env].namespace }}
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      no_log: true
-      register: secret_apply_result
 
     - name: Apply Golem app Deployment
       command: kubectl apply -f {{ deployment_dir }}/golem-app/deployment.yaml -n {{ env_config[deploy_env].namespace }}
@@ -274,13 +198,6 @@
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       ignore_errors: yes
-
-    - name: Wait for MongoDB to be ready
-      command: kubectl wait --for=condition=ready pod -l app=mongodb -n {{ env_config[deploy_env].namespace }} --timeout=300s
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      retries: 3
-      delay: 10
 
     - name: Wait for Redis to be ready
       command: kubectl wait --for=condition=ready pod -l app=redis -n {{ env_config[deploy_env].namespace }} --timeout=300s
@@ -320,8 +237,12 @@
           - "Namespace: {{ env_config[deploy_env].namespace }}"
           - "API is accessible via Ingress at: https://{{ env_config[deploy_env].dns_name }}/api/golem"
           - "WebSocket is accessible at: wss://{{ env_config[deploy_env].dns_name }}/ws"
-          - "All components (MongoDB, Redis, Application) are running"
+          - "All components (Redis, Application) are running"
           - "Replicas: {{ env_config[deploy_env].replicas }}"
+          - ""
+          - "NOTE: To apply or update secrets, use the separate playbook:"
+          - "  ansible-playbook -i inventory.ini apply-secrets.yml"
+          - ""
           - "Ingress status:"
           - "{{ ingress_status.stdout_lines }}"
 
