@@ -5,7 +5,7 @@
   vars:
     # Environment: 'test' or 'prod'
     deploy_env: "{{ lookup('env', 'DEPLOY_ENV') | default('test', true) }}"
-    deploy_branch: "{{ lookup('env', 'DEPLOY_BRANCH') | default('k3s', true) }}"
+    deploy_branch: "{{ lookup('env', 'DEPLOY_BRANCH') | default('main', true) }}"
     git_repo_path: "/opt/jenkins/repos/golem"
     temp_build_dir: "/tmp/golem-frontend-build"
     
@@ -18,7 +18,7 @@
         url_path: "/golem-test"
       prod:
         nginx_path: "/opt/nginx/apps/golem"
-        api_host: "https://game.anhtran.dev/api/golem-test"
+        api_host: "https://game.anhtran.dev/api/golem"
         nginx_host: "https://game.anhtran.dev"
         url_path: "/golem"
 
