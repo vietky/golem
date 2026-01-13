@@ -28,3 +28,11 @@ spec:
             name: golem-century
             port:
               number: 8080
+      # WebSocket endpoint
+      - path: /ws
+        pathType: Prefix
+        backend:
+          service:
+            name: golem-century
+            port:
+              number: 8080

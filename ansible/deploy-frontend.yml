@@ -5,6 +5,7 @@
   vars:
     # Environment: 'test' or 'prod'
     deploy_env: "{{ lookup('env', 'DEPLOY_ENV') | default('test', true) }}"
+    deploy_branch: "{{ lookup('env', 'DEPLOY_BRANCH') | default('k3s', true) }}"
     git_repo_path: "/opt/jenkins/repos/golem"
     temp_build_dir: "/tmp/golem-frontend-build"
     
@@ -35,6 +36,7 @@
           - "Nginx path: {{ env_config[deploy_env].nginx_path }}"
           - "API host: {{ env_config[deploy_env].api_host }}"
           - "Access URL: {{ env_config[deploy_env].nginx_host }}{{ env_config[deploy_env].url_path }}"
+          - "Branch: {{ deploy_branch }}"
 
   tasks:
     - name: Verify git repository exists
@@ -47,9 +49,9 @@
     - name: Pull latest code from git repository
       shell: |
         cd {{ git_repo_path }}
-        git checkout k3s
-        git fetch origin
-        git reset --hard origin/k3s
+        git fetch origin {{ deploy_branch }}
+        git checkout {{ deploy_branch }}
+        git reset --hard origin/{{ deploy_branch }}
       register: git_pull_result
       changed_when: "'Already up to date' not in git_pull_result.stdout"
 

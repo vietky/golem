@@ -12,6 +12,8 @@
     app_version: "{{ lookup('env', 'APP_VERSION') | default('latest', true) }}"
     full_image_name: "{{ docker_registry }}/{{ app_name }}:{{ app_version }}"
     deploy_env: "{{ lookup('env', 'DEPLOY_ENV') | default('production', true) }}"
+    deploy_branch: "{{ lookup('env', 'DEPLOY_BRANCH') | default('k3s', true) }}"
+    git_repo_path: "/opt/jenkins/repos/golem"
     
     # Environment-specific configurations
     env_config:
@@ -43,6 +45,7 @@
           - "Namespace: {{ env_config[deploy_env].namespace }}"
           - "DNS: {{ env_config[deploy_env].dns_name }}"
           - "Replicas: {{ env_config[deploy_env].replicas }}"
+          - "Branch: {{ deploy_branch }}"
 
     - name: Check if secrets directory exists locally
       local_action:
@@ -101,7 +104,86 @@
         src: "{{ playbook_dir }}/../deployment/"
         dest: "{{ deployment_dir }}/"
         mode: '0644'
+    - name: Check if git repository exists on server
+      stat:
+        path: "{{ git_repo_path }}/.git"
+      register: git_repo_stat
 
+    - name: Display git repository status
+      debug:
+        msg: |
+          Git repository exists: {{ git_repo_stat.stat.exists }}
+          Please ensure git repository is set up at {{ git_repo_path }} on the server.
+          Run: git clone <your-repo-url> {{ git_repo_path }}
+
+    - name: Fail if git repository doesn't exist
+      fail:
+        msg: |
+          Git repository not found at {{ git_repo_path }}
+          Please set up the repository first:
+          1. SSH to server: ssh root@{{ inventory_hostname }}
+          2. Create directory: mkdir -p /opt/jenkins/repos
+          3. Clone repository: git clone <your-repo-url> {{ git_repo_path }}
+      when: not git_repo_stat.stat.exists
+
+    - name: Fetch latest code from origin
+      shell: |
+        cd {{ git_repo_path }}
+        git fetch origin {{ deploy_branch }}
+      register: git_fetch_result
+
+    - name: Checkout to branch {{ deploy_branch }}
+      shell: |
+        cd {{ git_repo_path }}
+        git checkout {{ deploy_branch }}
+      register: git_checkout_result
+
+    - name: Reset to origin/{{ deploy_branch }}
+      shell: |
+        cd {{ git_repo_path }}
+        git reset --hard origin/{{ deploy_branch }}
+      register: git_reset_result
+
+    - name: Display git operations result
+      debug:
+        msg:
+          - "Fetch: {{ git_fetch_result.stdout }}"
+          - "Checkout: {{ git_checkout_result.stdout }}"
+          - "Reset: {{ git_reset_result.stdout }}"
+
+    - name: Check if local Docker registry is running
+      uri:
+        url: "http://localhost:5000/v2/"
+        status_code: 200
+      register: registry_check
+      failed_when: false
+
+    - name: Fail if registry is not running
+      fail:
+        msg: "Docker registry is not running. Please run 'make k3s-setup-registry' first."
+      when: registry_check.status != 200
+
+    - name: Build Docker image from git repository
+      command: >
+        docker build
+        -t {{ full_image_name }}
+        -f {{ git_repo_path }}/Dockerfile
+        {{ git_repo_path }}
+      args:
+        chdir: "{{ git_repo_path }}"
+      register: docker_build_result
+
+    - name: Display Docker build result
+      debug:
+        msg: "Docker image built successfully: {{ full_image_name }}"
+
+    - name: Push image to local registry
+      command: docker push {{ full_image_name }}
+      register: docker_push_result
+
+    - name: Display Docker push result
+      debug:
+        msg: "Docker image pushed to registry successfully"
     - name: Create namespace for {{ deploy_env }}
       command: kubectl apply -f {{ deployment_dir }}/namespaces/golem{% if deploy_env == 'staging' %}-staging{% endif %}.yaml
       environment:
@@ -169,69 +251,6 @@
       command: kubectl apply -f {{ deployment_dir }}/golem-app/ingress.yaml -n {{ env_config[deploy_env].namespace }}
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-
-    - name: Check if local Docker registry is running
-      uri:
-        url: "http://localhost:5000/v2/"
-        status_code: 200
-      register: registry_check
-      failed_when: false
-
-    - name: Fail if registry is not running
-      fail:
-        msg: "Docker registry is not running. Please run 'make k3s-setup-registry' first."
-      when: registry_check.status != 200
-
-    - name: Set git repository path
-      set_fact:
-        git_repo_path: /opt/jenkins/repos/golem
-
-    - name: Check if git repository exists on server
-      stat:
-        path: "{{ git_repo_path }}/.git"
-      register: git_repo_stat
-
-    - name: Display git repository status
-      debug:
-        msg: |
-          Git repository exists: {{ git_repo_stat.stat.exists }}
-          Please ensure git repository is set up at {{ git_repo_path }} on the server.
-          Run: git clone <your-repo-url> {{ git_repo_path }}
-
-    - name: Fail if git repository doesn't exist
-      fail:
-        msg: |
-          Git repository not found at {{ git_repo_path }}
-          Please set up the repository first:
-          1. SSH to server: ssh root@{{ inventory_hostname }}
-          2. Create directory: mkdir -p /opt/jenkins/repos
-          3. Clone repository: git clone <your-repo-url> {{ git_repo_path }}
-      when: not git_repo_stat.stat.exists
-
-    - name: Pull latest code from git repository
-      git:
-        repo: "{{ git_repo_path }}"
-        dest: "{{ git_repo_path }}"
-        version: k3s
-        update: yes
-        force: yes
-      register: git_pull_result
-
-    - name: Display git pull result
-      debug:
-        msg: "Git HEAD is now at: {{ git_pull_result.after }}"
-
-    - name: Build Docker image from git repository
-      command: >
-        docker build
-        -t {{ full_image_name }}
-        -f {{ git_repo_path }}/Dockerfile
-        {{ git_repo_path }}
-      args:
-        chdir: "{{ git_repo_path }}"
-
-    - name: Push image to local registry
-      command: docker push {{ full_image_name }}
 
     - name: Update deployment image for {{ deploy_env }} environment
       command: kubectl set image deployment/golem-century golem-century={{ full_image_name }} -n {{ env_config[deploy_env].namespace }}
