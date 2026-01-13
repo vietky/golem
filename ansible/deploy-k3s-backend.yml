@@ -214,7 +214,7 @@
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
-    - name: Process secret template with actual values
+    - name: Process secret template with actual values (has_secrets=true)
       template:
         src: "{{ playbook_dir }}/../deployment/golem-app/secret.yaml.template"
         dest: "{{ deployment_dir }}/golem-app/secret.yaml"
@@ -225,17 +225,34 @@
         TELEGRAM_CHAT_ID: "{{ telegram_chat_id | default('') }}"
       no_log: true
 
+    - name: Create default secret if no secrets directory (has_secrets=false)
+      copy:
+        dest: "{{ deployment_dir }}/golem-app/secret.yaml"
+        mode: '0600'
+        content: |
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: golem-app-secrets
+            namespace: golem
+          type: Opaque
+          data:
+            TELEGRAM_BOT_TOKEN: ""
+            TELEGRAM_CHAT_ID: ""
+      when: not has_secrets
+
     - name: Update secret namespace for {{ deploy_env }}
       shell: |
         sed -i 's/namespace: golem$/namespace: {{ env_config[deploy_env].namespace }}/g' {{ deployment_dir }}/golem-app/secret.yaml
-      when: has_secrets
+      register: namespace_update
+      changed_when: false
 
     - name: Apply Golem app Secret
-      command: kubectl apply -f {{ deployment_dir }}/golem-app/secret.yaml
+      command: kubectl apply -f {{ deployment_dir }}/golem-app/secret.yaml -n {{ env_config[deploy_env].namespace }}
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      when: has_secrets
       no_log: true
+      register: secret_apply_result
 
     - name: Apply Golem app Deployment
       command: kubectl apply -f {{ deployment_dir }}/golem-app/deployment.yaml -n {{ env_config[deploy_env].namespace }}
@@ -257,13 +274,6 @@
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       ignore_errors: yes
-
-    - name: Apply secret if exists
-      command: kubectl apply -f {{ deployment_dir }}/golem-app/secret.yaml -n {{ env_config[deploy_env].namespace }}
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      when: has_secrets
-      no_log: true
 
     - name: Wait for MongoDB to be ready
       command: kubectl wait --for=condition=ready pod -l app=mongodb -n {{ env_config[deploy_env].namespace }} --timeout=300s
