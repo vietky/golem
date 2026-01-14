@@ -18,12 +18,10 @@
       staging:
         namespace: golem-staging
         replicas: 1
-        dns_name: game.anhtran.dev
         redis_storage: 2Gi
       production:
         namespace: golem
         replicas: 1
-        dns_name: game.anhtran.dev
         redis_storage: 5Gi
 
   pre_tasks:
@@ -37,7 +35,6 @@
         msg:
           - "Deploying to environment: {{ deploy_env }}"
           - "Namespace: {{ env_config[deploy_env].namespace }}"
-          - "DNS: {{ env_config[deploy_env].dns_name }}"
           - "Replicas: {{ env_config[deploy_env].replicas }}"
           - "Branch: {{ deploy_branch }}"
 
@@ -157,10 +154,6 @@
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
-    - name: Update Ingress host for {{ deploy_env }} environment
-      shell: |
-        sed -i 's/ENVIRONMENT\.game\.anhtran\.dev/{{ env_config[deploy_env].dns_name }}/g' {{ deployment_dir }}/golem-app/ingress.yaml
-      
     - name: Update all namespace references for {{ deploy_env }}
       shell: |
         find {{ deployment_dir }} -type f \( -name "*.yaml" ! -name "*.template" \) -exec sed -i 's/namespace: golem$/namespace: {{ env_config[deploy_env].namespace }}/g' {} \;
@@ -185,11 +178,6 @@
 
     - name: Apply Golem app Service
       command: kubectl apply -f {{ deployment_dir }}/golem-app/service.yaml -n {{ env_config[deploy_env].namespace }}
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-
-    - name: Apply Golem app Ingress
-      command: kubectl apply -f {{ deployment_dir }}/golem-app/ingress.yaml -n {{ env_config[deploy_env].namespace }}
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
@@ -223,28 +211,17 @@
       debug:
         var: deployment_status.stdout_lines
 
-    - name: Get Ingress status
-      shell: kubectl get ingress -n {{ env_config[deploy_env].namespace }} -o wide
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      register: ingress_status
-
     - name: Display backend deployment status
       debug:
         msg: 
           - "Backend deployment completed successfully!"
           - "Environment: {{ deploy_env }}"
           - "Namespace: {{ env_config[deploy_env].namespace }}"
-          - "API is accessible via Ingress at: https://{{ env_config[deploy_env].dns_name }}/api/golem"
-          - "WebSocket is accessible at: wss://{{ env_config[deploy_env].dns_name }}/ws"
           - "All components (Redis, Application) are running"
           - "Replicas: {{ env_config[deploy_env].replicas }}"
           - ""
           - "NOTE: To apply or update secrets, use the separate playbook:"
           - "  ansible-playbook -i inventory.ini apply-secrets.yml"
-          - ""
-          - "Ingress status:"
-          - "{{ ingress_status.stdout_lines }}"
 
   post_tasks:
     - name: Clean up deployment directory

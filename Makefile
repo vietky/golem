@@ -124,7 +124,7 @@ k3s-status: ## Check k3s deployment status (usage: make k3s-status ENV=staging)
 		NAMESPACE=golem; \
 	fi; \
 	echo "Checking $$ENV_VAR environment (namespace: $$NAMESPACE)..."; \
-	ssh root@157.66.101.66 "kubectl get all -n $$NAMESPACE && kubectl get ingress -n $$NAMESPACE"
+	ssh root@157.66.101.66 "kubectl get all -n $$NAMESPACE"
 
 k3s-status-all: ## Check status of both staging and production
 	@echo "=== STAGING Environment ==="
