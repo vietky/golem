@@ -23,7 +23,7 @@
       production:
         namespace: golem
         replicas: 1
-        dns_name: prod.game.anhtran.dev
+        dns_name: game.anhtran.dev
         redis_storage: 5Gi
 
   pre_tasks:
