@@ -6,6 +6,7 @@ metadata:
   labels:
     app: golem-century
     component: application
+    tier: backend
 spec:
   replicas: 1
   selector:
@@ -30,19 +31,19 @@ spec:
         envFrom:
         - configMapRef:
             name: golem-app-config
-        # - secretRef:
-        #     name: golem-app-secrets
+        - secretRef:
+            name: config
         env:
-        - name: TELEGRAM_BOT_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: default.env
-              key: TELEGRAM_BOT_TOKEN
-        - name: TELEGRAM_CHAT_ID
-          valueFrom:
-            secretKeyRef:
-              name: default.env
-              key: TELEGRAM_CHAT_ID
+        # - name: TELEGRAM_BOT_TOKEN
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: config
+        #       key: TELEGRAM_BOT_TOKEN
+        # - name: TELEGRAM_CHAT_ID
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: config
+        #       key: TELEGRAM_CHAT_ID
         livenessProbe:
           httpGet:
             path: /health
@@ -69,4 +70,4 @@ spec:
       volumes:
       - name: secret-volume
         secret:
-          secretName: default.env
+          secretName: config
