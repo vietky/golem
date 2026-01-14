@@ -35,17 +35,6 @@ for ns in "${NAMESPACES[@]}"; do
 done
 echo -e "${GREEN}✓${NC}"
 
-# Check 3: MongoDB manifests
-echo -n "Checking MongoDB manifests... "
-MONGODB_FILES=("pvc.yaml" "deployment.yaml" "service.yaml")
-for file in "${MONGODB_FILES[@]}"; do
-    if [ ! -f "$PROJECT_ROOT/deployment/mongodb/$file" ]; then
-        echo -e "${RED}✗ Missing mongodb/$file${NC}"
-        exit 1
-    fi
-done
-echo -e "${GREEN}✓${NC}"
-
 # Check 4: Redis manifests
 echo -n "Checking Redis manifests... "
 REDIS_FILES=("pvc.yaml" "deployment.yaml" "service.yaml")
@@ -59,7 +48,7 @@ echo -e "${GREEN}✓${NC}"
 
 # Check 5: Application manifests
 echo -n "Checking application manifests... "
-APP_FILES=("configmap.yaml" "secret.yaml.template" "deployment.yaml" "service.yaml")
+APP_FILES=("configmap.yaml" "deployment.yaml" "service.yaml")
 for file in "${APP_FILES[@]}"; do
     if [ ! -f "$PROJECT_ROOT/deployment/golem-app/$file" ]; then
         echo -e "${RED}✗ Missing golem-app/$file${NC}"
