@@ -14,14 +14,14 @@
       test:
         namespace: "staging"
         pvc_name: "golem-frontend-staging-pvc"
-        api_host: "https://game.anhtran.dev/api/golem-test"
+        api_host: "https://game.anhtran.dev"
         nginx_host: "https://game.anhtran.dev"
         url_path: "/golem-test"
         deployment_name: "golem-century-staging"
       prod:
         namespace: "default"
         pvc_name: "golem-frontend-pvc"
-        api_host: "https://game.anhtran.dev/api/golem"
+        api_host: "https://game.anhtran.dev"
         nginx_host: "https://game.anhtran.dev"
         url_path: "/golem"
         deployment_name: "golem-century"

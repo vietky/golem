@@ -49,7 +49,7 @@ fe-run-local:
 
 fe-release:
 # 	docker build --build-arg VITE_API_HOST=http://157.66.101.66:3001 --build-arg VITE_NGINX_HOST=http://157.66.101.66 -f Dockerfile.fe -t golem-frontend:latest .
-	docker build --build-arg VITE_API_HOST=https://game.anhtran.dev/api/golem --build-arg VITE_NGINX_HOST=https://game.anhtran.dev -f Dockerfile.fe -t golem-frontend:latest .
+	docker build --build-arg VITE_API_HOST=https://game.anhtran.dev --build-arg VITE_NGINX_HOST=https://game.anhtran.dev -f Dockerfile.fe -t golem-frontend:latest .
 	docker run --rm -v /opt/nginx/apps/:/nginx-dest golem-frontend:latest \
         sh -c "cp -r /app/dist/* /nginx-dest/golem/"
 
