@@ -1,5 +1,5 @@
 ---
-- name: Deploy Golem Century Frontend to Nginx
+- name: Deploy Golem Century Frontend to Kubernetes PVC
   hosts: k3s_cluster
   become: yes
   vars:
@@ -12,15 +12,19 @@
     # Environment-specific configuration
     env_config:
       test:
-        nginx_path: "/opt/nginx/apps/golem-test"
+        namespace: "staging"
+        pvc_name: "golem-frontend-staging-pvc"
         api_host: "https://game.anhtran.dev/api/golem-test"
         nginx_host: "https://game.anhtran.dev"
         url_path: "/golem-test"
+        deployment_name: "golem-century-staging"
       prod:
-        nginx_path: "/opt/nginx/apps/golem"
+        namespace: "default"
+        pvc_name: "golem-frontend-pvc"
         api_host: "https://game.anhtran.dev/api/golem"
         nginx_host: "https://game.anhtran.dev"
         url_path: "/golem"
+        deployment_name: "golem-century"
 
   pre_tasks:
     - name: Validate deploy environment
@@ -33,7 +37,8 @@
         msg:
           - "Deploying frontend to: {{ deploy_env | upper }} environment"
           - "Git repo: {{ git_repo_path }}"
-          - "Nginx path: {{ env_config[deploy_env].nginx_path }}"
+          - "Namespace: {{ env_config[deploy_env].namespace }}"
+          - "PVC: {{ env_config[deploy_env].pvc_name }}"
           - "API host: {{ env_config[deploy_env].api_host }}"
           - "Access URL: {{ env_config[deploy_env].nginx_host }}{{ env_config[deploy_env].url_path }}"
           - "Branch: {{ deploy_branch }}"
@@ -111,30 +116,109 @@
       debug:
         msg: "{{ build_files.stdout_lines }}"
 
-    - name: Create nginx apps directory
-      file:
-        path: "{{ env_config[deploy_env].nginx_path }}"
-        state: directory
-        mode: '0755'
-        owner: www-data
-        group: www-data
-
-    - name: Deploy frontend to nginx ({{ deploy_env }})
+    - name: Ensure namespace exists
       shell: |
-        rm -rf {{ env_config[deploy_env].nginx_path }}/*
-        cp -r {{ temp_build_dir }}/* {{ env_config[deploy_env].nginx_path }}/
-        find {{ env_config[deploy_env].nginx_path }} -type d -exec chmod 755 {} \;
-        find {{ env_config[deploy_env].nginx_path }} -type f -exec chmod 644 {} \;
-        chown -R www-data:www-data {{ env_config[deploy_env].nginx_path }}
-      register: deploy_result
+        kubectl get namespace {{ env_config[deploy_env].namespace }} || \
+        kubectl create namespace {{ env_config[deploy_env].namespace }}
+      register: namespace_check
 
-    - name: Deploy static assets
+    - name: Apply frontend PVC manifest
+      shell: |
+        cd {{ git_repo_path }}
+        if [ "{{ deploy_env }}" = "test" ]; then
+          kubectl apply -f deployment/overlays/staging/frontend-pvc.yaml -n {{ env_config[deploy_env].namespace }}
+        else
+          kubectl apply -f deployment/golem-app/frontend-pvc.yaml -n {{ env_config[deploy_env].namespace }}
+        fi
+      register: pvc_apply
+
+    - name: Wait for PVC to be bound
+      shell: |
+        kubectl wait --for=condition=Bound pvc/{{ env_config[deploy_env].pvc_name }} \
+          -n {{ env_config[deploy_env].namespace }} --timeout=60s
+      register: pvc_wait
+      retries: 3
+      delay: 5
+      until: pvc_wait.rc == 0
+
+    - name: Create temporary pod to copy frontend files
+      shell: |
+        cat <<EOF | kubectl apply -f -
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: frontend-copy-{{ deploy_env }}
+          namespace: {{ env_config[deploy_env].namespace }}
+          labels:
+            app: golem
+            tier: frontend-temp
+        spec:
+          containers:
+          - name: copy-container
+            image: busybox
+            command: ['sh', '-c', 'sleep 3600']
+            volumeMounts:
+            - name: frontend-storage
+              mountPath: /frontend
+          volumes:
+          - name: frontend-storage
+            persistentVolumeClaim:
+              claimName: {{ env_config[deploy_env].pvc_name }}
+          restartPolicy: Never
+        EOF
+      register: pod_create
+
+    - name: Wait for copy pod to be ready
+      shell: |
+        kubectl wait --for=condition=Ready pod/frontend-copy-{{ deploy_env }} \
+          -n {{ env_config[deploy_env].namespace }} --timeout=60s
+      register: pod_wait
+      retries: 5
+      delay: 5
+      until: pod_wait.rc == 0
+
+    - name: Clean existing frontend files in PVC
+      shell: |
+        kubectl exec -n {{ env_config[deploy_env].namespace }} frontend-copy-{{ deploy_env }} -- \
+          sh -c 'rm -rf /frontend/*'
+      register: clean_pvc
+
+    - name: Copy frontend files to PVC via kubectl cp
+      shell: |
+        kubectl cp {{ temp_build_dir }}/. \
+          {{ env_config[deploy_env].namespace }}/frontend-copy-{{ deploy_env }}:/frontend/
+      register: copy_to_pvc
+
+    - name: Verify files in PVC
+      shell: |
+        kubectl exec -n {{ env_config[deploy_env].namespace }} frontend-copy-{{ deploy_env }} -- \
+          ls -la /frontend/
+      register: verify_files
+
+    - name: Display files in PVC
+      debug:
+        msg: "{{ verify_files.stdout_lines }}"
+
+    - name: Verify index.html exists in PVC
+      shell: |
+        kubectl exec -n {{ env_config[deploy_env].namespace }} frontend-copy-{{ deploy_env }} -- \
+          test -f /frontend/index.html && echo "exists" || echo "missing"
+      register: index_check
+      failed_when: "'missing' in index_check.stdout"
+
+    - name: Delete temporary copy pod
+      shell: |
+        kubectl delete pod frontend-copy-{{ deploy_env }} -n {{ env_config[deploy_env].namespace }} --ignore-not-found=true
+      register: pod_delete
+
+    - name: Deploy static assets to shared location (if needed)
       shell: |
         if [ -d "{{ git_repo_path }}/web/static" ]; then
+          mkdir -p /opt/nginx/apps/assets
           cp -r {{ git_repo_path }}/web/static/* /opt/nginx/apps/assets/
           find /opt/nginx/apps/assets -type d -exec chmod 755 {} \;
           find /opt/nginx/apps/assets -type f -exec chmod 644 {} \;
-          chown -R www-data:www-data /opt/nginx/apps/assets
+          chown -R www-data:www-data /opt/nginx/apps/assets 2>/dev/null || true
           echo "Static assets deployed"
         else
           echo "Static assets directory not found"
@@ -144,26 +228,6 @@
     - name: Display static assets deployment result
       debug:
         msg: "{{ static_deploy.stdout }}"
-
-    - name: Verify frontend deployment
-      stat:
-        path: "{{ env_config[deploy_env].nginx_path }}/index.html"
-      register: frontend_check
-      failed_when: not frontend_check.stat.exists
-
-    - name: List deployed frontend files
-      shell: "ls -la {{ env_config[deploy_env].nginx_path }} | head -10"
-      register: deployed_files
-
-    - name: Display deployed files
-      debug:
-        msg: "{{ deployed_files.stdout_lines }}"
-
-    - name: Reload nginx configuration
-      service:
-        name: nginx
-        state: reloaded
-      ignore_errors: yes
 
     - name: Clean up temporary build directory
       file:
@@ -177,8 +241,13 @@
           - "Frontend Deployment Complete!"
           - "========================================="
           - "Environment: {{ deploy_env | upper }}"
+          - "Namespace: {{ env_config[deploy_env].namespace }}"
+          - "PVC: {{ env_config[deploy_env].pvc_name }}"
           - "Frontend URL: {{ env_config[deploy_env].nginx_host }}{{ env_config[deploy_env].url_path }}"
           - "API Endpoint: {{ env_config[deploy_env].api_host }}"
-          - "Deployment Path: {{ env_config[deploy_env].nginx_path }}"
           - "Static Assets: /opt/nginx/apps/assets"
-          - "========================================="
+          - "========================================"
+          - "Next steps:"
+          - "1. Ensure nginx deployment mounts this PVC"
+          - "2. Configure nginx to serve from PVC mount point"
+          - "========================================"
