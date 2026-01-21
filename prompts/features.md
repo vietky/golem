@@ -1,5 +1,13 @@
 # features
 
+## 2026-01-21 10:00:00
+- let's separate api server with websocket server for better scalability and maintainability:
+    - create a new websocket server that handles all websocket connections and real-time game updates.
+    - refactor the existing api server to focus solely on RESTful API endpoints for user management, game setup, and other non-real-time functionalities.
+    - ensure that both servers can communicate effectively, possibly through a shared database or message queue.
+    - update the frontend to connect to the new websocket server for real-time updates while still using the api server for other requests.
+    - test both servers thoroughly to ensure they work seamlessly together and provide a smooth user experience.
+    
 ## 2025-12-08 21:00:00
 - I'm deploying frontend to nginx server for better performance and scalability. The deployment process includes:
     - Setting up proper routing in nginx to handle client-side routing used by React.

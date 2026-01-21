@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# This is a convenience kustomization that points to production overlay
+# For staging, use: kubectl apply -k deployment/overlays/staging/
+# For production, use: kubectl apply -k deployment/overlays/production/
+
+resources:
+  - overlays/production

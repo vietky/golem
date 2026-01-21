@@ -233,9 +233,13 @@ Uses Ansible for deployment to remote servers. Docker images: `Dockerfile` (back
 - All credentials are put temporarily in user local `secrets/` folder which is gitignored, and mounted as Kubernetes configmaps and secrets in production
 - Ansible playbooks should detect changes in secrets and redeploy the affected services automatically. If there is no secret folder, ansible should skip the secret deployment step
 - All Kubernetes deployment charts are in `deployment/` folder
-- There should be clear separation between staging, and production environments with different configurations and resource allocations
-  - staging: golem-staging namespace
-  - production: golem namespace
+- the label for these deployments should reflect the following structure:
+  - app: golem
+  - environment: production/staging
+  - tier: backend/frontend/cache
+  so that we could easily identify them based on their roles and environments.
+  - staging deployments should use testing namespace `staging` and suffix in their names
+
 - **Single Namespace**: All components (MongoDB, Redis, Application) belong to the `golem` namespace for simplified management
 - Use local docker registry on k3s server (localhost:5000) to speed up image pulling during deployment
 - **NGINX Ingress Controller** is used for routing and SSL termination in production (later, might migrate to Gateway API when it matures)

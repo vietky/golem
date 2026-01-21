@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to clean up golem and golem-staging namespaces
+# Script to clean up staging and default (production) namespaces
 # Usage: ./cleanup-namespaces.sh [staging|production|all]
 
 set -e
@@ -30,33 +30,29 @@ if ! command -v kubectl &> /dev/null; then
     exit 1
 fi
 
-# Function to cleanup a namespace
-cleanup_namespace() {
+# Function to cleanup resources by label in a namespace
+cleanup_resources() {
     local namespace=$1
     
-    print_info "Checking if namespace '$namespace' exists..."
+    print_info "Checking namespace '$namespace'..."
     
     if kubectl get namespace "$namespace" &> /dev/null; then
-        print_warn "Deleting all resources in namespace '$namespace'..."
+        print_warn "Deleting golem resources in namespace '$namespace'..."
         
-        # Delete all resources in the namespace
-        kubectl delete all --all -n "$namespace" --wait=true --timeout=60s || true
+        # Delete all resources with app=golem label
+        kubectl delete all -l app=golem -n "$namespace" --wait=true --timeout=60s || true
         
-        # Delete configmaps and secrets
-        kubectl delete configmap --all -n "$namespace" --wait=true --timeout=30s || true
-        kubectl delete secret --all -n "$namespace" --wait=true --timeout=30s || true
+        # Delete configmaps and secrets with app=golem label
+        kubectl delete configmap -l app=golem -n "$namespace" --wait=true --timeout=30s || true
+        kubectl delete secret -l app=golem -n "$namespace" --wait=true --timeout=30s || true
         
-        # Delete PVCs if any
-        kubectl delete pvc --all -n "$namespace" --wait=true --timeout=30s || true
+        # Delete PVCs with app=golem label
+        kubectl delete pvc -l app=golem -n "$namespace" --wait=true --timeout=30s || true
         
-        # Delete ingress resources
-        kubectl delete ingress --all -n "$namespace" --wait=true --timeout=30s || true
+        # Delete ingress resources with app=golem label
+        kubectl delete ingress -l app=golem -n "$namespace" --wait=true --timeout=30s || true
         
-        # Finally, delete the namespace itself
-        print_warn "Deleting namespace '$namespace'..."
-        kubectl delete namespace "$namespace" --wait=true --timeout=60s || true
-        
-        print_info "Namespace '$namespace' cleaned up successfully!"
+        print_info "Golem resources in namespace '$namespace' cleaned up successfully!"
     else
         print_info "Namespace '$namespace' does not exist, skipping..."
     fi
@@ -68,22 +64,22 @@ ENV=${1:-all}
 case $ENV in
     staging)
         print_info "Cleaning up STAGING environment only..."
-        cleanup_namespace "golem-staging"
+        cleanup_resources "staging"
         ;;
     production)
-        print_warn "⚠️  You are about to delete PRODUCTION namespace!"
+        print_warn "⚠️  You are about to delete PRODUCTION resources from default namespace!"
         read -p "Are you sure? (type 'yes' to confirm): " confirm
         if [ "$confirm" = "yes" ]; then
-            cleanup_namespace "golem"
+            cleanup_resources "default"
         else
             print_info "Cleanup cancelled."
             exit 0
         fi
         ;;
     all)
-        print_warn "⚠️  You are about to delete BOTH staging and production namespaces!"
-        cleanup_namespace "golem-staging"
-        cleanup_namespace "golem"
+        print_warn "⚠️  You are about to delete resources from BOTH staging and production!"
+        cleanup_resources "staging"
+        cleanup_resources "default"
         ;;
 esac
 
