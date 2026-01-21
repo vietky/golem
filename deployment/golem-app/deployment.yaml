@@ -70,4 +70,4 @@ spec:
       volumes:
       - name: secret-volume
         secret:
-          secretName: config
+          secretName: config-golem
