@@ -132,14 +132,9 @@
         fi
       register: pvc_apply
 
-    - name: Wait for PVC to be bound
-      shell: |
-        kubectl wait --for=condition=Bound pvc/{{ env_config[deploy_env].pvc_name }} \
-          -n {{ env_config[deploy_env].namespace }} --timeout=60s
-      register: pvc_wait
-      retries: 3
-      delay: 5
-      until: pvc_wait.rc == 0
+    - name: Display PVC status
+      debug:
+        msg: "PVC will be bound when pod is created (local-path provisioner behavior)"
 
     - name: Create temporary pod to copy frontend files
       shell: |
