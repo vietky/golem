@@ -21,10 +21,6 @@ spec:
       - name: golem-century
         image: localhost:5000/golem-century:latest
         imagePullPolicy: Always
-        volumeMounts:
-        - name: secret-volume
-          mountPath: /etc/secret
-          readOnly: true
         ports:
         - containerPort: 8080
           name: http
@@ -32,17 +28,19 @@ spec:
         - configMapRef:
             name: golem-app-config
         - secretRef:
-            name: config
-        env:
+            name: config-golem
+            optional: true
+        env: []
+        # Uncomment below to use secrets (requires creating secret first)
         # - name: TELEGRAM_BOT_TOKEN
         #   valueFrom:
         #     secretKeyRef:
-        #       name: config
+        #       name: golem-secrets
         #       key: TELEGRAM_BOT_TOKEN
         # - name: TELEGRAM_CHAT_ID
         #   valueFrom:
         #     secretKeyRef:
-        #       name: config
+        #       name: golem-secrets
         #       key: TELEGRAM_CHAT_ID
         livenessProbe:
           httpGet:
@@ -67,7 +65,3 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
-      volumes:
-      - name: secret-volume
-        secret:
-          secretName: config-golem
