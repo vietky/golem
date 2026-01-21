@@ -16,13 +16,15 @@
     # Environment-specific configurations
     env_config:
       staging:
-        namespace: golem-staging
+        namespace: staging
         replicas: 1
         redis_storage: 2Gi
+        kustomize_path: overlays/staging
       production:
-        namespace: golem
+        namespace: default
         replicas: 1
         redis_storage: 5Gi
+        kustomize_path: overlays/production
 
   pre_tasks:
     - name: Validate deploy environment
@@ -149,60 +151,52 @@
     - name: Display Docker push result
       debug:
         msg: "Docker image pushed to registry successfully"
-    - name: Create namespace for {{ deploy_env }}
-      command: kubectl apply -f {{ deployment_dir }}/namespaces/golem{% if deploy_env == 'staging' %}-staging{% endif %}.yaml
+
+    - name: Create namespace for staging environment
+      command: kubectl create namespace staging --dry-run=client -o yaml | kubectl apply -f -
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: deploy_env == 'staging'
 
-    - name: Update all namespace references for {{ deploy_env }}
-      shell: |
-        find {{ deployment_dir }} -type f \( -name "*.yaml" ! -name "*.template" \) -exec sed -i 's/namespace: golem$/namespace: {{ env_config[deploy_env].namespace }}/g' {} \;
-    - name: Update replica count for {{ deploy_env }}
-      shell: |
-        sed -i 's/^  replicas: [0-9]*$/  replicas: {{ env_config[deploy_env].replicas }}/g' {{ deployment_dir }}/golem-app/deployment.yaml
-
-    - name: Apply Redis manifests
-      command: kubectl apply -f {{ deployment_dir }}/redis/ -n {{ env_config[deploy_env].namespace }}
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-
-    - name: Apply Golem app ConfigMap
-      command: kubectl apply -f {{ deployment_dir }}/golem-app/configmap.yaml -n {{ env_config[deploy_env].namespace }}
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-
-    - name: Apply Golem app Deployment
-      command: kubectl apply -f {{ deployment_dir }}/golem-app/deployment.yaml -n {{ env_config[deploy_env].namespace }}
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-
-    - name: Apply Golem app Service
-      command: kubectl apply -f {{ deployment_dir }}/golem-app/service.yaml -n {{ env_config[deploy_env].namespace }}
+    - name: Apply Kubernetes manifests using kustomize
+      command: kubectl apply -k {{ deployment_dir }}/{{ env_config[deploy_env].kustomize_path }}
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
     - name: Update deployment image for {{ deploy_env }} environment
-      command: kubectl set image deployment/golem-century golem-century={{ full_image_name }} -n {{ env_config[deploy_env].namespace }}
+      command: >
+        kubectl set image 
+        deployment/golem-century{% if deploy_env == 'staging' %}-staging{% endif %} 
+        golem-century={{ full_image_name }} 
+        -n {{ env_config[deploy_env].namespace }}
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       ignore_errors: yes
 
     - name: Wait for Redis to be ready
-      command: kubectl wait --for=condition=ready pod -l app=redis -n {{ env_config[deploy_env].namespace }} --timeout=300s
+      command: >
+        kubectl wait --for=condition=ready pod 
+        -l app=golem,tier=cache 
+        -n {{ env_config[deploy_env].namespace }} 
+        --timeout=300s
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       retries: 3
       delay: 10
 
     - name: Wait for Golem app to be ready
-      command: kubectl wait --for=condition=ready pod -l app=golem-century -n {{ env_config[deploy_env].namespace }} --timeout=300s
+      command: >
+        kubectl wait --for=condition=ready pod 
+        -l app=golem,tier=backend 
+        -n {{ env_config[deploy_env].namespace }} 
+        --timeout=300s
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       retries: 3
       delay: 10
 
     - name: Get deployment status
-      command: kubectl get all -n {{ env_config[deploy_env].namespace }}
+      command: kubectl get all -n {{ env_config[deploy_env].namespace }} -l app=golem
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       register: deployment_status

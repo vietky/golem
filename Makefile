@@ -119,69 +119,83 @@ k3s-deploy-full-prod: ## Deploy full stack to PROD environment
 k3s-status: ## Check k3s deployment status (usage: make k3s-status ENV=staging)
 	@ENV_VAR=$${ENV:-production}; \
 	if [ "$$ENV_VAR" = "staging" ]; then \
-		NAMESPACE=golem-staging; \
+		NAMESPACE=staging; \
 	else \
-		NAMESPACE=golem; \
+		NAMESPACE=default; \
 	fi; \
 	echo "Checking $$ENV_VAR environment (namespace: $$NAMESPACE)..."; \
-	ssh root@157.66.101.66 "kubectl get all -n $$NAMESPACE"
+	ssh root@157.66.101.66 "kubectl get all -n $$NAMESPACE -l app=golem"
 
 k3s-status-all: ## Check status of both staging and production
 	@echo "=== STAGING Environment ==="
-	@ssh root@157.66.101.66 "kubectl get all -n golem-staging 2>/dev/null" || echo "Staging not deployed"
+	@ssh root@157.66.101.66 "kubectl get all -n staging -l app=golem 2>/dev/null" || echo "Staging not deployed"
 	@echo ""
 	@echo "=== PRODUCTION Environment ==="
-	@ssh root@157.66.101.66 "kubectl get all -n golem 2>/dev/null" || echo "Production not deployed"
+	@ssh root@157.66.101.66 "kubectl get all -n default -l app=golem 2>/dev/null" || echo "Production not deployed"
 
 k3s-logs: ## View k3s application logs (usage: make k3s-logs ENV=staging)
 	@ENV_VAR=$${ENV:-production}; \
 	if [ "$$ENV_VAR" = "staging" ]; then \
-		NAMESPACE=golem-staging; \
+		NAMESPACE=staging; \
+		DEPLOYMENT=golem-century-staging; \
 	else \
-		NAMESPACE=golem; \
+		NAMESPACE=default; \
+		DEPLOYMENT=golem-century; \
 	fi; \
 	echo "Fetching logs from $$ENV_VAR (namespace: $$NAMESPACE)..."; \
-	ssh root@157.66.101.66 "kubectl logs -f -n $$NAMESPACE deployment/golem-century --tail=100"
+	ssh root@157.66.101.66 "kubectl logs -f -n $$NAMESPACE deployment/$$DEPLOYMENT --tail=100"
 
 k3s-logs-db: ## View k3s database logs (usage: make k3s-logs-db ENV=staging)
 	@ENV_VAR=$${ENV:-production}; \
 	if [ "$$ENV_VAR" = "staging" ]; then \
-		NAMESPACE=golem-staging; \
+		NAMESPACE=staging; \
+		DEPLOYMENT=mongodb-staging; \
 	else \
-		NAMESPACE=golem; \
+		NAMESPACE=default; \
+		DEPLOYMENT=mongodb; \
 	fi; \
 	echo "Fetching database logs from $$ENV_VAR (namespace: $$NAMESPACE)..."; \
-	ssh root@157.66.101.66 "kubectl logs -f -n $$NAMESPACE deployment/mongodb --tail=100"
+	ssh root@157.66.101.66 "kubectl logs -f -n $$NAMESPACE deployment/$$DEPLOYMENT --tail=100"
 
 k3s-logs-cache: ## View k3s cache logs (usage: make k3s-logs-cache ENV=staging)
 	@ENV_VAR=$${ENV:-production}; \
 	if [ "$$ENV_VAR" = "staging" ]; then \
-		NAMESPACE=golem-staging; \
+		NAMESPACE=staging; \
+		DEPLOYMENT=redis-staging; \
 	else \
-		NAMESPACE=golem; \
+		NAMESPACE=default; \
+		DEPLOYMENT=redis; \
 	fi; \
 	echo "Fetching cache logs from $$ENV_VAR (namespace: $$NAMESPACE)..."; \
-	ssh root@157.66.101.66 "kubectl logs -f -n $$NAMESPACE deployment/redis --tail=100"
+	ssh root@157.66.101.66 "kubectl logs -f -n $$NAMESPACE deployment/$$DEPLOYMENT --tail=100"
 
 k3s-restart: ## Restart k3s application (usage: make k3s-restart ENV=staging)
 	@ENV_VAR=$${ENV:-production}; \
 	if [ "$$ENV_VAR" = "staging" ]; then \
-		NAMESPACE=golem-staging; \
+		NAMESPACE=staging; \
+		DEPLOYMENT=golem-century-staging; \
 	else \
-		NAMESPACE=golem; \
+		NAMESPACE=default; \
+		DEPLOYMENT=golem-century; \
 	fi; \
 	echo "Restarting application in $$ENV_VAR (namespace: $$NAMESPACE)..."; \
-	ssh root@157.66.101.66 "kubectl rollout restart deployment/golem-century -n $$NAMESPACE"
+	ssh root@157.66.101.66 "kubectl rollout restart deployment/$$DEPLOYMENT -n $$NAMESPACE"
 
-k3s-scale: ## Scale k3s application (usage: make k3s-scale REPLICAS=3)
+k3s-scale: ## Scale k3s application (usage: make k3s-scale REPLICAS=3 ENV=staging)
 	@if [ -z "$(REPLICAS)" ]; then \
-		echo "Error: REPLICAS variable is required. Usage: make k3s-scale REPLICAS=3"; \
+		echo "Error: REPLICAS variable is required. Usage: make k3s-scale REPLICAS=3 ENV=staging"; \
 		exit 1; \
-# Legacy commands (deprecated, use specific environment commands above)
-k3s-frontend: k3s-frontend-test ## Deploy frontend (defaults to TEST) - DEPRECATED: use k3s-frontend-test or k3s-frontend-prod
-
-k3s-deploy-full: k3s-deploy-full-test ## Deploy full stack (defaults to TEST) - DEPRECATED: use k3s-deploy-full-test or k3s-deploy-full-prod deployment..."
-	ssh root@157.66.101.66 "kubectl describe deployment golem-century -n golem-app"
+	fi
+	@ENV_VAR=$${ENV:-production}; \
+	if [ "$$ENV_VAR" = "staging" ]; then \
+		NAMESPACE=staging; \
+		DEPLOYMENT=golem-century-staging; \
+	else \
+		NAMESPACE=default; \
+		DEPLOYMENT=golem-century; \
+	fi; \
+	echo "Scaling $$DEPLOYMENT in $$ENV_VAR to $(REPLICAS) replicas..."; \
+	ssh root@157.66.101.66 "kubectl scale deployment/$$DEPLOYMENT -n $$NAMESPACE --replicas=$(REPLICAS)"
 
 k3s-frontend: ## Deploy only frontend to nginx
 	@echo "Deploying frontend to nginx..."
