@@ -177,14 +177,6 @@ The application is deployed on k3s with the following architecture:
 - **Single namespace**: All components (MongoDB, Redis, Application) are in the `golem` namespace
 - This simplifies management and RBAC policies
 
-#### Ingress Controller
-- **NGINX Ingress Controller** is used for:
-  - HTTP/HTTPS routing
-  - SSL termination with cert-manager
-  - WebSocket support
-  - Path-based routing for API endpoints
-- Install with: `make k3s-install-ingress`
-
 #### Git-Based Deployment
 - Source code is NOT copied during deployment
 - Server must have git repository at `/opt/jenkins/repos/golem`
@@ -195,7 +187,6 @@ The application is deployed on k3s with the following architecture:
 ```bash
 # Setup (one-time)
 make k3s-setup-registry      # Setup local Docker registry
-make k3s-install-ingress     # Install NGINX Ingress Controller
 
 # Deploy
 make k3s-deploy              # Build and deploy backend from git repo
@@ -210,8 +201,8 @@ make k3s-logs-cache          # View Redis logs
 ```
 
 #### Access URLs
-- **Backend API**: https://game.anhtran.dev/api/golem (via Ingress)
-- **WebSocket**: wss://game.anhtran.dev/ws (via Ingress)
+- **Backend API**: https://game.anhtran.dev/api/golem (via Gateway API)
+- **WebSocket**: wss://game.anhtran.dev/ws (via Gateway API)
 - **Frontend (test)**: https://game.anhtran.dev/golem-test
 - **Frontend (prod)**: https://game.anhtran.dev/golem
 
@@ -245,7 +236,6 @@ Uses Ansible for deployment to remote servers. Docker images: `Dockerfile` (back
 
 - **Single Namespace**: All components (MongoDB, Redis, Application) belong to the `golem` namespace for simplified management
 - Use local docker registry on k3s server (localhost:5000) to speed up image pulling during deployment
-- **NGINX Ingress Controller** is used for routing and SSL termination in production (later, might migrate to Gateway API when it matures)
 - **Git-based deployment**: Source code is NOT copied to server during deployment. Instead, git repository at `/opt/jenkins/repos/golem` is used to pull latest code, saving bandwidth and time
 
 ## Coding Standards

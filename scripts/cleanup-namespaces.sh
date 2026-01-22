@@ -49,9 +49,6 @@ cleanup_resources() {
         # Delete PVCs with app=golem label
         kubectl delete pvc -l app=golem -n "$namespace" --wait=true --timeout=30s || true
         
-        # Delete ingress resources with app=golem label
-        kubectl delete ingress -l app=golem -n "$namespace" --wait=true --timeout=30s || true
-        
         print_info "Golem resources in namespace '$namespace' cleaned up successfully!"
     else
         print_info "Namespace '$namespace' does not exist, skipping..."

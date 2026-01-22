@@ -388,7 +388,7 @@ ssh root@157.66.101.66 "kubectl exec -n golem-cache deployment/redis -- redis-cl
 
 ## Production Recommendations
 
-1. **Use Ingress**: Set up Traefik/nginx-ingress for SSL and domain routing
+1. **Use Gateway API**: For advanced routing and load balancing
 2. **External Secrets**: Use Sealed Secrets or External Secrets Operator
 3. **Monitoring**: Deploy Prometheus + Grafana
 4. **Logging**: Centralized logging with Loki or ELK

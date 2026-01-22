@@ -162,12 +162,6 @@ k3s-gateway-status: ## Check Gateway API resources
 	@echo "=== Staging Gateway Resources ==="
 	ssh root@157.66.101.66 "kubectl get gateway,httproute -n staging 2>/dev/null" || echo "No staging resources"
 
-k3s-remove-ingress: ## Remove old Ingress resources
-	@echo "Removing old Ingress resources..."
-	ssh root@157.66.101.66 "kubectl delete ingress golem-nginx-ingress -n default 2>/dev/null" || echo "No ingress in default"
-	ssh root@157.66.101.66 "kubectl delete ingress golem-nginx-ingress -n staging 2>/dev/null" || echo "No ingress in staging"
-	@echo "Ingress resources removed!"
-
 k3s-status: ## Check k3s deployment status (usage: make k3s-status ENV=staging)
 	@ENV_VAR=$${ENV:-production}; \
 	if [ "$$ENV_VAR" = "staging" ]; then \

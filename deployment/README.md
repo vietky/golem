@@ -27,7 +27,7 @@ deployment/
     ├── secret.yaml.template
     ├── deployment.yaml
     ├── service.yaml
-    └── ingress.yaml
+    └── httproutes.yaml
 ```
 
 ## Environment Configuration
@@ -52,7 +52,7 @@ deployment/
 
 1. k3s cluster running on target server
 2. `kubectl` configured with access to the cluster
-3. NGINX Ingress Controller installed (or use `make k3s-install-ingress`)
+3. Gateway API installed (or use `make k3s-install-gateway`)
 4. cert-manager installed for SSL certificates (optional, for production)
 5. Ansible installed locally
 6. SSH access to the k3s server
@@ -376,7 +376,7 @@ ansible-playbook -i inventory.ini deploy-k3s.yml --tags cleanup
 ## Production Recommendations
 
 1. **Persistent Storage**: Configure proper StorageClass for production PVCs
-2. **Ingress**: Set up Ingress controller for better routing and SSL
+2. **Gateway API**: Set up Gateway API for better routing and SSL
 3. **Monitoring**: Deploy Prometheus and Grafana for metrics
 4. **Backups**: Implement automated backup strategy for MongoDB
 5. **Secrets**: Use proper secret management (Sealed Secrets, External Secrets Operator)

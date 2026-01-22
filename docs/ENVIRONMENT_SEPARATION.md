@@ -109,17 +109,6 @@ env_config:
 - **API**: https://prod.game.anhtran.dev/api/golem
 - **WebSocket**: wss://prod.game.anhtran.dev/ws
 
-## DNS Configuration
-
-Update your DNS records to point to your k3s server:
-
-```
-staging.game.anhtran.dev  A  157.66.101.66
-prod.game.anhtran.dev     A  157.66.101.66
-```
-
-The NGINX Ingress Controller will handle routing based on the hostname.
-
 ## Deployment Workflow
 
 1. **Develop locally** - Test changes on your local machine
