@@ -237,6 +237,7 @@ Uses Ansible for deployment to remote servers. Docker images: `Dockerfile` (back
 - **Single Namespace**: All components (MongoDB, Redis, Application) belong to the `golem` namespace for simplified management
 - Use local docker registry on k3s server (localhost:5000) to speed up image pulling during deployment
 - **Git-based deployment**: Source code is NOT copied to server during deployment. Instead, git repository at `/opt/jenkins/repos/golem` is used to pull latest code, saving bandwidth and time
+- update Makefile command when there is any change in the deployment process
 
 ## Coding Standards
 - use logger both on backend and frontend for debugging and monitoring

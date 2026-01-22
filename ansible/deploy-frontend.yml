@@ -13,16 +13,14 @@
     env_config:
       test:
         namespace: "staging"
-        pvc_name: "golem-frontend-staging-pvc"
-        api_host: "https://game.anhtran.dev"
-        nginx_host: "https://game.anhtran.dev"
+        api_host: "https://game.anhtran.dev:30443/api/golem"
+        nginx_host: "https://game.anhtran.dev:30443/assets"
         url_path: "/golem-test"
         deployment_name: "golem-century-staging"
       prod:
         namespace: "default"
-        pvc_name: "golem-frontend-pvc"
-        api_host: "https://game.anhtran.dev"
-        nginx_host: "https://game.anhtran.dev"
+        api_host: "https://game.anhtran.dev:30443/api/golem"
+        nginx_host: "https://game.anhtran.dev:30443/assets"
         url_path: "/golem"
         deployment_name: "golem-century"
 
@@ -38,7 +36,6 @@
           - "Deploying frontend to: {{ deploy_env | upper }} environment"
           - "Git repo: {{ git_repo_path }}"
           - "Namespace: {{ env_config[deploy_env].namespace }}"
-          - "PVC: {{ env_config[deploy_env].pvc_name }}"
           - "API host: {{ env_config[deploy_env].api_host }}"
           - "Access URL: {{ env_config[deploy_env].nginx_host }}{{ env_config[deploy_env].url_path }}"
           - "Branch: {{ deploy_branch }}"
@@ -122,20 +119,6 @@
         kubectl create namespace {{ env_config[deploy_env].namespace }}
       register: namespace_check
 
-    - name: Apply frontend PVC manifest
-      shell: |
-        cd {{ git_repo_path }}
-        if [ "{{ deploy_env }}" = "test" ]; then
-          kubectl apply -f deployment/overlays/staging/frontend-pvc.yaml -n {{ env_config[deploy_env].namespace }}
-        else
-          kubectl apply -f deployment/golem-app/frontend-pvc.yaml -n {{ env_config[deploy_env].namespace }}
-        fi
-      register: pvc_apply
-
-    - name: Display PVC status
-      debug:
-        msg: "PVC will be bound when pod is created (local-path provisioner behavior)"
-
     - name: Create temporary pod to copy frontend files
       shell: |
         cat <<EOF | kubectl apply -f -
@@ -171,35 +154,6 @@
       retries: 5
       delay: 5
       until: pod_wait.rc == 0
-
-    - name: Clean existing frontend files in PVC
-      shell: |
-        kubectl exec -n {{ env_config[deploy_env].namespace }} frontend-copy-{{ deploy_env }} -- \
-          sh -c 'rm -rf /frontend/*'
-      register: clean_pvc
-
-    - name: Copy frontend files to PVC via kubectl cp
-      shell: |
-        kubectl cp {{ temp_build_dir }}/. \
-          {{ env_config[deploy_env].namespace }}/frontend-copy-{{ deploy_env }}:/frontend/
-      register: copy_to_pvc
-
-    - name: Verify files in PVC
-      shell: |
-        kubectl exec -n {{ env_config[deploy_env].namespace }} frontend-copy-{{ deploy_env }} -- \
-          ls -la /frontend/
-      register: verify_files
-
-    - name: Display files in PVC
-      debug:
-        msg: "{{ verify_files.stdout_lines }}"
-
-    - name: Verify index.html exists in PVC
-      shell: |
-        kubectl exec -n {{ env_config[deploy_env].namespace }} frontend-copy-{{ deploy_env }} -- \
-          test -f /frontend/index.html && echo "exists" || echo "missing"
-      register: index_check
-      failed_when: "'missing' in index_check.stdout"
 
     - name: Delete temporary copy pod
       shell: |
@@ -237,12 +191,7 @@
           - "========================================="
           - "Environment: {{ deploy_env | upper }}"
           - "Namespace: {{ env_config[deploy_env].namespace }}"
-          - "PVC: {{ env_config[deploy_env].pvc_name }}"
           - "Frontend URL: {{ env_config[deploy_env].nginx_host }}{{ env_config[deploy_env].url_path }}"
           - "API Endpoint: {{ env_config[deploy_env].api_host }}"
           - "Static Assets: /opt/nginx/apps/assets"
-          - "========================================"
-          - "Next steps:"
-          - "1. Ensure nginx deployment mounts this PVC"
-          - "2. Configure nginx to serve from PVC mount point"
           - "========================================"
