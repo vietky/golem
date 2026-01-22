@@ -7,8 +7,8 @@ metadata:
     tier: backend
 spec:
   parentRefs:
-  - name: golem-gateway
-    namespace: default
+  - name: main-gateway
+    namespace: nginx-gateway
   hostnames:
   - "game.anhtran.dev"
   rules:
@@ -29,8 +29,8 @@ metadata:
     tier: frontend
 spec:
   parentRefs:
-  - name: golem-gateway
-    namespace: default
+  - name: main-gateway
+    namespace: nginx-gateway
   hostnames:
   - "game.anhtran.dev"
   rules:

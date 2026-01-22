@@ -1,8 +1,9 @@
 # Multi-stage Docker build for frontend with nginx
 # Serves static assets at /apps/golem path
+# Supports multi-architecture builds (amd64/arm64)
 
 # Stage 1: Build the React app
-FROM node:18-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:18-alpine AS builder
 
 ARG VITE_API_HOST=https://game.anhtran.dev
 ARG VITE_NGINX_HOST=https://game.anhtran.dev
