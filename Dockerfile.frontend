@@ -6,7 +6,7 @@
 FROM --platform=$BUILDPLATFORM node:18-alpine AS builder
 
 ARG VITE_API_HOST=https://game.anhtran.dev/api/golem
-ARG VITE_NGINX_HOST=https://game.anhtran.dev/apps/golem/
+ARG VITE_NGINX_HOST=https://game.anhtran.dev/assets
 ARG VITE_BASE_PATH=/apps/golem/
 
 ENV VITE_API_HOST=${VITE_API_HOST}
@@ -28,7 +28,7 @@ COPY web/react-frontend/ ./
 RUN mkdir -p public
 
 # Build the app with production settings (use production mode to avoid publicDir issues)
-RUN npm run build -- --mode production
+RUN npm run release
 
 # Stage 2: Serve with nginx
 FROM nginx:alpine

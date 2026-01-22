@@ -34,6 +34,9 @@
           - "Environment: {{ deploy_env | upper }}"
           - "Namespace: {{ env_config[deploy_env].namespace }}"
           - "Image tag: {{ env_config[deploy_env].image_tag }}"
+          - "Deployment name: {{ env_config[deploy_env].deployment_name }}"
+          - "VITE_API_HOST: {{ env_config[deploy_env].vite_api_host }}"
+          - "VITE_NGINX_HOST: {{ env_config[deploy_env].vite_nginx_host }}"
 
   tasks:
     - name: Verify git repository exists
