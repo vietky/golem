@@ -12,11 +12,16 @@
         namespace: "staging"
         image_tag: "staging"
         deployment_name: "golem-nginx-staging"
+        # Set environment variables for frontend build
+        vite_api_host: "https://game.anhtran.dev/api/golem"
+        vite_nginx_host: "https://game.anhtran.dev/assets"
       prod:
         namespace: "default"
         image_tag: "latest"
         deployment_name: "golem-nginx"
-
+        # Set environment variables for frontend build
+        vite_api_host: "https://game.anhtran.dev/api/golem"
+        vite_nginx_host: "https://game.anhtran.dev/assets"
   pre_tasks:
     - name: Validate deploy environment
       fail:
@@ -49,6 +54,7 @@
       shell: |
         cd {{ git_repo_path }}
         docker buildx build \
+          --build-arg VITE_API_HOST={{ env_config[deploy_env].vite_api_host }} --build-arg VITE_NGINX_HOST={{ env_config[deploy_env].vite_nginx_host }} \
           --platform linux/amd64 \
           -f Dockerfile.frontend \
           -t golem-frontend:{{ env_config[deploy_env].image_tag }} \

@@ -119,7 +119,7 @@ k3s-frontend-test: ## Deploy frontend to TEST environment (Gateway API)
 	@echo "Deploying frontend to TEST environment..."
 	cd ansible && DEPLOY_ENV=test ansible-playbook -i inventory.ini deploy-frontend-gateway.yml
 
-k3s-frontend-prod: ## Deploy frontend to PROD environment (Gateway API)
+k3s-frontend: ## Deploy frontend to PROD environment (Gateway API)
 	@echo "Deploying frontend to PROD environment..."
 	cd ansible && DEPLOY_ENV=prod ansible-playbook -i inventory.ini deploy-frontend-gateway.yml
 
@@ -242,16 +242,6 @@ k3s-scale: ## Scale k3s application (usage: make k3s-scale REPLICAS=3 ENV=stagin
 	fi; \
 	echo "Scaling $$DEPLOYMENT in $$ENV_VAR to $(REPLICAS) replicas..."; \
 	ssh root@157.66.101.66 "kubectl scale deployment/$$DEPLOYMENT -n $$NAMESPACE --replicas=$(REPLICAS)"
-
-k3s-frontend: ## Deploy only frontend to nginx
-	@echo "Deploying frontend to nginx..."
-	cd web/react-frontend && npm install && npm run build
-	mkdir -p web/react
-	rm -rf web/react/* || true
-	cp -rf web/react-frontend/dist/* web/react/
-	rsync -avz --delete web/react/ root@157.66.101.66:/opt/nginx/apps/golem/
-	rsync -avz web/static/ root@157.66.101.66:/opt/nginx/apps/assets/
-	@echo "Frontend deployment complete!"
 
 k3s-deploy-full: ## Deploy both backend (k3s) and frontend (nginx)
 	@echo "Starting full deployment (backend + frontend)..."
