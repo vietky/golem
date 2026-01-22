@@ -26,7 +26,9 @@ export default ({ mode }) => {
   // Default to DEBUG in development, INFO in production
   const logLevel = env.VITE_LOG_LEVEL || (isDev ? 'DEBUG' : 'INFO')
 
-  const base = "./"; // isDev ? "./" : (env.VITE_API_HOST || "./");
+  // For production, use /apps/golem/ as base path for frontend serving
+  // For dev, use ./ for local development
+  const base = isDev ? "./" : (env.VITE_BASE_PATH || "/apps/golem/");
   console.log('mode:', mode, ' | apiHost:', apiHost, ' | nginxHost:', nginxHost, ' | enableSourceMaps:', enableSourceMaps, ' | base:', base, ' | logLevel:', logLevel)
   return defineConfig({
     base: base, 

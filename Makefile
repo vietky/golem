@@ -35,21 +35,36 @@ dev:
 	sudo docker exec -it golem-century-server sh
 
 fe-build-local:
-# 	docker build --build-arg VITE_API_HOST=https://game.anhtran.dev/api/golem --build-arg VITE_NGINX_HOST=https://game.anhtran.dev -f Dockerfile.fe -t golem-frontend:latest .
-# 	docker run --rm -v ./web/react/:/nginx-dest golem-frontend:latest \
-#         sh -c "cp -r /app/dist/* /nginx-dest/"
+	# Build frontend container image for Gateway API (serves at /apps/golem)
 	cp .env.example .env
 	cd web/react-frontend && npm i && npm run build
 	mkdir -p web/react
 	rm -rf web/react/* || true
 	cp -rf web/react-frontend/dist/* web/react/
 
+fe-build-gateway: ## Build frontend container for Gateway API deployment
+	docker build \
+		--build-arg VITE_API_HOST=https://game.anhtran.dev/api/golem \
+		--build-arg VITE_NGINX_HOST=https://game.anhtran.dev \
+		--build-arg VITE_BASE_PATH=/apps/golem/ \
+		-f Dockerfile.frontend \
+		-t golem-frontend:latest .
+
+fe-push-gateway: fe-build-gateway ## Build and push frontend to k3s server registry
+	docker save golem-frontend:latest | ssh root@157.66.101.66 'docker load && docker tag golem-frontend:latest localhost:5000/golem-frontend:latest && docker push localhost:5000/golem-frontend:latest'
+
+be-build-gateway: ## Build backend container for Gateway API deployment
+	docker build -t golem-century:latest .
+
+be-push-gateway: be-build-gateway ## Build and push backend to k3s server registry
+	docker save golem-century:latest | ssh root@157.66.101.66 'docker load && docker tag golem-century:latest localhost:5000/golem-century:latest && docker push localhost:5000/golem-century:latest'
+
 fe-run-local:
 	cd web/react-frontend && npm run dev
 
 fe-release:
 # 	docker build --build-arg VITE_API_HOST=http://157.66.101.66:3001 --build-arg VITE_NGINX_HOST=http://157.66.101.66 -f Dockerfile.fe -t golem-frontend:latest .
-	docker build --build-arg VITE_API_HOST=https://game.anhtran.dev --build-arg VITE_NGINX_HOST=https://game.anhtran.dev -f Dockerfile.fe -t golem-frontend:latest .
+	docker build --build-arg VITE_API_HOST=https://game.anhtran.dev/api/golem --build-arg VITE_NGINX_HOST=https://game.anhtran.dev/static -f Dockerfile.fe -t golem-frontend:latest .
 	docker run --rm -v /opt/nginx/apps/:/nginx-dest golem-frontend:latest \
         sh -c "cp -r /app/dist/* /nginx-dest/golem/"
 
@@ -115,6 +130,43 @@ k3s-deploy-full-test: ## Deploy full stack to TEST environment
 k3s-deploy-full-prod: ## Deploy full stack to PROD environment
 	@echo "Deploying full stack to PROD environment..."
 	cd ansible && DEPLOY_ENV=prod ansible-playbook -i inventory.ini deploy-k3s.yml
+
+k3s-deploy-gateway: ## Deploy with Gateway API (production)
+	@echo "Deploying with Gateway API to PRODUCTION..."
+	@echo "Building and pushing images..."
+	make be-push-gateway
+	make fe-push-gateway
+	@echo "Applying Gateway API manifests..."
+	ssh root@157.66.101.66 "kubectl apply -f - " < deployment/golem-app/gateway.yaml
+	ssh root@157.66.101.66 "kubectl apply -f - " < deployment/golem-app/httproutes.yaml
+	@echo "Deploying backend and frontend..."
+	cd ansible && DEPLOY_ENV=production ansible-playbook -i inventory.ini deploy-k3s-backend.yml
+	@echo "Gateway API deployment complete!"
+
+k3s-deploy-gateway-staging: ## Deploy with Gateway API (staging)
+	@echo "Deploying with Gateway API to STAGING..."
+	@echo "Building and pushing images..."
+	make be-push-gateway
+	make fe-push-gateway
+	@echo "Applying Gateway API manifests..."
+	ssh root@157.66.101.66 "kubectl apply -f - -n staging" < deployment/golem-app/gateway.yaml
+	ssh root@157.66.101.66 "kubectl apply -f - -n staging" < deployment/golem-app/httproutes.yaml
+	@echo "Deploying backend and frontend..."
+	cd ansible && DEPLOY_ENV=staging ansible-playbook -i inventory.ini deploy-k3s-backend.yml
+	@echo "Gateway API deployment complete!"
+
+k3s-gateway-status: ## Check Gateway API resources
+	@echo "=== Gateway Resources ==="
+	ssh root@157.66.101.66 "kubectl get gateway,httproute -n default"
+	@echo ""
+	@echo "=== Staging Gateway Resources ==="
+	ssh root@157.66.101.66 "kubectl get gateway,httproute -n staging 2>/dev/null" || echo "No staging resources"
+
+k3s-remove-ingress: ## Remove old Ingress resources
+	@echo "Removing old Ingress resources..."
+	ssh root@157.66.101.66 "kubectl delete ingress golem-nginx-ingress -n default 2>/dev/null" || echo "No ingress in default"
+	ssh root@157.66.101.66 "kubectl delete ingress golem-nginx-ingress -n staging 2>/dev/null" || echo "No ingress in staging"
+	@echo "Ingress resources removed!"
 
 k3s-status: ## Check k3s deployment status (usage: make k3s-status ENV=staging)
 	@ENV_VAR=$${ENV:-production}; \

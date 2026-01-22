@@ -16,6 +16,9 @@ patches:
       - op: replace
         path: /data/REDIS_ADDR
         value: "redis-staging.staging.svc.cluster.local:6379"
+      - op: replace
+        path: /data/API_PREFIX
+        value: "/api/golem"
     target:
       kind: ConfigMap
       name: golem-app-config

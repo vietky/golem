@@ -62,24 +62,40 @@ func main() {
 	// Setup routes on a ServeMux so we can wrap with CORS middleware
 	mux := http.NewServeMux()
 
-	// Health check endpoint for k8s probes
+	// Health check endpoint for k8s probes (must be at root level)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
 
-	mux.HandleFunc("/ws", gameServer.HandleWebSocket)
-	mux.HandleFunc("/api/create", gameServer.HandleCreateSession)
-	mux.HandleFunc("/api/single", gameServer.HandleCreateSinglePlayer)
-	mux.HandleFunc("/api/join", gameServer.HandleJoinSession)
-	mux.HandleFunc("/api/list", gameServer.HandleListSessions)
-	mux.HandleFunc("/api/sessions/start", gameServer.HandleStartGame)
+	// Get API prefix from environment (default to empty for backward compatibility)
+	apiPrefix := os.Getenv("API_PREFIX")
+	if apiPrefix == "" {
+		apiPrefix = "" // No prefix by default
+	} else if apiPrefix[0] != '/' {
+		apiPrefix = "/" + apiPrefix
+	}
+
+	// Helper to add prefix to paths
+	prefixPath := func(path string) string {
+		if apiPrefix == "" {
+			return path
+		}
+		return apiPrefix + path
+	}
+
+	mux.HandleFunc(prefixPath("/ws"), gameServer.HandleWebSocket)
+	mux.HandleFunc(prefixPath("/api/create"), gameServer.HandleCreateSession)
+	mux.HandleFunc(prefixPath("/api/single"), gameServer.HandleCreateSinglePlayer)
+	mux.HandleFunc(prefixPath("/api/join"), gameServer.HandleJoinSession)
+	mux.HandleFunc(prefixPath("/api/list"), gameServer.HandleListSessions)
+	mux.HandleFunc(prefixPath("/api/sessions/start"), gameServer.HandleStartGame)
 
 	// Admin API endpoints for event store
-	mux.HandleFunc("/api/events", gameServer.HandleGetEvents)
-	mux.HandleFunc("/api/snapshot", gameServer.HandleGetSnapshot)
-	mux.HandleFunc("/api/games", gameServer.HandleListGames)
-	mux.HandleFunc("/admin/sessions/state", gameServer.HandleGetSessionState)
+	mux.HandleFunc(prefixPath("/api/events"), gameServer.HandleGetEvents)
+	mux.HandleFunc(prefixPath("/api/snapshot"), gameServer.HandleGetSnapshot)
+	mux.HandleFunc(prefixPath("/api/games"), gameServer.HandleListGames)
+	mux.HandleFunc(prefixPath("/admin/sessions/state"), gameServer.HandleGetSessionState)
 
 	// Always serve images from static directory (both React and vanilla JS need this)
 	staticDir := filepath.Join(".", "web", "static")

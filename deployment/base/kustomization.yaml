@@ -8,3 +8,6 @@ resources:
   - golem-app/configmap.yaml
   - golem-app/deployment.yaml
   - golem-app/service.yaml
+  - golem-app/nginx-deployment.yaml
+  - golem-app/gateway.yaml
+  - golem-app/httproutes.yaml

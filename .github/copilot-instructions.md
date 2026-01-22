@@ -238,7 +238,10 @@ Uses Ansible for deployment to remote servers. Docker images: `Dockerfile` (back
   - environment: production/staging
   - tier: backend/frontend/cache
   so that we could easily identify them based on their roles and environments.
-  - staging deployments should use testing namespace `staging` and suffix in their names
+  - staging deployments should use testing namespace `staging`
+- for frontend or static assets, build its own container image and serve them via nginx deployment on k3s using Gateway API.
+- NEVER use Ingress as it is being deprecated in favor of Gateway API.
+- NEVER use HostNetwork mode or insecure configurations that expose services publicly. Follow the principle of least privilege and expose only necessary services internally behind a reverse proxy.
 
 - **Single Namespace**: All components (MongoDB, Redis, Application) belong to the `golem` namespace for simplified management
 - Use local docker registry on k3s server (localhost:5000) to speed up image pulling during deployment

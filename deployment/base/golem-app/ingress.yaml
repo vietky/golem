@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: golem-nginx-ingress
+  labels:
+    app: golem
+    tier: frontend
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - game.anhtran.dev
+    secretName: golem-tls
+  rules:
+  - host: game.anhtran.dev
+    http:
+      paths:
+      - path: /golem
+        pathType: Prefix
+        backend:
+          service:
+            name: golem-nginx
+            port:
+              number: 80
