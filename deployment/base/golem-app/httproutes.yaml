@@ -16,6 +16,12 @@ spec:
     - path:
         type: PathPrefix
         value: /api/golem
+    filters:
+    - type: URLRewrite
+      urlRewrite:
+        path:
+          type: ReplacePrefixMatch
+          replacePrefixMatch: /
     backendRefs:
     - name: golem-century
       port: 8080
