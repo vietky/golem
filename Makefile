@@ -115,13 +115,13 @@ k3s-deploy-version: ## Deploy specific backend version (usage: make k3s-deploy-v
 	echo "Deploying version $(VERSION) to $$ENV_VAR environment..."; \
 	DEPLOY_ENV=$$ENV_VAR APP_VERSION=$(VERSION) cd ansible && ansible-playbook -i inventory.ini deploy-k3s-backend.yml
 
-k3s-frontend-test: ## Deploy frontend to TEST environment
+k3s-frontend-test: ## Deploy frontend to TEST environment (Gateway API)
 	@echo "Deploying frontend to TEST environment..."
-	cd ansible && DEPLOY_ENV=test ansible-playbook -i inventory.ini deploy-frontend.yml
+	cd ansible && DEPLOY_ENV=test ansible-playbook -i inventory.ini deploy-frontend-gateway.yml
 
-k3s-frontend-prod: ## Deploy frontend to PROD environment
+k3s-frontend-prod: ## Deploy frontend to PROD environment (Gateway API)
 	@echo "Deploying frontend to PROD environment..."
-	cd ansible && DEPLOY_ENV=prod ansible-playbook -i inventory.ini deploy-frontend.yml
+	cd ansible && DEPLOY_ENV=prod ansible-playbook -i inventory.ini deploy-frontend-gateway.yml
 
 k3s-deploy-full-test: ## Deploy full stack to TEST environment
 	@echo "Deploying full stack to TEST environment..."
