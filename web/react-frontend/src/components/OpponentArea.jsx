@@ -81,7 +81,7 @@ const OpponentArea = () => {
                 {/* Avatar */}
                 <div className="relative flex-shrink-0">
                   <img
-                    src={`/images/avatar/${opponent.avatar || opponent.id}.webp`}
+                    src={`/assets/images/avatar/${opponent.avatar || opponent.id}.webp`}
                     alt={opponent.name}
                     className={`
                       rounded-full border-2 border-white object-cover
@@ -93,7 +93,7 @@ const OpponentArea = () => {
                       }
                     `}
                     onError={(e) => {
-                      e.target.src = '/images/avatar/1.webp'
+                      e.target.src = '/assets/images/avatar/1.webp'
                     }}
                   />
                   {isCurrentTurn && (

@@ -12,13 +12,13 @@ class SoundManager {
     
     // Initialize sound files
     this.soundFiles = {
-      playCard: '/sounds/play_card.mp3',
-      acquireMerchant: '/sounds/acquire_merchant.mp3',
-      claimPointCard: '/sounds/claim_point_card.mp3',
-      rest: '/sounds/rest.mp3',
-      gameOver: '/sounds/game_over.mp3',
-      myTurn: '/sounds/my_turn.mp3',
-      nearlyEnd: '/sounds/nearly_end.mp3',
+      playCard: '/assets/sounds/play_card.mp3',
+      acquireMerchant: '/assets/sounds/acquire_merchant.mp3',
+      claimPointCard: '/assets/sounds/claim_point_card.mp3',
+      rest: '/assets/sounds/rest.mp3',
+      gameOver: '/assets/sounds/game_over.mp3',
+      myTurn: '/assets/sounds/my_turn.mp3',
+      nearlyEnd: '/assets/sounds/nearly_end.mp3',
     };
     
     // Load mute state from localStorage

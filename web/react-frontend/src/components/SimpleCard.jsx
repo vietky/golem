@@ -176,10 +176,10 @@ const SimpleCard = ({
       {/* Deposits indicator - show actual crystals */}
       {card.deposits && Object.keys(card.deposits).length > 0 && (() => {
         const crystalImages = {
-          yellow: '/images/stone_yellow.JPG',
-          green: '/images/stone_green.JPG',
-          blue: '/images/stone_blue.JPG',
-          pink: '/images/stone_pink.JPG'
+          yellow: '/assets/images/stone_yellow.JPG',
+          green: '/assets/images/stone_green.JPG',
+          blue: '/assets/images/stone_blue.JPG',
+          pink: '/assets/images/stone_pink.JPG'
         }
         const crystalBadges = []
         Object.entries(card.deposits).forEach(([type, count]) => {
@@ -196,7 +196,7 @@ const SimpleCard = ({
                 src={crystal.src}
                 alt={crystal.type}
                 className="w-4 h-4 rounded-full object-cover border border-white/50 shadow"
-                onError={(e) => { e.target.src = '/images/stone_yellow.JPG' }}
+                onError={(e) => { e.target.src = '/assets/images/stone_yellow.JPG' }}
               />
             ))}
           </div>

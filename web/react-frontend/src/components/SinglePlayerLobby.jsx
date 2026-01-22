@@ -55,7 +55,7 @@ const SinglePlayerLobby = ({ onStartGame }) => {
         ${isMobile ? 'p-2 pt-12' : 'p-6'}
       `}
       style={{
-        backgroundImage: 'url(/images/background.jpg)',
+        backgroundImage: 'url(/assets/images/background.jpg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center center',
         backgroundRepeat: 'no-repeat',
@@ -162,7 +162,7 @@ const SinglePlayerLobby = ({ onStartGame }) => {
                   `}
                 >
                   <img
-                    src={`/images/avatar/${avatar}.webp`}
+                    src={`/assets/images/avatar/${avatar}.webp`}
                     alt={`Avatar ${avatar}`}
                     className="w-full h-full object-cover"
                     onError={(e) => {

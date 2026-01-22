@@ -35,7 +35,7 @@ console.log('Status: Can be toggled with options.useSprite = false')
 console.log('\n✅ Test 3: Unified getCardRenderConfig()')
 console.log('Expected: Returns { mode, style, imagePath }')
 console.log('Sprite mode: { mode: "sprite", style: {...}, imagePath: null }')
-console.log('Image mode: { mode: "image", style: null, imagePath: "/images/..." }')
+console.log('Image mode: { mode: "image", style: null, imagePath: "/assets/images/..." }')
 
 // Test 4: Check hasSprite
 console.log('\n✅ Test 4: hasSprite() Function')

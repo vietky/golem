@@ -330,10 +330,10 @@ const WebGameLayout = () => {
               // Build crystal badges array
               const crystalBadges = []
               const crystalImages = {
-                yellow: '/images/stone_yellow.JPG',
-                green: '/images/stone_green.JPG',
-                blue: '/images/stone_blue.JPG',
-                pink: '/images/stone_pink.JPG',
+                yellow: '/assets/images/stone_yellow.JPG',
+                green: '/assets/images/stone_green.JPG',
+                blue: '/assets/images/stone_blue.JPG',
+                pink: '/assets/images/stone_pink.JPG',
               }
               Object.entries(deposits).forEach(([type, count]) => {
                 for (let i = 0; i < parseInt(count || 0); i++) {
@@ -362,7 +362,7 @@ const WebGameLayout = () => {
                           alt={crystal.type}
                           className="w-3.5 h-3.5 rounded-full object-cover border border-white shadow"
                           onError={(e) => {
-                            e.target.src = '/images/stone_yellow.JPG'
+                            e.target.src = '/assets/images/stone_yellow.JPG'
                           }}
                         />
                       ))}

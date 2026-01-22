@@ -205,7 +205,7 @@ function getCardImagePath(cardName) {
     // All images are stored as: [cardName].JPG
     const imageName = actualCardName + '.JPG';
     // Use relative path (server serves from web/static root)
-    const imagePath = `/static/images/${imageName}`;
+    const imagePath = `/assets/images/${imageName}`;
     
     return imagePath;
 }

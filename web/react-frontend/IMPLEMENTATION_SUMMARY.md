@@ -265,11 +265,11 @@ npm test cardNames.test.js
 **A:** Yes! Use `useSprite` prop per component to override the global setting.
 
 ### Q: What if a card image is missing?
-**A:** The system automatically falls back to `/images/golem_bg.JPG`
+**A:** The system automatically falls back to `/assets/images/golem_bg.JPG`
 
 ### Q: How do I add a new card?
 **A:** 
-1. Add image to `/web/static/images/`
+1. Add image to `/web/assets/images/`
 2. If using sprites, add to sprite sheet and update mapping in cardNames.js
 3. Card will automatically work with both modes
 

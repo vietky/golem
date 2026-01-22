@@ -91,7 +91,7 @@ getCardRenderConfig()
      │   │
      │   └─► FALSE: Call getCardImagePath()
      │                │
-     │                └─► Return { mode: 'image', style: null, imagePath: '/images/golem_0022.JPG' }
+     │                └─► Return { mode: 'image', style: null, imagePath: '/assets/images/golem_0022.JPG' }
      │
      ▼
 Render Output
@@ -141,17 +141,17 @@ Render Output
 ```javascript
 {
   merchant: {
-    src: '/images/full_card.jpg',
+    src: '/assets/images/full_card.jpg',
     cols: 8,
     rows: 6
   },
   golem: {
-    src: '/images/full_golems.jpg',
+    src: '/assets/images/full_golems.jpg',
     cols: 8,
     rows: 5
   },
   token: {
-    src: '/images/full_token.jpg',
+    src: '/assets/images/full_token.jpg',
     cols: 8,
     rows: 8
   }
@@ -173,7 +173,7 @@ Render Output
 {
   mode: 'sprite',
   style: {
-    backgroundImage: 'url(/images/full_golems.jpg)',
+    backgroundImage: 'url(/assets/images/full_golems.jpg)',
     backgroundSize: '800% 500%',
     backgroundPosition: '57.14% 20%',
     backgroundRepeat: 'no-repeat'
@@ -185,7 +185,7 @@ Render Output
 {
   mode: 'image',
   style: null,
-  imagePath: '/images/golem_0022.JPG'
+  imagePath: '/assets/images/golem_0022.JPG'
 }
 ```
 
@@ -194,9 +194,9 @@ Render Output
 ### Sprite Mode
 ```
 Browser Request:
-├─ GET /images/full_card.jpg      (1MB)
-├─ GET /images/full_golems.jpg    (1MB)
-└─ GET /images/full_token.jpg     (500KB)
+├─ GET /assets/images/full_card.jpg      (1MB)
+├─ GET /assets/images/full_golems.jpg    (1MB)
+└─ GET /assets/images/full_token.jpg     (500KB)
 
 Total: 3 requests, ~2.5MB
 Time: ~500ms
@@ -205,11 +205,11 @@ Time: ~500ms
 ### Individual Image Mode
 ```
 Browser Requests:
-├─ GET /images/golem_0022.JPG     (25KB)
-├─ GET /images/golem_0023.JPG     (25KB)
-├─ GET /images/mint_0002.JPG      (25KB)
+├─ GET /assets/images/golem_0022.JPG     (25KB)
+├─ GET /assets/images/golem_0023.JPG     (25KB)
+├─ GET /assets/images/mint_0002.JPG      (25KB)
 ├─ ... (100+ more requests)
-└─ GET /images/trade_2000_0311.JPG (25KB)
+└─ GET /assets/images/trade_2000_0311.JPG (25KB)
 
 Total: 100+ requests, ~2.5MB
 Time: ~2000ms (with HTTP/1.1)

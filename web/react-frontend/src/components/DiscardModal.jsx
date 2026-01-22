@@ -109,11 +109,11 @@ const DiscardModal = () => {
                     ${isMobile ? 'w-10 h-10' : 'w-12 h-12'}
                   `}>
                     <img
-                      src={`/images/stone_${key}.JPG`}
+                      src={`/assets/images/stone_${key}.JPG`}
                       alt={label}
                       className={`rounded-full object-cover ${isMobile ? 'w-8 h-8' : 'w-10 h-10'}`}
                       onError={(e) => {
-                        e.target.src = '/images/stone_yellow.JPG'
+                        e.target.src = '/assets/images/stone_yellow.JPG'
                       }}
                     />
                   </div>

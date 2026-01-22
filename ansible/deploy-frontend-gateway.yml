@@ -62,6 +62,7 @@
           -f Dockerfile.frontend \
           -t golem-frontend:{{ env_config[deploy_env].image_tag }} \
           .
+      output: yes
       register: docker_build
 
     - name: Tag image for local registry

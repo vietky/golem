@@ -134,7 +134,7 @@ const Lobby = ({ onJoinGame }) => {
         ${isMobileLayout ? "p-2" : isCompactLayout ? "p-3" : "p-4 md:p-6"}
       `}
       style={{
-        backgroundImage: "url(/images/background.jpg)",
+        backgroundImage: "url(/assets/images/background.jpg)",
         backgroundSize: "cover",
         backgroundPosition: "center center",
         backgroundRepeat: "no-repeat",
@@ -241,11 +241,11 @@ const Lobby = ({ onJoinGame }) => {
                     `}
                   >
                     <img
-                      src={`/images/avatar/${num}.webp`}
+                      src={`/assets/images/avatar/${num}.webp`}
                       alt={`Avatar ${num}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.target.src = "/images/avatar/1.webp";
+                        e.target.src = "/assets/images/avatar/1.webp";
                       }}
                     />
                   </button>

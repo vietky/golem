@@ -95,8 +95,8 @@ export const getVietnameseCardName = (cardName) => {
 }
 
 export const getCardImagePath = (cardName) => {
-  if (!cardName) return '/images/golem_bg.JPG'
-  return `/images/${cardName}.JPG`
+  if (!cardName) return '/assets/images/golem_bg.JPG'
+  return `/assets/images/${cardName}.JPG`
 }
 
 // ============================================
@@ -112,17 +112,17 @@ const USE_SPRITE_IMAGES = import.meta.env.VITE_USE_SPRITE_IMAGES !== 'false'
 // Sprite configuration
 const SPRITE_CONFIG = {
   merchant: {
-    src: '/images/full_card.jpg',  // 1000x1280
+    src: '/assets/images/full_card.jpg',  // 1000x1280
     cols: 8,
     rows: 6,
   },
   golem: {
-    src: '/images/full_golems.jpg',  // 1200x1280
+    src: '/assets/images/full_golems.jpg',  // 1200x1280
     cols: 8,
     rows: 5,
   },
   token: {
-    src: '/images/full_token.jpg',  // 800x800
+    src: '/assets/images/full_token.jpg',  // 800x800
     cols: 8,
     rows: 8,
   }
@@ -342,7 +342,7 @@ export const getCardRenderConfig = (cardName, options = {}) => {
     return {
       mode: 'image',
       style: null,
-      imagePath: '/images/golem_bg.JPG'
+      imagePath: '/assets/images/golem_bg.JPG'
     }
   }
   
@@ -375,7 +375,7 @@ export const getTokenRenderConfig = (tokenName, options = {}) => {
     return {
       mode: 'image',
       style: null,
-      imagePath: '/images/golem_bg.JPG'
+      imagePath: '/assets/images/golem_bg.JPG'
     }
   }
   
@@ -391,18 +391,18 @@ export const getTokenRenderConfig = (tokenName, options = {}) => {
   
   // Fallback to individual image for tokens
   const tokenImageMap = {
-    'yellow_stone': '/images/stone_yellow.JPG',
-    'pink_stone': '/images/stone_pink.JPG',
-    'blue_stone': '/images/stone_blue.JPG',
-    'green_stone': '/images/stone_green.JPG',
-    'gold_coin': '/images/coin_3.JPG',
-    'silver_coin': '/images/coin_1.JPG',
+    'yellow_stone': '/assets/images/stone_yellow.JPG',
+    'pink_stone': '/assets/images/stone_pink.JPG',
+    'blue_stone': '/assets/images/stone_blue.JPG',
+    'green_stone': '/assets/images/stone_green.JPG',
+    'gold_coin': '/assets/images/coin_3.JPG',
+    'silver_coin': '/assets/images/coin_1.JPG',
   }
   
   return {
     mode: 'image',
     style: null,
-    imagePath: tokenImageMap[tokenName] || '/images/golem_bg.JPG'
+    imagePath: tokenImageMap[tokenName] || '/assets/images/golem_bg.JPG'
   }
 }
 

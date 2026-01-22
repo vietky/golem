@@ -128,10 +128,10 @@ const TradeModal = ({ card, playerResources, onConfirm, onCancel }) => {
   }, [multiplier]);
 
   const crystalTypes = [
-    { key: "yellow", label: "Yellow", image: "/images/stone_yellow.JPG" },
-    { key: "green", label: "Green", image: "/images/stone_green.JPG" },
-    { key: "blue", label: "Blue", image: "/images/stone_blue.JPG" },
-    { key: "pink", label: "Pink", image: "/images/stone_pink.JPG" },
+    { key: "yellow", label: "Yellow", image: "/assets/images/stone_yellow.JPG" },
+    { key: "green", label: "Green", image: "/assets/images/stone_green.JPG" },
+    { key: "blue", label: "Blue", image: "/assets/images/stone_blue.JPG" },
+    { key: "pink", label: "Pink", image: "/assets/images/stone_pink.JPG" },
   ];
 
   const canConfirm = !error && multiplier >= 1;
@@ -188,7 +188,7 @@ const TradeModal = ({ card, playerResources, onConfirm, onCancel }) => {
                       src={image}
                       alt={label}
                       className={`mx-auto rounded-full object-cover ${isMobile ? 'w-6 h-6' : 'w-10 h-10'}`}
-                      onError={(e) => { e.target.src = '/images/stone_yellow.JPG' }}
+                      onError={(e) => { e.target.src = '/assets/images/stone_yellow.JPG' }}
                     />
                     <div className={`font-bold text-gray-800 ${isMobile ? 'text-sm' : 'text-lg'}`}>
                       {amount}
@@ -231,7 +231,7 @@ const TradeModal = ({ card, playerResources, onConfirm, onCancel }) => {
                       src={image}
                       alt={label}
                       className={`mx-auto rounded-full object-cover ${isMobile ? 'w-6 h-6' : 'w-10 h-10'}`}
-                      onError={(e) => { e.target.src = '/images/stone_yellow.JPG' }}
+                      onError={(e) => { e.target.src = '/assets/images/stone_yellow.JPG' }}
                     />
                     <div className={`font-bold text-gray-800 ${isMobile ? 'text-sm' : 'text-lg'}`}>
                       {amount}

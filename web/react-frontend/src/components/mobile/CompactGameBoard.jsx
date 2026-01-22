@@ -201,10 +201,10 @@ const CompactGameBoard = () => {
             // Build crystal badges array
             const crystalBadges = []
             const crystalImages = {
-              yellow: '/images/stone_yellow.JPG',
-              green: '/images/stone_green.JPG',
-              blue: '/images/stone_blue.JPG',
-              pink: '/images/stone_pink.JPG'
+              yellow: '/assets/images/stone_yellow.JPG',
+              green: '/assets/images/stone_green.JPG',
+              blue: '/assets/images/stone_blue.JPG',
+              pink: '/assets/images/stone_pink.JPG'
             }
             Object.entries(deposits).forEach(([type, count]) => {
               for (let i = 0; i < parseInt(count || 0); i++) {
@@ -232,7 +232,7 @@ const CompactGameBoard = () => {
                         src={crystal.src}
                         alt={crystal.type}
                         className="w-4 h-4 rounded-full object-cover border border-white/50 shadow"
-                        onError={(e) => { e.target.src = '/images/stone_yellow.JPG' }}
+                        onError={(e) => { e.target.src = '/assets/images/stone_yellow.JPG' }}
                       />
                     ))}
                   </div>

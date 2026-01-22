@@ -212,7 +212,7 @@ const spriteStyle = getCardSpriteStyle(card.name)
 **A:** Yes! Override per-component with the `useSprite` prop.
 
 ### Q: What if an image is missing?
-**A:** The system automatically falls back to `/images/golem_bg.JPG`.
+**A:** The system automatically falls back to `/assets/images/golem_bg.JPG`.
 
 ## 📝 Summary
 

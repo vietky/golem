@@ -65,7 +65,7 @@ function GameContentWithTheme({ useWebLayout, isMobile, isPortrait, sessionId, s
       {/* Blurred Background Layer */}
       <div className="fixed inset-0 z-0"
         style={{
-          backgroundImage: 'url(/images/background.jpg)',
+          backgroundImage: 'url(/assets/images/background.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
           backgroundRepeat: 'no-repeat',
@@ -185,7 +185,7 @@ function SinglePlayerApp() {
           ${isMobile ? 'p-3' : 'p-6'}
         `}
         style={{
-          backgroundImage: 'url(/images/background.jpg)',
+          backgroundImage: 'url(/assets/images/background.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
           backgroundRepeat: 'no-repeat',
@@ -303,7 +303,7 @@ function SinglePlayerApp() {
             ${isMobile ? 'p-3' : 'p-6'}
           `}
           style={{
-            backgroundImage: 'url(/images/background.jpg)',
+            backgroundImage: 'url(/assets/images/background.jpg)',
             backgroundSize: 'cover',
             backgroundPosition: 'center center',
             backgroundRepeat: 'no-repeat',

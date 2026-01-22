@@ -129,7 +129,7 @@ ws://localhost:8080/ws?session=SESSION_ID&name=NAME&spectate=true
 ### Card System
 - Cards defined in `internal/game/cards.go` (CreateDefaultActionCards, CreateDefaultPointCards)
 - Frontend renders from server state, not local definitions
-- Card images: `web/static/images/cards/` (served at `/static/images/`)
+- Card images: `web/assets/images/cards/` (served at `/assets/images/`)
 
 ## Common Pitfalls
 

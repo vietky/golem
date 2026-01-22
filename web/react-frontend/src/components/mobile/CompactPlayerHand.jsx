@@ -320,7 +320,7 @@ const CompactPlayerHand = () => {
                 {playedCards.map((card, idx) => (
                   <div key={idx} className="aspect-[2/3] rounded-xl overflow-hidden bg-white/10 shadow-lg">
                     <img 
-                      src={`/images/${card.name}.JPG`} 
+                      src={`/assets/images/${card.name}.JPG`} 
                       alt={card.name}
                       className="w-full h-full object-cover"
                       onError={(e) => { e.target.style.display = 'none' }}
@@ -360,7 +360,7 @@ const CompactPlayerHand = () => {
                 {myGolems.map((card, idx) => (
                   <div key={idx} className="aspect-[2/3] rounded-xl overflow-hidden bg-white/10 shadow-lg">
                     <img 
-                      src={`/images/${card.name}.JPG`} 
+                      src={`/assets/images/${card.name}.JPG`} 
                       alt={card.name}
                       className="w-full h-full object-cover"
                       onError={(e) => { e.target.style.display = 'none' }}

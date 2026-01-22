@@ -101,8 +101,8 @@ func main() {
 	staticDir := filepath.Join(".", "web", "static")
 	imagesDir := filepath.Join(staticDir, "images")
 	if _, err := os.Stat(imagesDir); err == nil {
-		mux.Handle("/static/images/", http.StripPrefix("/static/images/", http.FileServer(http.Dir(imagesDir))))
-		log.Info("Serving images from ./web/static/images")
+		mux.Handle("/assets/images/", http.StripPrefix("/assets/images/", http.FileServer(http.Dir(imagesDir))))
+		log.Info("Serving images from ./web/assets/images")
 	} else {
 		log.Error("Images directory does not exist or is inaccessible", zap.String("path", imagesDir), zap.Error(err))
 	}

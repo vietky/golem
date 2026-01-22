@@ -181,7 +181,7 @@ console.log('Has sprite mapping:', hasSprite('golem_0022'))
 import { getCardImagePath } from '../utils/cardNames'
 
 console.log(getCardImagePath('golem_0022'))
-// Output: /images/golem_0022.JPG
+// Output: /assets/images/golem_0022.JPG
 ```
 
 ## ⚡ Performance Tips

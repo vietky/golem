@@ -212,7 +212,7 @@ Added troubleshooting section with quick links to debug guide.
 
 ### Symlinks Created
 - `/Users/avietidol/codes/golem/web/react-frontend/public/sounds` → `../../static/sounds`
-- `/Users/avietidol/codes/golem/web/react-frontend/public/images` → `../../static/images`
+- `/Users/avietidol/codes/golem/web/react-frontend/public/images` → `../../assets/images`
 
 ## Testing Verification
 

@@ -11,8 +11,8 @@ import os
 # Paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-SPRITE_PATH = os.path.join(PROJECT_ROOT, "web/react-frontend/public/images/full_golems.jpg")
-OUTPUT_PATH = os.path.join(PROJECT_ROOT, "web/react-frontend/public/images/normal_dock.JPG")
+SPRITE_PATH = os.path.join(PROJECT_ROOT, "web/react-frontend/public/assets/images/full_golems.jpg")
+OUTPUT_PATH = os.path.join(PROJECT_ROOT, "web/react-frontend/public/assets/images/normal_dock.JPG")
 
 # Sprite config
 COLS = 8

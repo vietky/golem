@@ -65,13 +65,13 @@ export default ({ mode }) => {
           ws: true
         },
         // Serve static images via nginx so caching / headers can be handled there.
-        '/static/images': {
+        '/assets/images': {
           target: nginxHost,
           changeOrigin: true,
           // If your nginx uses HTTPS with self-signed certs in dev, you may set secure: false
           // secure: false
         },
-        '/static/sounds': {
+        '/assets/sounds': {
           target: nginxHost,
           changeOrigin: true,
           // If your nginx uses HTTPS with self-signed certs in dev, you may set secure: false

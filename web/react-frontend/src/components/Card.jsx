@@ -186,10 +186,10 @@ const Card = ({
         })
         
         const crystalImages = {
-          yellow: '/images/stone_yellow.JPG',
-          green: '/images/stone_green.JPG',
-          blue: '/images/stone_blue.JPG',
-          pink: '/images/stone_pink.JPG'
+          yellow: '/assets/images/stone_yellow.JPG',
+          green: '/assets/images/stone_green.JPG',
+          blue: '/assets/images/stone_blue.JPG',
+          pink: '/assets/images/stone_pink.JPG'
         }
         
         return (
@@ -203,11 +203,11 @@ const Card = ({
               {Object.entries(crystalCounts).map(([crystalType, count]) => (
                 <div key={crystalType} className="relative">
                   <img
-                    src={crystalImages[crystalType] || '/images/stone_yellow.JPG'}
+                    src={crystalImages[crystalType] || '/assets/images/stone_yellow.JPG'}
                     alt={crystalType}
                     className="w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover border border-white"
                     onError={(e) => {
-                      e.target.src = '/images/stone_yellow.JPG'
+                      e.target.src = '/assets/images/stone_yellow.JPG'
                     }}
                   />
                   {count > 1 && (
@@ -317,10 +317,10 @@ const Card = ({
           })
           
           const crystalImages = {
-            yellow: '/images/stone_yellow.JPG',
-            green: '/images/stone_green.JPG',
-            blue: '/images/stone_blue.JPG',
-            pink: '/images/stone_pink.JPG'
+            yellow: '/assets/images/stone_yellow.JPG',
+            green: '/assets/images/stone_green.JPG',
+            blue: '/assets/images/stone_blue.JPG',
+            pink: '/assets/images/stone_pink.JPG'
           }
           
           return (
@@ -332,11 +332,11 @@ const Card = ({
                 {Object.entries(crystalCounts).map(([crystalType, count]) => (
                   <div key={crystalType} className="relative">
                     <img
-                      src={crystalImages[crystalType] || '/images/stone_yellow.JPG'}
+                      src={crystalImages[crystalType] || '/assets/images/stone_yellow.JPG'}
                       alt={crystalType}
                       className="w-4 h-4 sm:w-6 sm:h-6 rounded-full object-cover border border-gray-400"
                       onError={(e) => {
-                        e.target.src = '/images/stone_yellow.JPG'
+                        e.target.src = '/assets/images/stone_yellow.JPG'
                       }}
                     />
                     {count > 1 && (

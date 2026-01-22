@@ -18,6 +18,9 @@ WORKDIR /app
 # Copy package files
 COPY web/react-frontend/package*.json ./
 
+RUN echo "VITE_API_HOST is set to: $VITE_API_HOST"
+RUN echo "VITE_NGINX_HOST is set to: $VITE_NGINX_HOST"
+
 # Install dependencies
 RUN npm ci --production=false
 

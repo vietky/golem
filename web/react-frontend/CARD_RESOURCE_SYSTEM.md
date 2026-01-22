@@ -41,7 +41,7 @@ Returns the path to an individual card image.
 
 ```javascript
 getCardImagePath('golem_0022')
-// Returns: '/images/golem_0022.JPG'
+// Returns: '/assets/images/golem_0022.JPG'
 ```
 
 #### `getCardSpriteStyle(cardName, options)`
@@ -143,7 +143,7 @@ const spriteStyle = getCardSpriteStyle(card.name)
   <img 
     src={getCardImagePath(card.name)} 
     className="w-32 h-48"
-    onError={(e) => { e.target.src = '/images/golem_bg.JPG' }}
+    onError={(e) => { e.target.src = '/assets/images/golem_bg.JPG' }}
   />
 )}
 ```
@@ -160,7 +160,7 @@ const config = getCardRenderConfig(card.name)
   <img 
     src={config.imagePath} 
     className="w-32 h-48"
-    onError={(e) => { e.target.src = '/images/golem_bg.JPG' }}
+    onError={(e) => { e.target.src = '/assets/images/golem_bg.JPG' }}
   />
 )}
 ```
@@ -180,17 +180,17 @@ import CardRenderer from '../components/CardRenderer'
 
 The system uses three sprite sheets:
 
-1. **Merchant Cards** (`/images/full_card.jpg`)
+1. **Merchant Cards** (`/assets/images/full_card.jpg`)
    - Size: 1000x1280px
    - Grid: 8 columns × 6 rows
    - Contains: mint cards, trade cards, upgrade cards
 
-2. **Golem Cards** (`/images/full_golems.jpg`)
+2. **Golem Cards** (`/assets/images/full_golems.jpg`)
    - Size: 1200x1280px
    - Grid: 8 columns × 5 rows
    - Contains: all golem/point cards
 
-3. **Tokens** (`/images/full_token.jpg`)
+3. **Tokens** (`/assets/images/full_token.jpg`)
    - Size: 800x800px
    - Grid: 8 columns × 8 rows
    - Contains: stones, coins, arrows
@@ -211,7 +211,7 @@ const MERCHANT_SPRITE_MAP = {
 
 ### Individual Image Files
 
-All cards also have individual image files in `/images/`:
+All cards also have individual image files in `/assets/images/`:
 - Format: `{cardName}.JPG`
 - Example: `golem_0022.JPG`, `mint_0002.JPG`, `trade_0002_0020.JPG`
 
@@ -278,8 +278,8 @@ The test suite covers:
 ### Cards Not Displaying
 
 1. Check if card has sprite mapping: `hasSprite(cardName)`
-2. Verify sprite images are accessible: `/images/full_card.jpg`, `/images/full_golems.jpg`
-3. Check individual image exists: `/images/{cardName}.JPG`
+2. Verify sprite images are accessible: `/assets/images/full_card.jpg`, `/assets/images/full_golems.jpg`
+3. Check individual image exists: `/assets/images/{cardName}.JPG`
 4. Check browser console for 404 errors
 
 ### Sprite Positioning Issues
