@@ -13,14 +13,14 @@
         image_tag: "staging"
         deployment_name: "golem-nginx-staging"
         # Set environment variables for frontend build
-        vite_api_host: "https://game.anhtran.dev/api/golem"
+        vite_api_host: "https://game.anhtran.dev/apps/golem"
         vite_nginx_host: "https://game.anhtran.dev/assets"
       prod:
         namespace: "default"
         image_tag: "latest"
         deployment_name: "golem-nginx"
         # Set environment variables for frontend build
-        vite_api_host: "https://game.anhtran.dev/api/golem"
+        vite_api_host: "https://game.anhtran.dev/apps/golem"
         vite_nginx_host: "https://game.anhtran.dev/assets"
   pre_tasks:
     - name: Validate deploy environment
