@@ -80,11 +80,6 @@ symlinks-create:
 kill-dev:
 	lsof -ti :8080 | xargs kill -INT 2>/dev/null; sleep 2; lsof -ti :8080 | xargs kill -9 2>/dev/null; killall -9 main 2>/dev/null; echo "All servers killed"
 
-# Kubernetes/k3s deployment commands
-k3s-setup-registry: ## Setup local Docker registry on k3s server
-	@echo "Setting up Docker registry on k3s server..."
-	cd ansible && ansible-playbook -i inventory.ini setup-docker-registry.yml
-
 k3s-cleanup: ## Cleanup namespaces (usage: make k3s-cleanup ENV=staging|production|all)
 	@ENV_VAR=$${ENV:-all}; \
 	echo "Cleaning up $$ENV_VAR environment(s)..."; \

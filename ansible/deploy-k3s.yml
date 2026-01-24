@@ -12,7 +12,7 @@
           - "========================================="
           - "Full Stack Deployment"
           - "========================================="
-          - "Backend: k3s cluster (MongoDB, Redis, App)"
+          - "Backend: k3s cluster (Redis, App)"
           - "Frontend: {{ deploy_env | upper }} environment"
           - "========================================="
 
@@ -20,4 +20,4 @@
   import_playbook: deploy-k3s-backend.yml
 
 - name: Deploy Frontend to Nginx
-  import_playbook: deploy-frontend.yml
+  import_playbook: deploy-frontend-gateway.yml
