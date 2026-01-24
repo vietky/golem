@@ -13,14 +13,14 @@
     env_config:
       test:
         namespace: "staging"
-        api_host: "https://game.anhtran.dev:30443/api/golem"
-        nginx_host: "https://game.anhtran.dev:30443/assets"
+        api_host: "https://game.anhtran.dev/api/golem"
+        nginx_host: "https://game.anhtran.dev/assets"
         url_path: "/golem-test"
         deployment_name: "golem-century-staging"
       prod:
         namespace: "default"
-        api_host: "https://game.anhtran.dev:30443/api/golem"
-        nginx_host: "https://game.anhtran.dev:30443/assets"
+        api_host: "https://game.anhtran.dev/api/golem"
+        nginx_host: "https://game.anhtran.dev/assets"
         url_path: "/golem"
         deployment_name: "golem-century"
 

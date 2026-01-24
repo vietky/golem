@@ -214,6 +214,11 @@
           - "All components (Redis, Application) are running"
           - "Replicas: {{ env_config[deploy_env].replicas }}"
           - ""
+          - "Access URLs (HTTPRoute configured on k3s server):"
+          - "  Backend API: https://game.anhtran.dev/apps/golem/api"
+          - "  WebSocket: wss://game.anhtran.dev/apps/golem/ws"
+          - ""
+          - "NOTE: Gateway API resources (HTTPRoute, Gateway) are managed separately on k3s server"
           - "NOTE: To apply or update secrets, use the separate playbook:"
           - "  ansible-playbook -i inventory.ini apply-secrets.yml"
 

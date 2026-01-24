@@ -9,6 +9,4 @@ resources:
   - golem-app/deployment.yaml
   - golem-app/service.yaml
   - golem-app/nginx-deployment.yaml
-  # Don't include gateway.yaml - use existing main-gateway in nginx-gateway namespace
-  # - golem-app/gateway.yaml
-  - golem-app/httproutes.yaml
+  # Gateway and HTTPRoute resources are managed separately on k3s server
