@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: redis
+  name: golem-redis
   labels:
     app: golem
     tier: cache
