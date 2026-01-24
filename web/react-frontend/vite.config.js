@@ -64,6 +64,11 @@ export default ({ mode }) => {
           target: toWsTarget(apiHost),
           ws: true
         },
+        '/api/golem': apiHost,
+        '/ws/golem': {
+          target: toWsTarget(apiHost),
+          ws: true
+        },
         // Serve static images via nginx so caching / headers can be handled there.
         '/assets/images': {
           target: nginxHost,

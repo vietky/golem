@@ -163,6 +163,13 @@
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
+    - name: Restart deployment to load new ConfigMap
+      command: >
+        kubectl rollout restart deployment/golem-century{% if deploy_env == 'staging' %}-staging{% endif %}
+        -n {{ env_config[deploy_env].namespace }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
     - name: Update deployment image for {{ deploy_env }} environment
       command: >
         kubectl set image 
