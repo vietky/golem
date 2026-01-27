@@ -4,6 +4,7 @@ import FantasyMarketArea from '../FantasyMarketArea'
 import DiscardModal from '../DiscardModal'
 import AcquiredCardOverlay from '../AcquiredCardOverlay'
 import GameOverModal from '../GameOverModal'
+import { ChatProvider, ChatOverlay, ChatDialog, ChatToggleButton } from '../Chat'
 import useGameStore from '../../store/gameStore'
 import { getCardSpriteStyle, getCardImagePath } from '../../utils/cardNames'
 
@@ -635,10 +636,19 @@ const MyHandCards = ({ dockPosition }) => {
 // Main Layout Component
 // ============================================
 const FantasyGameLayout = ({ onNewGame, onBackToMenu }) => {
-  const { gameState, myPlayer, currentPlayer } = useGameStore()
+  const { gameState, myPlayer, currentPlayer, playerName } = useGameStore()
   const allPlayers = gameState?.players || []
+  
+  // Chat player name
+  const chatPlayerName = myPlayer?.name || playerName || 'Player'
+  const maxChatMessages = gameState?.maxChatMessages || 50
 
   return (
+    <ChatProvider 
+      playerName={chatPlayerName}
+      maxMessages={maxChatMessages}
+      useWebSocket={true}
+    >
     <div 
       className="h-screen h-[100dvh] relative overflow-hidden flex items-center justify-center"
       style={{
@@ -648,6 +658,17 @@ const FantasyGameLayout = ({ onNewGame, onBackToMenu }) => {
         backgroundRepeat: 'no-repeat'
       }}
     >
+      {/* Chat Overlay */}
+      <ChatOverlay maxVisible={4} />
+      
+      {/* Chat Dialog */}
+      <ChatDialog />
+      
+      {/* Chat Toggle Button */}
+      <div className="fixed bottom-4 right-4 z-[9997]">
+        <ChatToggleButton />
+      </div>
+      
       {/* MAIN CONTAINER - Contains both docks and game arena */}
       {/* Scales to fit viewport while maintaining aspect ratio */}
       <div 
@@ -749,6 +770,7 @@ const FantasyGameLayout = ({ onNewGame, onBackToMenu }) => {
         </div>
       </div>
     </div>
+    </ChatProvider>
   )
 }
 

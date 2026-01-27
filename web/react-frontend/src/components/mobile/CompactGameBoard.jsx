@@ -4,10 +4,11 @@ import useOrientation from '../../hooks/useOrientation'
 import CompactCard from '../CompactCard'
 import DepositModal from '../DepositModal'
 import ConfirmGolemModal from '../ConfirmGolemModal'
+import { ChatProvider, ChatOverlay, ChatDialog, ChatToggleButton } from '../Chat'
 import { showToast } from '../../utils/toast'
 
 const CompactGameBoard = () => {
-  const { gameState, myPlayer, currentPlayer, acquireCard, claimPointCard, startGame, isSpectator } = useGameStore()
+  const { gameState, myPlayer, currentPlayer, acquireCard, claimPointCard, startGame, isSpectator, playerName } = useGameStore()
   const { isMobile, isPortrait } = useOrientation()
   const [depositModal, setDepositModal] = useState({ show: false, card: null, index: null })
   const [confirmGolem, setConfirmGolem] = useState({ show: false, golem: null, index: null })
@@ -17,6 +18,10 @@ const CompactGameBoard = () => {
   const hasEmptyMarket = !gameState.market || Object.keys(gameState.market).length === 0
   const isWaiting = gameState.status === 'waiting' || hasEmptyMarket
   const otherPlayers = gameState.players || []
+  
+  // Chat player name
+  const chatPlayerName = myPlayer?.name || playerName || 'Player'
+  const maxChatMessages = gameState?.maxChatMessages || 50
 
   // Handle start game button click
   const handleStartGame = async () => {
@@ -29,13 +34,29 @@ const CompactGameBoard = () => {
   // If waiting mode, show waiting UI with Start Game button
   if (isWaiting) {
     return (
+      <ChatProvider 
+        playerName={chatPlayerName}
+        maxMessages={maxChatMessages}
+        useWebSocket={true}
+      >
       <div 
         ref={containerRef}
         className={`
-          w-full mx-auto flex items-center justify-center h-full
+          w-full mx-auto flex items-center justify-center h-full relative
           ${isMobile && isPortrait ? 'px-2 py-2' : isMobile ? 'px-2 py-3' : 'px-4 py-4'}
         `}
       >
+        {/* Chat Overlay */}
+        <ChatOverlay maxVisible={3} />
+        
+        {/* Chat Dialog */}
+        <ChatDialog />
+        
+        {/* Chat Toggle Button */}
+        <div className="fixed bottom-20 right-3 z-[9997]">
+          <ChatToggleButton />
+        </div>
+        
         <div className="flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-purple-900/40 to-blue-900/40 backdrop-blur-md rounded-xl border-2 border-purple-400/50 p-6 w-full max-w-md shadow-2xl min-h-[300px]">
           {/* Waiting message */}
           <div className="text-white text-base sm:text-xl font-bold text-center px-4 py-3 bg-black/50 rounded-lg border border-white/30 shadow-xl">
@@ -62,6 +83,7 @@ const CompactGameBoard = () => {
           )}
         </div>
       </div>
+      </ChatProvider>
     )
   }
 
@@ -157,10 +179,15 @@ const CompactGameBoard = () => {
   }
 
   return (
+    <ChatProvider 
+      playerName={chatPlayerName}
+      maxMessages={maxChatMessages}
+      useWebSocket={true}
+    >
     <div 
       ref={containerRef}
       className={`
-        w-full mx-auto flex flex-col h-full
+        w-full mx-auto flex flex-col h-full relative
         ${isMobile && isPortrait 
           ? 'px-2 py-2 gap-2' 
           : isMobile 
@@ -169,6 +196,17 @@ const CompactGameBoard = () => {
         }
       `}
     >
+      {/* Chat Overlay */}
+      <ChatOverlay maxVisible={3} />
+      
+      {/* Chat Dialog */}
+      <ChatDialog />
+      
+      {/* Chat Toggle Button */}
+      <div className="fixed bottom-20 right-3 z-[9997]">
+        <ChatToggleButton />
+      </div>
+
       {/* Action Cards Market */}
       <div className={`
         bg-black/40 rounded-xl flex flex-col flex-1 min-h-0 overflow-hidden
@@ -350,6 +388,7 @@ const CompactGameBoard = () => {
         onCancel={() => setConfirmGolem({ show: false, golem: null, index: null })}
       />
     </div>
+    </ChatProvider>
   )
 }
 

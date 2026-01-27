@@ -11,6 +11,7 @@ import DepositModal from '../DepositModal'
 import ConfirmGolemModal from '../ConfirmGolemModal'
 import AcquiredCardOverlay from '../AcquiredCardOverlay'
 import CollapsibleInfo from '../CollapsibleInfo'
+import { ChatProvider, ChatOverlay, ChatDialog, ChatToggleButton } from '../Chat'
 import { showToast } from '../../utils/toast'
 
 const WebGameLayout = () => {
@@ -239,7 +240,23 @@ const WebGameLayout = () => {
   }
 
   return (
+    <ChatProvider 
+      playerName={chatPlayerName}
+      maxMessages={maxChatMessages}
+      useWebSocket={true}
+    >
     <div className="relative h-full w-full overflow-hidden">
+      {/* Chat Overlay - Shows floating messages */}
+      <ChatOverlay maxVisible={4} />
+      
+      {/* Chat Dialog - Resizable and movable */}
+      <ChatDialog />
+      
+      {/* Chat Toggle Button - Fixed position */}
+      <div className="fixed bottom-4 right-4 z-[9997]">
+        <ChatToggleButton />
+      </div>
+      
       {/* Collapsible Info with Activity Feed */}
       <CollapsibleInfo sessionId={gameState?.sessionID || sessionId || 'unknown'} />
       
@@ -665,6 +682,7 @@ const WebGameLayout = () => {
         <AcquiredCardOverlay />
       </div>
     </div>
+    </ChatProvider>
   )
 }
 
