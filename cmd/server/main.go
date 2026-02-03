@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"golem_century/internal/auth"
 	"golem_century/internal/config"
 	"golem_century/internal/eventstore"
 	"golem_century/internal/logger"
@@ -52,11 +53,41 @@ func main() {
 		defer store.Close()
 	}
 
-	// Create game server with event store
+	// Initialize Firebase authentication if configured
+	var firebaseAuth *auth.FirebaseAuth
+	if cfg.FirebaseCredentialsFile != "" && cfg.GoogleOAuthClientID != "" {
+		sessionStore, err := auth.NewRedisSessionStore(cfg.RedisAddr, cfg.RedisDB)
+		if err != nil {
+			log.Warn("Failed to initialize Redis session store - auth disabled",
+				zap.Error(err))
+		} else {
+			firebaseAuth, err = auth.NewFirebaseAuth(auth.FirebaseAuthConfig{
+				CredentialsFile: cfg.FirebaseCredentialsFile,
+				OAuthClientID:   cfg.GoogleOAuthClientID,
+				OAuthSecret:     cfg.GoogleOAuthClientSecret,
+				RedirectURL:     cfg.GoogleOAuthRedirectURL,
+				SessionStore:    sessionStore,
+				Logger:          log,
+				Domain:          cfg.SessionCookieDomain,
+			})
+			if err != nil {
+				log.Warn("Failed to initialize Firebase auth - auth disabled",
+					zap.Error(err))
+				firebaseAuth = nil
+			} else {
+				log.Info("Firebase authentication initialized successfully")
+			}
+		}
+	} else {
+		log.Info("Firebase authentication not configured - running without auth")
+	}
+
+	// Create game server with event store and auth
 	gameServer := server.NewGameServer(server.NewGameServerRequest{
-		EventStore: store,
-		Logger:     log,
-		Config:     &cfg,
+		EventStore:   store,
+		Logger:       log,
+		Config:       &cfg,
+		FirebaseAuth: firebaseAuth,
 	})
 
 	// Setup routes on a ServeMux so we can wrap with CORS middleware
@@ -84,10 +115,38 @@ func main() {
 		return apiPrefix + path
 	}
 
-	mux.HandleFunc(prefixPath("/ws"), gameServer.HandleWebSocket)
-	mux.HandleFunc(prefixPath("/api/create"), gameServer.HandleCreateSession)
-	mux.HandleFunc(prefixPath("/api/single"), gameServer.HandleCreateSinglePlayer)
-	mux.HandleFunc(prefixPath("/api/join"), gameServer.HandleJoinSession)
+	// Authentication endpoints (no auth middleware required)
+	if firebaseAuth != nil {
+		mux.HandleFunc(prefixPath("/auth/google"), firebaseAuth.HandleGoogleLogin)
+		mux.HandleFunc(prefixPath("/auth/google/callback"), firebaseAuth.HandleGoogleCallback)
+		mux.HandleFunc(prefixPath("/auth/logout"), firebaseAuth.HandleLogout)
+
+		// Profile endpoints (require auth)
+		mux.Handle(prefixPath("/auth/profile"), firebaseAuth.AuthMiddleware(http.HandlerFunc(firebaseAuth.HandleProfile)))
+		mux.Handle(prefixPath("/auth/profile/update"), firebaseAuth.AuthMiddleware(http.HandlerFunc(firebaseAuth.HandleUpdateProfile)))
+
+		log.Info("Authentication endpoints registered")
+	}
+
+	// WebSocket endpoint - uses optional auth middleware (required for players, not for spectators)
+	if firebaseAuth != nil {
+		mux.Handle(prefixPath("/ws"), firebaseAuth.OptionalAuthMiddleware(http.HandlerFunc(gameServer.HandleWebSocket)))
+	} else {
+		mux.HandleFunc(prefixPath("/ws"), gameServer.HandleWebSocket)
+	}
+
+	// Game creation/joining endpoints - require auth if Firebase is configured
+	if firebaseAuth != nil {
+		mux.Handle(prefixPath("/api/create"), firebaseAuth.AuthMiddleware(http.HandlerFunc(gameServer.HandleCreateSession)))
+		mux.Handle(prefixPath("/api/single"), firebaseAuth.AuthMiddleware(http.HandlerFunc(gameServer.HandleCreateSinglePlayer)))
+		mux.Handle(prefixPath("/api/join"), firebaseAuth.AuthMiddleware(http.HandlerFunc(gameServer.HandleJoinSession)))
+	} else {
+		mux.HandleFunc(prefixPath("/api/create"), gameServer.HandleCreateSession)
+		mux.HandleFunc(prefixPath("/api/single"), gameServer.HandleCreateSinglePlayer)
+		mux.HandleFunc(prefixPath("/api/join"), gameServer.HandleJoinSession)
+	}
+
+	// Public endpoints (no auth required)
 	mux.HandleFunc(prefixPath("/api/list"), gameServer.HandleListSessions)
 	mux.HandleFunc(prefixPath("/api/sessions/start"), gameServer.HandleStartGame)
 

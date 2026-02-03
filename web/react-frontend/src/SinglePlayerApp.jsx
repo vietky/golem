@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import SinglePlayerLobby from './components/SinglePlayerLobby'
 import Lobby from './components/Lobby'
 import PlayersInfoBar from './components/PlayersInfoBar'
@@ -139,6 +140,8 @@ function GameContentWithTheme({ useWebLayout, isMobile, isPortrait, sessionId, s
 }
 
 function SinglePlayerApp() {
+  const { roomId } = useParams()
+  const navigate = useNavigate()
   const [gameMode, setGameMode] = useState(null) // null, 'single', 'multi'
   const [inGame, setInGame] = useState(false)
   const { 
@@ -157,21 +160,32 @@ function SinglePlayerApp() {
   } = useGameStore()
   const { isPortrait, isLandscape, isMobile, isTablet, isDesktop, width } = useOrientation()
 
+  // Auto-join if roomId is in URL
+  useEffect(() => {
+    if (roomId && !inGame && !isConnecting) {
+      setGameMode('multi')
+      setInGame(true)
+    }
+  }, [roomId, inGame, isConnecting])
+
   const handleStartSinglePlayer = (sessionId, playerName, playerAvatar) => {
     connectWebSocket(sessionId, playerName, playerAvatar)
     setGameMode('single')
     setInGame(true)
+    navigate(`/room/${sessionId}`)
   }
 
   const handleJoinMultiplayer = (sessionId, playerName, playerAvatar, asSpectator) => {
     connectWebSocket(sessionId, playerName, playerAvatar, asSpectator)
     setGameMode('multi')
     setInGame(true)
+    navigate(`/room/${sessionId}`)
   }
 
   const handleBackToMenu = () => {
     setGameMode(null)
     setInGame(false)
+    navigate('/')
   }
 
   // Mode selection screen - RESPONSIVE

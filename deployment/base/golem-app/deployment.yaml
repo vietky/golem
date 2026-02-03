@@ -27,10 +27,17 @@ spec:
         envFrom:
         - configMapRef:
             name: golem-app-config
+        - configMapRef:
+            name: firebase-auth-config
         - secretRef:
             name: config-golem
             optional: true
-        env: []
+        - secretRef:
+            name: firebase-auth-secret
+            optional: true
+        env:
+        - name: FIREBASE_CREDENTIALS_FILE
+          value: "/etc/firebase/firebase-credentials.json"
         # Uncomment below to use secrets (requires creating secret first)
         # - name: TELEGRAM_BOT_TOKEN
         #   valueFrom:
@@ -65,3 +72,12 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
+        volumeMounts:
+        - name: firebase-credentials
+          mountPath: /etc/firebase
+          readOnly: true
+      volumes:
+      - name: firebase-credentials
+        secret:
+          secretName: firebase-golem
+          optional: true

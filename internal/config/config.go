@@ -24,6 +24,13 @@ type Config struct {
 	WebSocketPingInterval       int // Interval in seconds for WebSocket ping messages (default 15s)
 	WebSocketReadTimeout        int // Timeout in seconds for WebSocket read operations (default 60s)
 	WebSocketWriteTimeout       int // Timeout in seconds for WebSocket write operations (default 10s)
+
+	// Firebase authentication
+	FirebaseCredentialsFile string // Path to Firebase service account JSON
+	GoogleOAuthClientID     string // Google OAuth client ID
+	GoogleOAuthClientSecret string // Google OAuth client secret
+	GoogleOAuthRedirectURL  string // OAuth redirect URL
+	SessionCookieDomain     string // Domain for session cookies (e.g., ".anhtran.dev" for SSO)
 }
 
 // LoadConfig loads configuration from environment variables with defaults
@@ -46,6 +53,13 @@ func LoadConfig() Config {
 		WebSocketPingInterval:       getEnvInt("WEBSOCKET_PING_INTERVAL", 15),
 		WebSocketReadTimeout:        getEnvInt("WEBSOCKET_READ_TIMEOUT", 60),
 		WebSocketWriteTimeout:       getEnvInt("WEBSOCKET_WRITE_TIMEOUT", 10),
+
+		// Firebase authentication
+		FirebaseCredentialsFile: getEnv("FIREBASE_CREDENTIALS_FILE", ""),
+		GoogleOAuthClientID:     getEnv("GOOGLE_OAUTH_CLIENT_ID", ""),
+		GoogleOAuthClientSecret: getEnv("GOOGLE_OAUTH_CLIENT_SECRET", ""),
+		GoogleOAuthRedirectURL:  getEnv("GOOGLE_OAUTH_REDIRECT_URL", ""),
+		SessionCookieDomain:     getEnv("SESSION_COOKIE_DOMAIN", ""),
 	}
 }
 

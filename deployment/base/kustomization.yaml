@@ -9,4 +9,5 @@ resources:
   - golem-app/deployment.yaml
   - golem-app/service.yaml
   - golem-app/nginx-deployment.yaml
+  - firebase-auth.yaml
   # Gateway and HTTPRoute resources are managed separately on k3s server
