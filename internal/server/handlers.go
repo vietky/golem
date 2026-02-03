@@ -7,6 +7,7 @@ import (
 	"slices"
 	"time"
 
+	"golem_century/internal/auth"
 	"golem_century/internal/session"
 
 	"github.com/gorilla/websocket"
@@ -83,6 +84,26 @@ func (gs *GameServer) HandleWebSocketV2(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	// Check authentication for players (spectators don't need auth)
+	var userUID string
+	if !spectateMode && gs.FirebaseAuth != nil {
+		// Get user info from context (set by middleware)
+		ctx := r.Context()
+		userInfo, ok := ctx.Value("user").(*auth.UserInfo)
+		if !ok {
+			log.Warn("❌ WebSocket rejected: Authentication required for players")
+			sendJSONError(w, http.StatusUnauthorized, "Authentication required to join game")
+			return
+		}
+		userUID = userInfo.UID
+		log = log.With(zap.String("userUID", userUID))
+
+		// Use Firebase UID as clientID for authenticated users to support cross-device reconnection
+		if clientID == "" {
+			clientID = userUID
+		}
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Error("❌ WebSocket upgrade failed", zap.Error(err))
@@ -139,6 +160,16 @@ func (gs *GameServer) HandleCreateSession(w http.ResponseWriter, r *http.Request
 	if r.Method != http.MethodPost {
 		sendJSONError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
+	}
+	// Require authentication for creating sessions
+	if gs.FirebaseAuth != nil {
+		ctx := r.Context()
+		userInfo, ok := ctx.Value("user").(*auth.UserInfo)
+		if !ok {
+			sendJSONError(w, http.StatusUnauthorized, "Authentication required to create game")
+			return
+		}
+		gs.Logger.Debug("Authenticated user creating session", zap.String("uid", userInfo.UID), zap.String("email", userInfo.Email))
 	}
 
 	var req struct {

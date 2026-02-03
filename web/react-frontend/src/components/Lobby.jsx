@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { createLogger } from '../utils/logger';
+import { useAuth } from '../contexts/AuthContext';
+import LoginButton from './LoginButton';
 import useGameStore from "../store/gameStore";
 import useOrientation from "../hooks/useOrientation";
 import { apiFetch } from "../utils/api";
@@ -29,6 +32,7 @@ const getInitialPlayerName = () => {
 };
 
 const Lobby = ({ onJoinGame }) => {
+  const { user, isAuthenticated, loading: authLoading, authAvailable } = useAuth();
   const [playerName, setPlayerName] = useState(getInitialPlayerName);
   const [numPlayers, setNumPlayers] = useState(2);
   const [customSessionId, setCustomSessionId] = useState("");
@@ -37,7 +41,15 @@ const Lobby = ({ onJoinGame }) => {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("create");
+  const [authError, setAuthError] = useState(null);
   const { isMobile, isTablet, isPortrait, isLandscape } = useOrientation();
+
+  // Auto-populate player name from user profile
+  useEffect(() => {
+    if (user?.display_name && !playerName) {
+      setPlayerName(user.display_name);
+    }
+  }, [user]);
 
   // Fetch available rooms
   const fetchRooms = async () => {
@@ -82,11 +94,19 @@ const Lobby = ({ onJoinGame }) => {
   }, []);
 
   const createGame = async () => {
+    if (authAvailable && !isAuthenticated) {
+      setAuthError("Please login to create a game");
+      logger.warn("User attempted to create game without authentication");
+      return;
+    }
+
     setLoading(true);
+    setAuthError(null);
     try {
       const response = await apiFetch("/api/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           numPlayers,
           seed: Date.now(),
@@ -102,17 +122,32 @@ const Lobby = ({ onJoinGame }) => {
           fetchRooms();
           setActiveTab("join");
         }, 500);
+      } else if (response.status === 401) {
+        setAuthError("Authentication required. Please login to create a game.");
+        logger.warn("Authentication required for game creation");
+      } else {
+        logger.error("Error creating game:", data);
       }
     } catch (error) {
       logger.error("Error creating game:", error);
+      setAuthError("Failed to create game. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   const joinGame = (sessionId, asSpectator = false) => {
+    if (authAvailable && !asSpectator && !isAuthenticated) {
+      setAuthError("Please login to join a game as a player");
+      logger.warn("User attempted to join game without authentication");
+      return;
+    }
+
+    setAuthError(null);
     if (sessionId) {
-      onJoinGame(sessionId, playerName, selectedAvatar, asSpectator);
+      // For spectators, use a random name
+      const name = asSpectator ? generatePlayerName() : playerName;
+      onJoinGame(sessionId, name, selectedAvatar, asSpectator);
     }
   };
 
@@ -199,6 +234,30 @@ const Lobby = ({ onJoinGame }) => {
           ${isMobileLayout || isCompactLayout ? "space-y-4" : "grid grid-cols-1 md:grid-cols-2 gap-6"}
         `}
         >
+          {/* Auth Status Section */}
+          {authLoading ? (
+            <div className="col-span-full text-center text-white">
+              <p>Loading authentication...</p>
+            </div>
+          ) : (
+            <div className="col-span-full space-y-3">
+              {authAvailable && <LoginButton />}
+              
+              {authError && (
+                <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 text-white text-sm">
+                  {authError}
+                </div>
+              )}
+              
+              {authAvailable && !isAuthenticated && (
+                <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-3 text-white text-sm">
+                  <p className="font-semibold mb-1">Login Required</p>
+                  <p>You need to login to create or join a game as a player. Spectators can view games without logging in.</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Left Column - Player Info (Always visible) */}
           <div className="space-y-4">
             {/* Player Name */}

@@ -89,6 +89,14 @@ k3s-test: ## Test k3s deployment configuration
 	@echo "Testing k3s deployment configuration..."
 	./scripts/test-k3s-deploy.sh
 
+firebase-setup: ## Setup Firebase authentication secrets from secrets/ folder
+	@echo "Setting up Firebase authentication secrets..."
+	./scripts/setup-firebase-secrets.sh
+
+firebase-deploy: firebase-setup ## Deploy Firebase secrets to k3s
+	@echo "Deploying Firebase secrets to k3s..."
+	kubectl apply -f deployment/base/firebase-auth.yaml
+
 k3s-deploy: ## Deploy backend to k3s cluster (production)
 	@echo "Deploying backend to PRODUCTION environment..."
 	cd ansible && DEPLOY_ENV=production ansible-playbook -i inventory.ini deploy-k3s-backend.yml
