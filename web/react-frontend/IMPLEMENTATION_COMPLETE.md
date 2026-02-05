@@ -105,7 +105,6 @@ sendChatMessage: (message) => {
 - ✅ Spectators CAN send chat messages
 - ✅ Spectators CAN receive all messages
 - ❌ Spectators CANNOT make game moves
-- ℹ️ "Spectating" badge shows their status
 
 ---
 

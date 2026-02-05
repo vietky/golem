@@ -57,7 +57,6 @@ npm run build
 - ✅ Spectator CAN send chat messages
 - ✅ Everyone can see spectator messages
 - ❌ Spectator CANNOT make game moves
-- Badge shows "👁️ Spectating"
 
 ---
 
@@ -137,13 +136,6 @@ npm run build
 ┌─────────────────┐
 │ 🎯 Round 3      │  ← Top-left, blue, doesn't overlap
 └─────────────────┘
-```
-
-### Spectator Badge
-```
-        ┌──────────────────┐
-        │ 👁️ Spectating   │  ← Top-center, purple, pulsing
-        └──────────────────┘
 ```
 
 ### Unread Chat Badge

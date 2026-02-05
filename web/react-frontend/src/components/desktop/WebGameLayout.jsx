@@ -254,16 +254,6 @@ const WebGameLayout = () => {
             </div>
           </div>
         )}
-        
-        {/* Spectator Badge */}
-        {isSpectator && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
-            <div className="bg-purple-600/90 backdrop-blur-md text-white px-4 py-2 rounded-full shadow-lg border border-purple-300/30 flex items-center gap-2 animate-pulse">
-              <span className="text-xl">👁️</span>
-              <span className="font-bold text-sm">Spectating</span>
-            </div>
-          </div>
-        )}
 
         {/* Row 1 - ALL Players in one row (auto height) */}
         <div className="flex gap-2 sm:gap-3 justify-center items-center flex-wrap overflow-x-auto">
@@ -577,10 +567,6 @@ const WebGameLayout = () => {
             /* Spectator Info Area */
             <div className="flex-1 bg-black/30 backdrop-blur-md rounded-xl p-2 flex flex-col min-w-0 min-h-0 border border-purple-400/40">
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">👁️</span>
-                  <div className="text-white font-bold text-sm">Spectating</div>
-                </div>
 
                 {/* Timer for spectators */}
                 <div className="flex items-center gap-3">

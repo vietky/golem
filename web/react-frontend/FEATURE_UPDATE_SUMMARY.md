@@ -64,7 +64,6 @@ etc.
 - ✅ Can view all game actions
 - ✅ Can send and receive chat messages
 - ❌ Cannot make game moves (acquire cards, claim golems, etc.)
-- Visual "Spectating" badge shows spectator status
 
 ---
 
