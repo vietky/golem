@@ -6,10 +6,50 @@ namespace: staging
 nameSuffix: -staging
 
 resources:
-  - ../../base
+  - ../../base/redis/pvc.yaml
+  - ../../base/redis/deployment.yaml
+  - ../../base/redis/service.yaml
+  - ../../base/golem-app/configmap.yaml
+  - ../../base/golem-app/deployment.yaml
+  - ../../base/golem-app/service.yaml
+  - ../../base/firebase-auth.yaml
+  - nginx-deployment.yaml
 
 commonLabels:
   environment: staging
+
+patches:
+  - patch: |-
+      - op: replace
+        path: /data/REDIS_ADDR
+        value: "redis-staging.staging.svc.cluster.local:6379"
+      - op: replace
+        path: /data/API_PREFIX
+        value: ""
+    target:
+      kind: ConfigMap
+      name: golem-app-config
+  - patch: |-
+      - op: replace
+        path: /spec/selector/app
+        value: "golem"
+      - op: replace
+        path: /spec/selector/tier
+        value: "backend"
+    target:
+      kind: Service
+      name: golem-century
+  - patch: |-
+      - op: replace
+        path: /spec/selector/app
+        value: "golem"
+      - op: replace
+        path: /spec/selector/tier
+        value: "cache"
+    target:
+      kind: Service
+      name: redis
+
 
 patches:
   - patch: |-

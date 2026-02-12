@@ -8,6 +8,14 @@
     registry_host: "localhost:5000"
     
     env_config:
+      staging:
+        namespace: "staging"
+        image_tag: "staging"
+        deployment_name: "golem-nginx-staging"
+        # Set environment variables for frontend build
+        vite_api_host: "https://game.anhtran.dev/apps/golem-staging"
+        vite_nginx_host: "https://game.anhtran.dev/assets"
+        vite_base_path: "/apps/golem-staging/"
       test:
         namespace: "staging"
         image_tag: "staging"
@@ -15,6 +23,7 @@
         # Set environment variables for frontend build
         vite_api_host: "https://game.anhtran.dev/apps/golem"
         vite_nginx_host: "https://game.anhtran.dev/assets"
+        vite_base_path: "/apps/golem/"
       prod:
         namespace: "default"
         image_tag: "latest"
@@ -22,11 +31,13 @@
         # Set environment variables for frontend build
         vite_api_host: "https://game.anhtran.dev/apps/golem"
         vite_nginx_host: "https://game.anhtran.dev/assets"
+        vite_base_path: "/apps/golem/"
+        vite_nginx_host: "https://game.anhtran.dev/assets"
   pre_tasks:
     - name: Validate deploy environment
       fail:
-        msg: "DEPLOY_ENV must be either 'test' or 'prod'"
-      when: deploy_env not in ['test', 'prod']
+        msg: "DEPLOY_ENV must be either 'staging', 'test', or 'prod'"
+      when: deploy_env not in ['staging', 'test', 'prod']
 
     - name: Display deployment info
       debug:
@@ -53,11 +64,19 @@
         git reset --hard origin/main
       register: git_pull
 
+    - name: Copy staging-specific nginx config
+      copy:
+        src: "{{ playbook_dir }}/../deployment/overlays/staging/nginx-frontend.conf"
+        dest: "{{ git_repo_path }}/deployment/base/golem-app/nginx-frontend.conf"
+      when: deploy_env == 'staging'
+
     - name: Build frontend Docker image
       shell: |
         cd {{ git_repo_path }}
         docker buildx build \
-          --build-arg VITE_API_HOST={{ env_config[deploy_env].vite_api_host }} --build-arg VITE_NGINX_HOST={{ env_config[deploy_env].vite_nginx_host }} \
+          --build-arg VITE_API_HOST={{ env_config[deploy_env].vite_api_host }} \
+          --build-arg VITE_NGINX_HOST={{ env_config[deploy_env].vite_nginx_host }} \
+          --build-arg VITE_BASE_PATH={{ env_config[deploy_env].vite_base_path }} \
           --platform linux/amd64 \
           -f Dockerfile.frontend \
           -t golem-frontend:{{ env_config[deploy_env].image_tag }} \
