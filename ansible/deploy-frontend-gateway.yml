@@ -131,11 +131,14 @@
           - "CDN host: {{ env_config[deploy_env].vite_nginx_host }}"
       when: image_check.stdout.strip() == 'exists' and not (force_rebuild is defined and force_rebuild)
 
-    # - name: Rollout restart to apply new image
-    #   shell: |
-    #     kubectl rollout restart -n {{ env_config[deploy_env].namespace }} \
-    #       deployment/{{ env_config[deploy_env].deployment_name }}
-    #   register: rollout
+    - name: Rollout restart to apply new image
+      shell: |
+        kubectl rollout restart -n {{ env_config[deploy_env].namespace }} \
+          deployment/{{ env_config[deploy_env].deployment_name }}
+      register: rollout
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: image_check.stdout.strip() == 'not_found' or (force_rebuild is defined and force_rebuild)
 
     - name: Wait for rollout to complete
       shell: |
@@ -145,6 +148,7 @@
       register: rollout_status
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: image_check.stdout.strip() == 'not_found' or (force_rebuild is defined and force_rebuild)
 
     - name: Verify frontend pod is ready
       shell: |
@@ -157,6 +161,7 @@
       until: pod_status.stdout == 'True'
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: image_check.stdout.strip() == 'not_found' or (force_rebuild is defined and force_rebuild)
 
     - name: Test frontend endpoint
       uri:
