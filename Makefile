@@ -44,20 +44,15 @@ fe-build-local:
 
 fe-build-gateway: ## Build frontend container for Gateway API deployment
 	docker build \
-		--build-arg VITE_API_HOST=https://game.anhtran.dev/api/golem \
-		--build-arg VITE_NGINX_HOST=https://game.anhtran.dev \
+		--platform linux/amd64 \
+		--build-arg VITE_API_HOST=https://game.anhtran.dev/apps/golem/api \
+		--build-arg VITE_NGINX_HOST=https://statics.vietky.io.vn \
 		--build-arg VITE_BASE_PATH=/apps/golem/ \
 		-f Dockerfile.frontend \
 		-t golem-frontend:latest .
 
 fe-push-gateway: fe-build-gateway ## Build and push frontend to k3s server registry
-	docker save golem-frontend:latest | ssh root@157.66.101.66 'docker load && docker tag golem-frontend:latest localhost:5000/golem-frontend:latest && docker push localhost:5000/golem-frontend:latest'
-
-be-build-gateway: ## Build backend container for Gateway API deployment
-	docker build -t golem-century:latest .
-
-be-push-gateway: be-build-gateway ## Build and push backend to k3s server registry
-	docker save golem-century:latest | ssh root@157.66.101.66 'docker load && docker tag golem-century:latest localhost:5000/golem-century:latest && docker push localhost:5000/golem-century:latest'
+	docker save golem-frontend:latest | ssh root@157.66.101.66 'docker load && docker tag golem-frontend:latest 10.100.0.2:5000/golem-frontend:latest && docker push 10.100.0.2:5000/golem-frontend:latest'
 
 fe-run-local:
 	cd web/react-frontend && npm run dev
@@ -110,42 +105,24 @@ k3s-deploy-version: ## Deploy specific backend version (usage: make k3s-deploy-v
 	echo "Deploying version $(VERSION) to $$ENV_VAR environment..."; \
 	DEPLOY_ENV=$$ENV_VAR APP_VERSION=$(VERSION) cd ansible && ansible-playbook -i inventory.ini deploy-k3s-backend.yml
 
-k3s-frontend-test: ## Deploy frontend to TEST environment (Gateway API)
-	@echo "Deploying frontend to TEST environment..."
-	cd ansible && DEPLOY_ENV=test ansible-playbook -i inventory.ini deploy-frontend-gateway.yml
+k3s-frontend-staging: ## Deploy frontend to STAGING environment (Gateway API)
+	@echo "Deploying frontend to STAGING environment..."
+	cd ansible && DEPLOY_ENV=staging ansible-playbook -i inventory.ini deploy-frontend-gateway.yml
 
 k3s-frontend: ## Deploy frontend to PROD environment (Gateway API)
 	@echo "Deploying frontend to PROD environment..."
-	cd ansible && DEPLOY_ENV=prod ansible-playbook -i inventory.ini deploy-frontend-gateway.yml
-
-k3s-deploy-full-test: ## Deploy full stack to TEST environment
-	@echo "Deploying full stack to TEST environment..."
-	cd ansible && DEPLOY_ENV=test ansible-playbook -i inventory.ini deploy-k3s.yml
+	cd ansible && DEPLOY_ENV=production ansible-playbook -i inventory.ini deploy-frontend-gateway.yml
 
 k3s-deploy-full-prod: ## Deploy full stack to PROD environment
 	@echo "Deploying full stack to PROD environment..."
-	cd ansible && DEPLOY_ENV=prod ansible-playbook -i inventory.ini deploy-k3s.yml
-
-k3s-deploy-gateway: ## Deploy with Gateway API (production)
-	@echo "Deploying with Gateway API to PRODUCTION..."
-	@echo "Building and pushing images..."
-	make be-push-gateway
-	make fe-push-gateway
-	@echo "Applying Gateway API manifests..."
-	ssh root@157.66.101.66 "kubectl apply -f - " < deployment/golem-app/gateway.yaml
-	ssh root@157.66.101.66 "kubectl apply -f - " < deployment/golem-app/httproutes.yaml
-	@echo "Deploying backend and frontend..."
 	cd ansible && DEPLOY_ENV=production ansible-playbook -i inventory.ini deploy-k3s-backend.yml
-	@echo "Gateway API deployment complete!"
+	cd ansible && DEPLOY_ENV=production ansible-playbook -i inventory.ini deploy-frontend-gateway.yml
 
 k3s-deploy-gateway-staging: ## Deploy with Gateway API (staging)
 	@echo "Deploying with Gateway API to STAGING..."
 	@echo "Building and pushing images..."
 	make be-push-gateway
 	make fe-push-gateway
-	@echo "Applying Gateway API manifests..."
-	ssh root@157.66.101.66 "kubectl apply -f - -n staging" < deployment/golem-app/gateway.yaml
-	ssh root@157.66.101.66 "kubectl apply -f - -n staging" < deployment/golem-app/httproutes.yaml
 	@echo "Deploying backend and frontend..."
 	cd ansible && DEPLOY_ENV=staging ansible-playbook -i inventory.ini deploy-k3s-backend.yml
 	@echo "Gateway API deployment complete!"

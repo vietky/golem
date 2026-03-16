@@ -6,7 +6,7 @@
     app_name: golem-century
     deployment_dir: /tmp/golem-deployment
     build_dir: /tmp/golem-build
-    docker_registry: "localhost:5000"
+    docker_registry: "10.100.0.2:5000"
     app_version: "{{ lookup('env', 'APP_VERSION') | default('latest', true) }}"
     full_image_name: "{{ docker_registry }}/{{ app_name }}:{{ app_version }}"
     deploy_env: "{{ lookup('env', 'DEPLOY_ENV') | default('production', true) }}"
@@ -120,7 +120,7 @@
 
     - name: Check if local Docker registry is running
       uri:
-        url: "http://localhost:5000/v2/"
+        url: "http://10.100.0.2:5000/v2/"
         status_code: 200
       register: registry_check
       failed_when: false

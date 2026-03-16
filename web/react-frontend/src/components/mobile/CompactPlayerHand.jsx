@@ -5,6 +5,7 @@ import CompactCard from '../CompactCard'
 import UpgradeModal from '../UpgradeModal'
 import TradeModal from '../TradeModal'
 import PlayedCardsView from '../PlayedCardsView'
+import { getImageUrl } from '../../utils/cdnPaths'
 
 const CompactPlayerHand = () => {
   const { myPlayer, currentPlayer, playCard, playCardWithUpgrade, playCardWithTrade, rest } = useGameStore()
@@ -320,7 +321,7 @@ const CompactPlayerHand = () => {
                 {playedCards.map((card, idx) => (
                   <div key={idx} className="aspect-[2/3] rounded-xl overflow-hidden bg-white/10 shadow-lg">
                     <img 
-                      src={`/assets/images/${card.name}.JPG`} 
+                      src={getImageUrl(`${card.name}.JPG`)} 
                       alt={card.name}
                       className="w-full h-full object-cover"
                       onError={(e) => { e.target.style.display = 'none' }}
@@ -360,7 +361,7 @@ const CompactPlayerHand = () => {
                 {myGolems.map((card, idx) => (
                   <div key={idx} className="aspect-[2/3] rounded-xl overflow-hidden bg-white/10 shadow-lg">
                     <img 
-                      src={`/assets/images/${card.name}.JPG`} 
+                      src={getImageUrl(`${card.name}.JPG`)} 
                       alt={card.name}
                       className="w-full h-full object-cover"
                       onError={(e) => { e.target.style.display = 'none' }}

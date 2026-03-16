@@ -1,4 +1,6 @@
 // Vietnamese card names mapping (from characters.js)
+import { getImageUrl } from './cdnPaths'
+
 export const vietnameseCardNames = {
   // GOLEM CARDS (Point Cards)
   'golem_0022': 'Thạch Linh Sơ Cấp',
@@ -95,8 +97,8 @@ export const getVietnameseCardName = (cardName) => {
 }
 
 export const getCardImagePath = (cardName) => {
-  if (!cardName) return '/assets/images/golem_bg.JPG'
-  return `/assets/images/${cardName}.JPG`
+  if (!cardName) return getImageUrl('golem_bg.JPG')
+  return getImageUrl(`${cardName}.JPG`)
 }
 
 // ============================================
@@ -112,17 +114,17 @@ const USE_SPRITE_IMAGES = import.meta.env.VITE_USE_SPRITE_IMAGES !== 'false'
 // Sprite configuration
 const SPRITE_CONFIG = {
   merchant: {
-    src: '/assets/images/full_card.jpg',  // 1000x1280
+    src: getImageUrl('full_card.jpg'),  // 1000x1280
     cols: 8,
     rows: 6,
   },
   golem: {
-    src: '/assets/images/full_golems.jpg',  // 1200x1280
+    src: getImageUrl('full_golems.jpg'),  // 1200x1280
     cols: 8,
     rows: 5,
   },
   token: {
-    src: '/assets/images/full_token.jpg',  // 800x800
+    src: getImageUrl('full_token.jpg'),  // 800x800
     cols: 8,
     rows: 8,
   }
@@ -342,7 +344,7 @@ export const getCardRenderConfig = (cardName, options = {}) => {
     return {
       mode: 'image',
       style: null,
-      imagePath: '/assets/images/golem_bg.JPG'
+      imagePath: getImageUrl('golem_bg.JPG')
     }
   }
   
@@ -375,7 +377,7 @@ export const getTokenRenderConfig = (tokenName, options = {}) => {
     return {
       mode: 'image',
       style: null,
-      imagePath: '/assets/images/golem_bg.JPG'
+      imagePath: getImageUrl('golem_bg.JPG')
     }
   }
   
@@ -391,18 +393,18 @@ export const getTokenRenderConfig = (tokenName, options = {}) => {
   
   // Fallback to individual image for tokens
   const tokenImageMap = {
-    'yellow_stone': '/assets/images/stone_yellow.JPG',
-    'pink_stone': '/assets/images/stone_pink.JPG',
-    'blue_stone': '/assets/images/stone_blue.JPG',
-    'green_stone': '/assets/images/stone_green.JPG',
-    'gold_coin': '/assets/images/coin_3.JPG',
-    'silver_coin': '/assets/images/coin_1.JPG',
+    'yellow_stone': getImageUrl('stone_yellow.JPG'),
+    'pink_stone': getImageUrl('stone_pink.JPG'),
+    'blue_stone': getImageUrl('stone_blue.JPG'),
+    'green_stone': getImageUrl('stone_green.JPG'),
+    'gold_coin': getImageUrl('coin_3.JPG'),
+    'silver_coin': getImageUrl('coin_1.JPG'),
   }
   
   return {
     mode: 'image',
     style: null,
-    imagePath: tokenImageMap[tokenName] || '/assets/images/golem_bg.JPG'
+    imagePath: tokenImageMap[tokenName] || getImageUrl('golem_bg.JPG')
   }
 }
 

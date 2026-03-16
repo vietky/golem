@@ -2,6 +2,7 @@ import React from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getCardSpriteStyle, getCardImagePath } from '../utils/cardNames'
+import { getImageUrl } from '../utils/cdnPaths'
 
 const ConfirmGolemModal = ({ isOpen, golem, onConfirm, onCancel }) => {
   if (!isOpen || !golem) return null
@@ -74,25 +75,25 @@ const ConfirmGolemModal = ({ isOpen, golem, onConfirm, onCancel }) => {
                   <div className="flex gap-1 flex-wrap">
                     {requirement.yellow > 0 && (
                       <div className="flex items-center gap-0.5 bg-yellow-500/20 rounded px-1.5 py-0.5">
-                        <img src="/assets/images/stone_yellow.JPG" alt="yellow" className="w-4 h-4 rounded-full" />
+                        <img src={getImageUrl('stone_yellow.JPG')} alt="yellow" className="w-4 h-4 rounded-full" />
                         <span className="text-yellow-300 text-sm font-semibold">{requirement.yellow}</span>
                       </div>
                     )}
                     {requirement.green > 0 && (
                       <div className="flex items-center gap-0.5 bg-green-500/20 rounded px-1.5 py-0.5">
-                        <img src="/assets/images/stone_green.JPG" alt="green" className="w-4 h-4 rounded-full" />
+                        <img src={getImageUrl('stone_green.JPG')} alt="green" className="w-4 h-4 rounded-full" />
                         <span className="text-green-300 text-sm font-semibold">{requirement.green}</span>
                       </div>
                     )}
                     {requirement.blue > 0 && (
                       <div className="flex items-center gap-0.5 bg-blue-500/20 rounded px-1.5 py-0.5">
-                        <img src="/assets/images/stone_blue.JPG" alt="blue" className="w-4 h-4 rounded-full" />
+                        <img src={getImageUrl('stone_blue.JPG')} alt="blue" className="w-4 h-4 rounded-full" />
                         <span className="text-blue-300 text-sm font-semibold">{requirement.blue}</span>
                       </div>
                     )}
                     {requirement.pink > 0 && (
                       <div className="flex items-center gap-0.5 bg-pink-500/20 rounded px-1.5 py-0.5">
-                        <img src="/assets/images/stone_pink.JPG" alt="pink" className="w-4 h-4 rounded-full" />
+                        <img src={getImageUrl('stone_pink.JPG')} alt="pink" className="w-4 h-4 rounded-full" />
                         <span className="text-pink-300 text-sm font-semibold">{requirement.pink}</span>
                       </div>
                     )}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useGameStore from '../store/gameStore'
+import { getImageUrl } from '../utils/cdnPaths'
 
 const CollectModal = ({ card, cardIndex, onClose }) => {
   const { collectCrystals } = useGameStore()
@@ -25,10 +26,10 @@ const CollectModal = ({ card, cardIndex, onClose }) => {
   }
 
   const crystalImages = {
-    yellow: '/assets/images/stone_yellow.JPG',
-    green: '/assets/images/stone_green.JPG',
-    blue: '/assets/images/stone_blue.JPG',
-    pink: '/assets/images/stone_pink.JPG'
+    yellow: getImageUrl('stone_yellow.JPG'),
+    green: getImageUrl('stone_green.JPG'),
+    blue: getImageUrl('stone_blue.JPG'),
+    pink: getImageUrl('stone_pink.JPG')
   }
 
   const handleSelectPosition = (position) => {
@@ -117,11 +118,11 @@ const CollectModal = ({ card, cardIndex, onClose }) => {
                     </div>
                     <div className="flex-1 flex items-center gap-3">
                       <img
-                        src={crystalImages[crystalType] || '/assets/images/stone_yellow.JPG'}
+                        src={crystalImages[crystalType] || getImageUrl('stone_yellow.JPG')}
                         alt={crystalTypeNames[crystalType] || crystalType}
                         className="w-10 h-10 rounded-full object-cover"
                         onError={(e) => {
-                          e.target.src = '/assets/images/stone_yellow.JPG'
+                          e.target.src = getImageUrl('stone_yellow.JPG')
                         }}
                       />
                       <span className="text-lg font-semibold text-gray-800">
