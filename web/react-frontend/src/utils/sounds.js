@@ -3,6 +3,8 @@
  * Handles playing sound effects with overlap prevention and mute functionality
  */
 import { createLogger } from '../utils/logger'
+import { getSoundUrl } from './cdnPaths'
+
 const logger = createLogger('SoundManager');
 class SoundManager {
   constructor() {
@@ -10,15 +12,15 @@ class SoundManager {
     this.currentlyPlaying = new Set();
     this.isMuted = false;
     
-    // Initialize sound files
+    // Initialize sound files with CDN URLs
     this.soundFiles = {
-      playCard: '/assets/sounds/play_card.mp3',
-      acquireMerchant: '/assets/sounds/acquire_merchant.mp3',
-      claimPointCard: '/assets/sounds/claim_point_card.mp3',
-      rest: '/assets/sounds/rest.mp3',
-      gameOver: '/assets/sounds/game_over.mp3',
-      myTurn: '/assets/sounds/my_turn.mp3',
-      nearlyEnd: '/assets/sounds/nearly_end.mp3',
+      playCard: getSoundUrl('play_card.mp3'),
+      acquireMerchant: getSoundUrl('acquire_merchant.mp3'),
+      claimPointCard: getSoundUrl('claim_point_card.mp3'),
+      rest: getSoundUrl('rest.mp3'),
+      gameOver: getSoundUrl('game_over.mp3'),
+      myTurn: getSoundUrl('my_turn.mp3'),
+      nearlyEnd: getSoundUrl('nearly_end.mp3'),
     };
     
     // Load mute state from localStorage

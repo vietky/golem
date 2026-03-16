@@ -5,7 +5,7 @@
   vars:
     deploy_env: "{{ lookup('env', 'DEPLOY_ENV') | default('prod', true) }}"
     git_repo_path: "/opt/jenkins/repos/golem"
-    registry_host: "localhost:5000"
+    registry_host: "10.100.0.2:5000"
     
     env_config:
       staging:
@@ -16,28 +16,19 @@
         vite_api_host: "https://game.anhtran.dev/apps/golem-staging"
         vite_nginx_host: "https://game.anhtran.dev/assets"
         vite_base_path: "/apps/golem-staging/"
-      test:
-        namespace: "staging"
-        image_tag: "staging"
-        deployment_name: "golem-nginx-staging"
-        # Set environment variables for frontend build
-        vite_api_host: "https://game.anhtran.dev/apps/golem"
-        vite_nginx_host: "https://game.anhtran.dev/assets"
-        vite_base_path: "/apps/golem/"
-      prod:
+      production:
         namespace: "default"
         image_tag: "latest"
         deployment_name: "golem-nginx"
         # Set environment variables for frontend build
         vite_api_host: "https://game.anhtran.dev/apps/golem"
-        vite_nginx_host: "https://game.anhtran.dev/assets"
+        vite_nginx_host: "https://statics.vietky.io.vn"
         vite_base_path: "/apps/golem/"
-        vite_nginx_host: "https://game.anhtran.dev/assets"
   pre_tasks:
     - name: Validate deploy environment
       fail:
-        msg: "DEPLOY_ENV must be either 'staging', 'test', or 'prod'"
-      when: deploy_env not in ['staging', 'test', 'prod']
+        msg: "DEPLOY_ENV must be either 'staging' or 'production'"
+      when: deploy_env not in ['staging', 'production']
 
     - name: Display deployment info
       debug:
@@ -64,11 +55,43 @@
         git reset --hard origin/main
       register: git_pull
 
+    - name: Create deployment directories
+      shell: mkdir -p {{ git_repo_path }}/deployment/base/golem-app/
+
+    - name: Copy nginx config from playbook directory to remote
+      copy:
+        src: "{{ playbook_dir }}/../deployment/base/golem-app/nginx-frontend.conf"
+        dest: "{{ git_repo_path }}/deployment/base/golem-app/nginx-frontend.conf"
+        mode: '0644'
+
     - name: Copy staging-specific nginx config
       copy:
         src: "{{ playbook_dir }}/../deployment/overlays/staging/nginx-frontend.conf"
         dest: "{{ git_repo_path }}/deployment/base/golem-app/nginx-frontend.conf"
+        mode: '0644'
       when: deploy_env == 'staging'
+
+    - name: Check if image exists in local registry
+      shell: |
+        curl -s http://{{ registry_host }}/v2/golem-frontend/tags/list | grep -q "{{ env_config[deploy_env].image_tag }}" && echo "exists" || echo "not_found"
+      register: image_check
+      failed_when: false
+      changed_when: false
+
+    - name: Force rebuild frontend if env vars have changed
+      set_fact:
+        force_rebuild: true
+      when: 
+        - image_check.stdout.strip() == 'exists'
+        - deploy_env == 'production'
+
+    - name: Display build decision
+      debug:
+        msg:
+          - "Image check result: {{ image_check.stdout.strip() }}"
+          - "Force rebuild: {{ force_rebuild is defined and force_rebuild | default(false) }}"
+          - "Building with CDN host: {{ env_config[deploy_env].vite_nginx_host }}"
+          - "Building with API host: {{ env_config[deploy_env].vite_api_host }}"
 
     - name: Build frontend Docker image
       shell: |
@@ -82,22 +105,37 @@
           -t golem-frontend:{{ env_config[deploy_env].image_tag }} \
           .
       register: docker_build
+      when: image_check.stdout.strip() == 'not_found' or (force_rebuild is defined and force_rebuild)
+      retries: 3
+      delay: 10
+      until: docker_build is succeeded
 
     - name: Tag image for local registry
       shell: |
         docker tag golem-frontend:{{ env_config[deploy_env].image_tag }} \
           {{ registry_host }}/golem-frontend:{{ env_config[deploy_env].image_tag }}
+      when: image_check.stdout.strip() == 'not_found' or (force_rebuild is defined and force_rebuild)
 
     - name: Push to local registry
       shell: |
         docker push {{ registry_host }}/golem-frontend:{{ env_config[deploy_env].image_tag }}
       register: docker_push
+      when: image_check.stdout.strip() == 'not_found' or (force_rebuild is defined and force_rebuild)
 
-    - name: Restart nginx deployment
-      shell: |
-        kubectl rollout restart -n {{ env_config[deploy_env].namespace }} \
-          deployment/{{ env_config[deploy_env].deployment_name }}
-      register: rollout
+    - name: Display image status
+      debug:
+        msg:
+          - "Image {{ env_config[deploy_env].image_tag }} status: {{ image_check.stdout.strip() }}"
+          - "Build: {{ 'performed' if (image_check.stdout.strip() == 'not_found' or (force_rebuild is defined and force_rebuild)) else 'skipped (already exists)' }}"
+          - "CDN enabled: yes"
+          - "CDN host: {{ env_config[deploy_env].vite_nginx_host }}"
+      when: image_check.stdout.strip() == 'exists' and not (force_rebuild is defined and force_rebuild)
+
+    # - name: Rollout restart to apply new image
+    #   shell: |
+    #     kubectl rollout restart -n {{ env_config[deploy_env].namespace }} \
+    #       deployment/{{ env_config[deploy_env].deployment_name }}
+    #   register: rollout
 
     - name: Wait for rollout to complete
       shell: |
@@ -105,6 +143,31 @@
           deployment/{{ env_config[deploy_env].deployment_name }} \
           --timeout=120s
       register: rollout_status
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Verify frontend pod is ready
+      shell: |
+        kubectl get pods -n {{ env_config[deploy_env].namespace }} \
+          -l app=golem,tier=frontend \
+          -o jsonpath='{.items[0].status.conditions[?(@.type=="Ready")].status}'
+      register: pod_status
+      retries: 5
+      delay: 5
+      until: pod_status.stdout == 'True'
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Test frontend endpoint
+      uri:
+        url: "http://localhost/apps/golem/"
+        method: GET
+        status_code: 200
+      register: frontend_test
+      retries: 3
+      delay: 2
+      until: frontend_test is succeeded
+      failed_when: false
 
     - name: Display deployment success
       debug:
@@ -114,3 +177,10 @@
           - "Namespace: {{ env_config[deploy_env].namespace }}"
           - "Access: https://game.anhtran.dev/"
           - "Status: {{ rollout_status.stdout }}"
+          - ""
+          - "CDN Configuration:"
+          - "  CDN Host: {{ env_config[deploy_env].vite_nginx_host }}"
+          - "  Images served from: {{ env_config[deploy_env].vite_nginx_host }}/images"
+          - "  Sounds served from: {{ env_config[deploy_env].vite_nginx_host }}/sounds"
+          - ""
+          - "Frontend test: {{ 'PASSED' if frontend_test is succeeded else 'FAILED - Check logs' }}"

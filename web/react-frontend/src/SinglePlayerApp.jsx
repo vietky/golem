@@ -19,6 +19,7 @@ import useOrientation from './hooks/useOrientation'
 import useGameSounds from './hooks/useGameSounds'
 import { MobileLayoutProvider } from './contexts/MobileLayoutContext'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
+import { getImageUrl } from './utils/cdnPaths'
 
 // Game Content with Theme Support
 function GameContentWithTheme({ useWebLayout, isMobile, isPortrait, sessionId, setInGame, setGameMode }) {
@@ -66,7 +67,7 @@ function GameContentWithTheme({ useWebLayout, isMobile, isPortrait, sessionId, s
       {/* Blurred Background Layer */}
       <div className="fixed inset-0 z-0"
         style={{
-          backgroundImage: 'url(/assets/images/background.jpg)',
+          backgroundImage: `url(${getImageUrl('background.jpg')})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
           backgroundRepeat: 'no-repeat',
@@ -199,7 +200,7 @@ function SinglePlayerApp() {
           ${isMobile ? 'p-3' : 'p-6'}
         `}
         style={{
-          backgroundImage: 'url(/assets/images/background.jpg)',
+          backgroundImage: `url(${getImageUrl('background.jpg')})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
           backgroundRepeat: 'no-repeat',
@@ -317,7 +318,7 @@ function SinglePlayerApp() {
             ${isMobile ? 'p-3' : 'p-6'}
           `}
           style={{
-            backgroundImage: 'url(/assets/images/background.jpg)',
+            backgroundImage: `url(${getImageUrl('background.jpg')})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center center',
             backgroundRepeat: 'no-repeat',

@@ -25,11 +25,19 @@ export default ({ mode }) => {
   // Configure log level: DEBUG, INFO, WARN, ERROR, NONE
   // Default to DEBUG in development, INFO in production
   const logLevel = env.VITE_LOG_LEVEL || (isDev ? 'DEBUG' : 'INFO')
+  const isCdn = nginxHost == 'https://statics.vietky.io.vn'
+  const images = isCdn ? 'images' : 'assets/images';
+  const sounds = isCdn ? 'sounds':'assets/sounds'
 
   // For production, use /apps/golem/ as base path for frontend serving
   // For dev, use ./ for local development
   const base = isDev ? "./" : (env.VITE_BASE_PATH || "/apps/golem/");
-  console.log('mode:', mode, ' | apiHost:', apiHost, ' | nginxHost:', nginxHost, ' | enableSourceMaps:', enableSourceMaps, ' | base:', base, ' | logLevel:', logLevel)
+  
+  // CDN configuration for images and sounds
+  const cdnImagesUrl = isCdn ? `${nginxHost}/images` : `/${images}`;
+  const cdnSoundsUrl = isCdn ? `${nginxHost}/sounds` : `/${sounds}`;
+  
+  console.log('mode:', mode, ' | apiHost:', apiHost, ' | nginxHost:', nginxHost, ' | enableSourceMaps:', enableSourceMaps, ' | base:', base, ' | logLevel:', logLevel, ' | CDN Images:', cdnImagesUrl, ' | CDN Sounds:', cdnSoundsUrl)
   return defineConfig({
     base: base, 
     plugins: [react()],
@@ -38,6 +46,8 @@ export default ({ mode }) => {
     // Make log level available to app
     define: {
       'import.meta.env.VITE_LOG_LEVEL': JSON.stringify(logLevel),
+      'import.meta.env.VITE_CDN_IMAGES_URL': JSON.stringify(cdnImagesUrl),
+      'import.meta.env.VITE_CDN_SOUNDS_URL': JSON.stringify(cdnSoundsUrl),
     },
 
     // build.sourcemap accepts: true | false | 'hidden'
@@ -70,13 +80,13 @@ export default ({ mode }) => {
           ws: true
         },
         // Serve static images via nginx so caching / headers can be handled there.
-        '/assets/images': {
+        [`/${images}`]: {
           target: nginxHost,
           changeOrigin: true,
           // If your nginx uses HTTPS with self-signed certs in dev, you may set secure: false
           // secure: false
         },
-        '/assets/sounds': {
+        [`/${sounds}`]: {
           target: nginxHost,
           changeOrigin: true,
           // If your nginx uses HTTPS with self-signed certs in dev, you may set secure: false
