@@ -16,10 +16,14 @@ spec:
       labels:
         app: golem
         tier: frontend
+      annotations:
+        # Force pod restart on each deployment
+        deployment.kubernetes.io/restart: "0"
     spec:
       containers:
       - name: nginx
         image: localhost:5000/golem-frontend:latest
+        # Always pull the latest image on pod restart
         imagePullPolicy: Always
         ports:
         - containerPort: 80
@@ -37,12 +41,16 @@ spec:
             port: 80
           initialDelaySeconds: 10
           periodSeconds: 10
+          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /apps/golem/
             port: 80
           initialDelaySeconds: 5
           periodSeconds: 5
+          failureThreshold: 2
+      # Force new pod on every update
+      restartPolicy: Always
 ---
 apiVersion: v1
 kind: Service

@@ -113,6 +113,20 @@ k3s-frontend: ## Deploy frontend to PROD environment (Gateway API)
 	@echo "Deploying frontend to PROD environment..."
 	cd ansible && DEPLOY_ENV=production ansible-playbook -i inventory.ini deploy-frontend-gateway.yml
 
+k3s-frontend-verify-staging: ## Verify STAGING frontend deployment
+	@echo "Verifying STAGING frontend deployment..."
+	ssh root@157.66.101.66 'bash -s staging' < scripts/verify-frontend-deployment.sh
+
+k3s-frontend-verify: ## Verify PROD frontend deployment
+	@echo "Verifying PROD frontend deployment..."
+	ssh root@157.66.101.66 'bash -s production' < scripts/verify-frontend-deployment.sh
+
+k3s-frontend-test-staging: k3s-frontend-staging k3s-frontend-verify-staging ## Deploy and verify STAGING frontend
+	@echo "✅ STAGING frontend deployment and verification complete!"
+
+k3s-frontend-test: k3s-frontend k3s-frontend-verify ## Deploy and verify PROD frontend
+	@echo "✅ PROD frontend deployment and verification complete!"
+
 k3s-deploy-full-prod: ## Deploy full stack to PROD environment
 	@echo "Deploying full stack to PROD environment..."
 	cd ansible && DEPLOY_ENV=production ansible-playbook -i inventory.ini deploy-k3s-backend.yml
