@@ -4,6 +4,7 @@ import { createLogger } from '../utils/logger';
 import useGameStore from "../store/gameStore";
 import useOrientation from "../hooks/useOrientation";
 import { apiFetch } from "../utils/api";
+import { cdnImages } from '../utils/cdnAssets';
 
 const logger = createLogger('Lobby');
 
@@ -134,7 +135,7 @@ const Lobby = ({ onJoinGame }) => {
         ${isMobileLayout ? "p-2" : isCompactLayout ? "p-3" : "p-4 md:p-6"}
       `}
       style={{
-        backgroundImage: "url(/assets/images/background.jpg)",
+        backgroundImage: `url(${cdnImages.background})`,
         backgroundSize: "cover",
         backgroundPosition: "center center",
         backgroundRepeat: "no-repeat",
@@ -241,11 +242,11 @@ const Lobby = ({ onJoinGame }) => {
                     `}
                   >
                     <img
-                      src={`/assets/images/avatar/${num}.webp`}
+                      src={cdnImages.getAvatarUrl(num)}
                       alt={`Avatar ${num}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.target.src = "/assets/images/avatar/1.webp";
+                        e.target.src = cdnImages.getAvatarUrl(1);
                       }}
                     />
                   </button>

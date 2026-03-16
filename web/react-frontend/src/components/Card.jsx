@@ -4,6 +4,7 @@ import CrystalStack from './CrystalStack'
 import useGameStore from '../store/gameStore'
 import useOrientation from '../hooks/useOrientation'
 import { getVietnameseCardName, getCardImagePath, getCardSpriteStyle } from '../utils/cardNames'
+import { cdnImages } from '../utils/cdnAssets'
 
 const Card = ({ 
   card, 
@@ -186,10 +187,10 @@ const Card = ({
         })
         
         const crystalImages = {
-          yellow: '/assets/images/stone_yellow.JPG',
-          green: '/assets/images/stone_green.JPG',
-          blue: '/assets/images/stone_blue.JPG',
-          pink: '/assets/images/stone_pink.JPG'
+          yellow: cdnImages.stone_yellow,
+          green: cdnImages.stone_green,
+          blue: cdnImages.stone_blue,
+          pink: cdnImages.stone_pink
         }
         
         return (
@@ -203,11 +204,11 @@ const Card = ({
               {Object.entries(crystalCounts).map(([crystalType, count]) => (
                 <div key={crystalType} className="relative">
                   <img
-                    src={crystalImages[crystalType] || '/assets/images/stone_yellow.JPG'}
+                    src={crystalImages[crystalType] || cdnImages.stone_yellow}
                     alt={crystalType}
                     className="w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover border border-white"
                     onError={(e) => {
-                      e.target.src = '/assets/images/stone_yellow.JPG'
+                      e.target.src = cdnImages.stone_yellow
                     }}
                   />
                   {count > 1 && (
@@ -317,10 +318,10 @@ const Card = ({
           })
           
           const crystalImages = {
-            yellow: '/assets/images/stone_yellow.JPG',
-            green: '/assets/images/stone_green.JPG',
-            blue: '/assets/images/stone_blue.JPG',
-            pink: '/assets/images/stone_pink.JPG'
+            yellow: cdnImages.stone_yellow,
+            green: cdnImages.stone_green,
+            blue: cdnImages.stone_blue,
+            pink: cdnImages.stone_pink
           }
           
           return (
@@ -332,11 +333,11 @@ const Card = ({
                 {Object.entries(crystalCounts).map(([crystalType, count]) => (
                   <div key={crystalType} className="relative">
                     <img
-                      src={crystalImages[crystalType] || '/assets/images/stone_yellow.JPG'}
+                      src={crystalImages[crystalType] || cdnImages.stone_yellow}
                       alt={crystalType}
                       className="w-4 h-4 sm:w-6 sm:h-6 rounded-full object-cover border border-gray-400"
                       onError={(e) => {
-                        e.target.src = '/assets/images/stone_yellow.JPG'
+                        e.target.src = cdnImages.stone_yellow
                       }}
                     />
                     {count > 1 && (

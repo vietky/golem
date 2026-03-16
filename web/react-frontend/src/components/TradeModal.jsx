@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import useOrientation from "../hooks/useOrientation";
+import { cdnImages } from '../utils/cdnAssets';
+import { cdnImages } from '../utils/cdnAssets';
 
 const TradeModal = ({ card, playerResources, onConfirm, onCancel }) => {
   const [multiplier, setMultiplier] = useState(1);
@@ -128,10 +130,10 @@ const TradeModal = ({ card, playerResources, onConfirm, onCancel }) => {
   }, [multiplier]);
 
   const crystalTypes = [
-    { key: "yellow", label: "Yellow", image: "/assets/images/stone_yellow.JPG" },
-    { key: "green", label: "Green", image: "/assets/images/stone_green.JPG" },
-    { key: "blue", label: "Blue", image: "/assets/images/stone_blue.JPG" },
-    { key: "pink", label: "Pink", image: "/assets/images/stone_pink.JPG" },
+    { key: "yellow", label: "Yellow", image: cdnImages.stone_yellow },
+    { key: "green", label: "Green", image: cdnImages.stone_green },
+    { key: "blue", label: "Blue", image: cdnImages.stone_blue },
+    { key: "pink", label: "Pink", image: cdnImages.stone_pink },
   ];
 
   const canConfirm = !error && multiplier >= 1;
@@ -188,7 +190,7 @@ const TradeModal = ({ card, playerResources, onConfirm, onCancel }) => {
                       src={image}
                       alt={label}
                       className={`mx-auto rounded-full object-cover ${isMobile ? 'w-6 h-6' : 'w-10 h-10'}`}
-                      onError={(e) => { e.target.src = '/assets/images/stone_yellow.JPG' }}
+                      onError={(e) => { e.target.src = cdnImages.stone_yellow }}
                     />
                     <div className={`font-bold text-gray-800 ${isMobile ? 'text-sm' : 'text-lg'}`}>
                       {amount}
@@ -231,7 +233,7 @@ const TradeModal = ({ card, playerResources, onConfirm, onCancel }) => {
                       src={image}
                       alt={label}
                       className={`mx-auto rounded-full object-cover ${isMobile ? 'w-6 h-6' : 'w-10 h-10'}`}
-                      onError={(e) => { e.target.src = '/assets/images/stone_yellow.JPG' }}
+                      onError={(e) => { e.target.src = cdnImages.stone_yellow }}
                     />
                     <div className={`font-bold text-gray-800 ${isMobile ? 'text-sm' : 'text-lg'}`}>
                       {amount}

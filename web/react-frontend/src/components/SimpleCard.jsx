@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import CrystalStack from './CrystalStack'
 import { getVietnameseCardName } from '../utils/cardNames'
+import { cdnImages } from '../utils/cdnAssets'
 
 const SimpleCard = ({ 
   card, 
@@ -176,10 +177,10 @@ const SimpleCard = ({
       {/* Deposits indicator - show actual crystals */}
       {card.deposits && Object.keys(card.deposits).length > 0 && (() => {
         const crystalImages = {
-          yellow: '/assets/images/stone_yellow.JPG',
-          green: '/assets/images/stone_green.JPG',
-          blue: '/assets/images/stone_blue.JPG',
-          pink: '/assets/images/stone_pink.JPG'
+          yellow: cdnImages.stone_yellow,
+          green: cdnImages.stone_green,
+          blue: cdnImages.stone_blue,
+          pink: cdnImages.stone_pink
         }
         const crystalBadges = []
         Object.entries(card.deposits).forEach(([type, count]) => {
@@ -196,7 +197,7 @@ const SimpleCard = ({
                 src={crystal.src}
                 alt={crystal.type}
                 className="w-4 h-4 rounded-full object-cover border border-white/50 shadow"
-                onError={(e) => { e.target.src = '/assets/images/stone_yellow.JPG' }}
+                onError={(e) => { e.target.src = cdnImages.stone_yellow }}
               />
             ))}
           </div>
