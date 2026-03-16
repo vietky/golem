@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import useOrientation from "../hooks/useOrientation";
 import { cdnImages } from '../utils/cdnAssets';
-import { cdnImages } from '../utils/cdnAssets';
 
 const TradeModal = ({ card, playerResources, onConfirm, onCancel }) => {
   const [multiplier, setMultiplier] = useState(1);

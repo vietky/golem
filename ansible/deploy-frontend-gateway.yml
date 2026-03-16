@@ -101,7 +101,7 @@
           -t golem-frontend:{{ env_config[deploy_env].image_tag }} \
           .
       register: docker_build
-      retries: 3
+      retries: 0
       delay: 10
       until: docker_build is succeeded
 
