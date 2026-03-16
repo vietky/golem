@@ -104,7 +104,7 @@ const PlayerDock = ({ player, isCurrentTurn, isMe, position }) => {
       >
         {/* normal_dock background - scale to fill container */}
         <img 
-          src="/assets/images/normal_dock.JPG" 
+          src="https://statics.vietky.io.vn/images/normal_dock.JPG" 
           alt="dock"
           className="absolute inset-0 w-full h-full rounded-xl"
           style={{ objectFit: 'fill' }}
@@ -169,7 +169,7 @@ const PlayerDock = ({ player, isCurrentTurn, isMe, position }) => {
                 {row1.map((color, i) => (
                   <img 
                     key={`r1-${i}`} 
-                    src={`/assets/images/stone_${color}.JPG`} 
+                    src={`https://statics.vietky.io.vn/images/stone_${color}.JPG`} 
                     alt={color} 
                     className="absolute object-cover rounded-full"
                     style={{
@@ -185,7 +185,7 @@ const PlayerDock = ({ player, isCurrentTurn, isMe, position }) => {
                 {row2.map((color, i) => (
                   <img 
                     key={`r2-${i}`} 
-                    src={`/assets/images/stone_${color}.JPG`} 
+                    src={`https://statics.vietky.io.vn/images/stone_${color}.JPG`} 
                     alt={color} 
                     className="absolute object-cover rounded-full"
                     style={{
@@ -305,7 +305,7 @@ const PlayerDock = ({ player, isCurrentTurn, isMe, position }) => {
                           src={getCardImagePath(card.name)}
                           alt={card.name}
                           className="w-full h-full object-cover"
-                          onError={(e) => { e.target.src = '/assets/images/golem_bg.JPG' }}
+                          onError={(e) => { e.target.src = 'https://statics.vietky.io.vn/images/golem_bg.JPG' }}
                         />
                       )
                     })()}
@@ -371,7 +371,7 @@ const LastPlayedCard = ({ player, dockPosition, isMe, isMyTurn }) => {
               src={getCardImagePath(lastCard.name)}
               alt={lastCard.name}
               className="w-full h-full object-cover"
-              onError={(e) => { e.target.src = '/assets/images/golem_bg.JPG' }}
+              onError={(e) => { e.target.src = 'https://statics.vietky.io.vn/images/golem_bg.JPG' }}
             />
           )
         })()}
@@ -424,7 +424,7 @@ const LastPlayedCard = ({ player, dockPosition, isMe, isMyTurn }) => {
                     src={getCardImagePath(lastCard.name)}
                     alt={lastCard.name}
                     className="w-full h-full object-contain"
-                    onError={(e) => { e.target.src = '/assets/images/golem_bg.JPG' }}
+                    onError={(e) => { e.target.src = 'https://statics.vietky.io.vn/images/golem_bg.JPG' }}
                   />
                 )
               })()}
@@ -504,7 +504,7 @@ const LastPlayedCard = ({ player, dockPosition, isMe, isMyTurn }) => {
                           src={getCardImagePath(card.name)}
                           alt={card.name}
                           className="w-full h-full object-cover"
-                          onError={(e) => { e.target.src = '/assets/images/golem_bg.JPG' }}
+                          onError={(e) => { e.target.src = 'https://statics.vietky.io.vn/images/golem_bg.JPG' }}
                         />
                       )
                     })()}
@@ -620,7 +620,7 @@ const MyHandCards = ({ dockPosition }) => {
                   src={getCardImagePath(card.name)}
                   alt={card.name}
                   className="w-full h-full object-cover"
-                  onError={(e) => { e.target.src = '/assets/images/golem_bg.JPG' }}
+                  onError={(e) => { e.target.src = 'https://statics.vietky.io.vn/images/golem_bg.JPG' }}
                 />
               )
             })()}
@@ -642,7 +642,7 @@ const FantasyGameLayout = ({ onNewGame, onBackToMenu }) => {
     <div 
       className="h-screen h-[100dvh] relative overflow-hidden flex items-center justify-center"
       style={{
-        backgroundImage: 'url(/assets/images/new_theme_bg.JPG)',
+        backgroundImage: 'url(https://statics.vietky.io.vn/images/new_theme_bg.JPG)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'
@@ -697,7 +697,7 @@ const FantasyGameLayout = ({ onNewGame, onBackToMenu }) => {
           <div 
             className="absolute inset-0 bg-cover bg-center bg-no-repeat rounded-lg shadow-2xl"
             style={{
-              backgroundImage: 'url(/assets/images/game_dock.jpg)'
+              backgroundImage: 'url(https://statics.vietky.io.vn/images/game_dock.jpg)'
             }}
           />
 

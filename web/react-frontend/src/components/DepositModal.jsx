@@ -41,10 +41,10 @@ const DepositModal = ({ card, cardIndex, isHandCard = false, onClose }) => {
     : []
 
   const crystalTypes = [
-    { key: 'yellow', label: 'Yellow', color: 'bg-yellow-400', image: '/assets/images/stone_yellow.JPG' },
-    { key: 'green', label: 'Green', color: 'bg-green-400', image: '/assets/images/stone_green.JPG' },
-    { key: 'blue', label: 'Blue', color: 'bg-blue-400', image: '/assets/images/stone_blue.JPG' },
-    { key: 'pink', label: 'Pink', color: 'bg-pink-400', image: '/assets/images/stone_pink.JPG' }
+    { key: 'yellow', label: 'Yellow', color: 'bg-yellow-400', image: 'https://statics.vietky.io.vn/images/stone_yellow.JPG' },
+    { key: 'green', label: 'Green', color: 'bg-green-400', image: 'https://statics.vietky.io.vn/images/stone_green.JPG' },
+    { key: 'blue', label: 'Blue', color: 'bg-blue-400', image: 'https://statics.vietky.io.vn/images/stone_blue.JPG' },
+    { key: 'pink', label: 'Pink', color: 'bg-pink-400', image: 'https://statics.vietky.io.vn/images/stone_pink.JPG' }
   ]
 
   const availableCrystals = {
@@ -177,7 +177,7 @@ const DepositModal = ({ card, cardIndex, isHandCard = false, onClose }) => {
                             alt={label}
                             className={`mx-auto rounded-full object-cover ${isMobile ? 'w-8 h-8 mb-1' : 'w-12 h-12 mb-2'}`}
                             onError={(e) => {
-                              e.target.src = '/assets/images/stone_yellow.JPG'
+                              e.target.src = 'https://statics.vietky.io.vn/images/stone_yellow.JPG'
                             }}
                           />
                           <div className={`font-medium text-gray-700 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>

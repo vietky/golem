@@ -6,7 +6,7 @@
 FROM --platform=$BUILDPLATFORM node:18-alpine AS builder
 
 ARG VITE_API_HOST=https://game.anhtran.dev/api/golem
-ARG VITE_NGINX_HOST=https://game.anhtran.dev/assets
+ARG VITE_NGINX_HOST=https://statics.vietky.io.vn
 ARG VITE_BASE_PATH=/apps/golem/
 
 ENV VITE_API_HOST=${VITE_API_HOST}

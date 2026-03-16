@@ -30,9 +30,6 @@ WORKDIR /root/
 # Copy the binary from Go builder
 COPY --from=go-builder /app/server .
 
-# Copy web static files
-COPY --from=go-builder /app/web/static ./web/static
-
 # Expose port
 EXPOSE 8080
 

@@ -14,7 +14,7 @@
         deployment_name: "golem-nginx-staging"
         # Set environment variables for frontend build
         vite_api_host: "https://game.anhtran.dev/apps/golem-staging"
-        vite_nginx_host: "https://game.anhtran.dev/assets"
+        vite_nginx_host: "https://statics.vietky.io.vn"
         vite_base_path: "/apps/golem-staging/"
       production:
         namespace: "default"
@@ -222,8 +222,8 @@
           - ""
           - "CDN Configuration:"
           - "  CDN Host: {{ env_config[deploy_env].vite_nginx_host }}"
-          - "  Images serve from: {{ env_config[deploy_env].vite_nginx_host }}/images"
-          - "  Sounds serve from: {{ env_config[deploy_env].vite_nginx_host }}/sounds"
+          - "  Images: {{ env_config[deploy_env].vite_nginx_host }}/images"
+          - "  Sounds: {{ env_config[deploy_env].vite_nginx_host }}/sounds"
           - ""
           - "Verification:"
           - "  Frontend HTTP test: {{ 'PASSED ✓' if frontend_test is succeeded else 'FAILED ✗' }}"

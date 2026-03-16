@@ -99,7 +99,7 @@ const FantasyCard = ({
               onError={(e) => {
                 if (!e.target.dataset.fallback) {
                   e.target.dataset.fallback = 'true'
-                  e.target.src = '/assets/images/golem_bg.JPG'
+                  e.target.src = 'https://statics.vietky.io.vn/images/golem_bg.JPG'
                 }
               }}
             />
@@ -159,7 +159,7 @@ const FantasyHandCard = ({ card, index, isMyTurn, onClick }) => {
             onError={(e) => {
               if (!e.target.dataset.fallback) {
                 e.target.dataset.fallback = 'true'
-                e.target.src = '/assets/images/golem_bg.JPG'
+                e.target.src = 'https://statics.vietky.io.vn/images/golem_bg.JPG'
               }
             }}
           />
@@ -403,10 +403,10 @@ const FantasyMarketArea = () => {
             // Build crystal badges array for deposits
             const crystalBadges = []
             const crystalImages = {
-              yellow: '/assets/images/stone_yellow.JPG',
-              green: '/assets/images/stone_green.JPG',
-              blue: '/assets/images/stone_blue.JPG',
-              pink: '/assets/images/stone_pink.JPG'
+              yellow: 'https://statics.vietky.io.vn/images/stone_yellow.JPG',
+              green: 'https://statics.vietky.io.vn/images/stone_green.JPG',
+              blue: 'https://statics.vietky.io.vn/images/stone_blue.JPG',
+              pink: 'https://statics.vietky.io.vn/images/stone_pink.JPG'
             }
             Object.entries(deposits).forEach(([type, count]) => {
               for (let i = 0; i < parseInt(count || 0); i++) {
@@ -426,7 +426,7 @@ const FantasyMarketArea = () => {
                           src={crystal.src}
                           alt={crystal.type}
                           className="w-4 h-4 rounded-full object-cover border-2 border-white shadow-lg"
-                          onError={(e) => { e.target.src = '/assets/images/stone_yellow.JPG' }}
+                          onError={(e) => { e.target.src = 'https://statics.vietky.io.vn/images/stone_yellow.JPG' }}
                         />
                       ))}
                     </div>

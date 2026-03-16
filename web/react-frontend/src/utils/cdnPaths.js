@@ -3,8 +3,8 @@
  * Provides functions to generate correct URLs for images and sounds from CDN
  */
 
-const CDN_IMAGES_URL = import.meta.env.VITE_CDN_IMAGES_URL || '/assets/images';
-const CDN_SOUNDS_URL = import.meta.env.VITE_CDN_SOUNDS_URL || '/assets/sounds';
+const CDN_IMAGES_URL = import.meta.env.VITE_CDN_IMAGES_URL || 'https://statics.vietky.io.vn/images';
+const CDN_SOUNDS_URL = import.meta.env.VITE_CDN_SOUNDS_URL || 'https://statics.vietky.io.vn/sounds';
 
 /**
  * Get CDN URL for an image file

@@ -5,7 +5,7 @@
 
 // Get the CDN base URL for images
 export const getCdnImageUrl = (path) => {
-  const baseUrl = import.meta.env.VITE_CDN_IMAGES_URL || '/assets/images'
+  const baseUrl = import.meta.env.VITE_CDN_IMAGES_URL || 'https://statics.vietky.io.vn/images'
   // Remove leading slash from path if present
   const cleanPath = path.startsWith('/') ? path.substring(1) : path
   return `${baseUrl}/${cleanPath}`
@@ -13,7 +13,7 @@ export const getCdnImageUrl = (path) => {
 
 // Get the CDN base URL for sounds
 export const getCdnSoundUrl = (path) => {
-  const baseUrl = import.meta.env.VITE_CDN_SOUNDS_URL || '/assets/sounds'
+  const baseUrl = import.meta.env.VITE_CDN_SOUNDS_URL || 'https://statics.vietky.io.vn/sounds'
   // Remove leading slash from path if present
   const cleanPath = path.startsWith('/') ? path.substring(1) : path
   return `${baseUrl}/${cleanPath}`

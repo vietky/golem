@@ -97,17 +97,8 @@ func main() {
 	mux.HandleFunc(prefixPath("/api/games"), gameServer.HandleListGames)
 	mux.HandleFunc(prefixPath("/admin/sessions/state"), gameServer.HandleGetSessionState)
 
-	// Always serve images from static directory (both React and vanilla JS need this)
-	staticDir := filepath.Join(".", "web", "static")
-	imagesDir := filepath.Join(staticDir, "images")
-	if _, err := os.Stat(imagesDir); err == nil {
-		mux.Handle("/assets/images/", http.StripPrefix("/assets/images/", http.FileServer(http.Dir(imagesDir))))
-		log.Info("Serving images from ./web/assets/images")
-	} else {
-		log.Error("Images directory does not exist or is inaccessible", zap.String("path", imagesDir), zap.Error(err))
-	}
-
 	// Serve static files - try React build first, fallback to vanilla JS
+	staticDir := filepath.Join(".", "web", "static")
 	reactDir := filepath.Join(".", "web", "react")
 	reactIndexPath := filepath.Join(reactDir, "index.html")
 

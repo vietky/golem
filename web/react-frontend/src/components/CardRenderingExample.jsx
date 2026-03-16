@@ -138,7 +138,7 @@ const CardRenderingExample = () => {
                         src={config.imagePath}
                         alt={cardName}
                         className="w-full aspect-[2/3] rounded-lg object-cover"
-                        onError={(e) => { e.target.src = '/assets/images/golem_bg.JPG' }}
+                        onError={(e) => { e.target.src = 'https://statics.vietky.io.vn/images/golem_bg.JPG' }}
                       />
                     )}
                     <pre className="text-xs text-green-400 mt-2 overflow-auto">

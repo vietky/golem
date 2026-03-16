@@ -32,11 +32,11 @@ const FlyingCrystal = ({ type, startPos, endPos, onComplete }) => {
       onAnimationComplete={onComplete}
     >
       <img
-        src={`/assets/images/stone_${type}.JPG`}
+        src={`https://statics.vietky.io.vn/images/stone_${type}.JPG`}
         alt={type}
         className="w-6 h-6 sm:w-8 sm:h-8"
         onError={(e) => {
-          e.target.src = '/assets/images/stone_yellow.JPG'
+          e.target.src = 'https://statics.vietky.io.vn/images/stone_yellow.JPG'
         }}
       />
     </motion.div>

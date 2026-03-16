@@ -307,19 +307,19 @@ const GameOverModal = ({ onNewGame, onBackToMenu }) => {
                         <div className="flex gap-2 flex-1">
                           {resources.green > 0 && (
                             <div className="flex items-center gap-0.5">
-                              <img src="/assets/images/stone_green.JPG" alt="green" className={`rounded-full ${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
+                              <img src="https://statics.vietky.io.vn/images/stone_green.JPG" alt="green" className={`rounded-full ${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
                               <span className={`text-green-400 ${isMobile ? 'text-xs' : 'text-sm'}`}>{resources.green}</span>
                             </div>
                           )}
                           {resources.blue > 0 && (
                             <div className="flex items-center gap-0.5">
-                              <img src="/assets/images/stone_blue.JPG" alt="blue" className={`rounded-full ${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
+                              <img src="https://statics.vietky.io.vn/images/stone_blue.JPG" alt="blue" className={`rounded-full ${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
                               <span className={`text-blue-400 ${isMobile ? 'text-xs' : 'text-sm'}`}>{resources.blue}</span>
                             </div>
                           )}
                           {resources.pink > 0 && (
                             <div className="flex items-center gap-0.5">
-                              <img src="/assets/images/stone_pink.JPG" alt="pink" className={`rounded-full ${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
+                              <img src="https://statics.vietky.io.vn/images/stone_pink.JPG" alt="pink" className={`rounded-full ${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
                               <span className={`text-pink-400 ${isMobile ? 'text-xs' : 'text-sm'}`}>{resources.pink}</span>
                             </div>
                           )}

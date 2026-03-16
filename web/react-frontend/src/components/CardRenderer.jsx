@@ -53,7 +53,7 @@ const CardRenderer = ({
         if (onError) {
           onError(e)
         } else {
-          e.target.src = '/assets/images/golem_bg.JPG'
+          e.target.src = 'https://statics.vietky.io.vn/images/golem_bg.JPG'
         }
       }}
     />

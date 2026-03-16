@@ -98,10 +98,10 @@ const UpgradeModal = ({ card, playerResources, onConfirm, onCancel, maxTurnUpgra
   }, [inputResources, outputResources, totalInput, totalOutput, maxTurnUpgrade]);
 
   const crystalTypes = [
-    { key: "yellow", label: "Yellow", level: 1, image: "/assets/images/stone_yellow.JPG" },
-    { key: "green", label: "Green", level: 2, image: "/assets/images/stone_green.JPG" },
-    { key: "blue", label: "Blue", level: 3, image: "/assets/images/stone_blue.JPG" },
-    { key: "pink", label: "Pink", level: 4, image: "/assets/images/stone_pink.JPG" },
+    { key: "yellow", label: "Yellow", level: 1, image: "https://statics.vietky.io.vn/images/stone_yellow.JPG" },
+    { key: "green", label: "Green", level: 2, image: "https://statics.vietky.io.vn/images/stone_green.JPG" },
+    { key: "blue", label: "Blue", level: 3, image: "https://statics.vietky.io.vn/images/stone_blue.JPG" },
+    { key: "pink", label: "Pink", level: 4, image: "https://statics.vietky.io.vn/images/stone_pink.JPG" },
   ];
 
   const canConfirm = totalInput > 0 && totalInput === totalOutput && error === "";
@@ -158,7 +158,7 @@ const UpgradeModal = ({ card, playerResources, onConfirm, onCancel, maxTurnUpgra
                       src={image}
                       alt={label}
                       className={`mx-auto rounded-full object-cover ${isMobile ? 'w-8 h-8 mb-1' : 'w-10 h-10 mb-2'}`}
-                      onError={(e) => { e.target.src = '/assets/images/stone_yellow.JPG' }}
+                      onError={(e) => { e.target.src = 'https://statics.vietky.io.vn/images/stone_yellow.JPG' }}
                     />
                     <div className={`font-medium text-gray-700 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
                       {label} (Lv.{level})
@@ -227,7 +227,7 @@ const UpgradeModal = ({ card, playerResources, onConfirm, onCancel, maxTurnUpgra
                     src={image}
                     alt={label}
                     className={`mx-auto rounded-full object-cover ${isMobile ? 'w-8 h-8 mb-1' : 'w-10 h-10 mb-2'}`}
-                    onError={(e) => { e.target.src = '/assets/images/stone_yellow.JPG' }}
+                    onError={(e) => { e.target.src = 'https://statics.vietky.io.vn/images/stone_yellow.JPG' }}
                   />
                   <div className={`font-medium text-gray-700 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
                     {label} (Lv.{level})

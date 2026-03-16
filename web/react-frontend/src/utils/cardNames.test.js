@@ -16,15 +16,15 @@ describe('Card Names Utility Functions', () => {
   
   describe('getCardImagePath', () => {
     test('should return correct path for valid card name', () => {
-      expect(getCardImagePath('golem_0022')).toBe('/assets/images/golem_0022.JPG')
-      expect(getCardImagePath('mint_0002')).toBe('/assets/images/mint_0002.JPG')
-      expect(getCardImagePath('trade_0002_0020')).toBe('/assets/images/trade_0002_0020.JPG')
+      expect(getCardImagePath('golem_0022')).toBe('https://statics.vietky.io.vn/images/golem_0022.JPG')
+      expect(getCardImagePath('mint_0002')).toBe('https://statics.vietky.io.vn/images/mint_0002.JPG')
+      expect(getCardImagePath('trade_0002_0020')).toBe('https://statics.vietky.io.vn/images/trade_0002_0020.JPG')
     })
     
     test('should return default path for invalid card name', () => {
-      expect(getCardImagePath(null)).toBe('/assets/images/golem_bg.JPG')
-      expect(getCardImagePath('')).toBe('/assets/images/golem_bg.JPG')
-      expect(getCardImagePath(undefined)).toBe('/assets/images/golem_bg.JPG')
+      expect(getCardImagePath(null)).toBe('https://statics.vietky.io.vn/images/golem_bg.JPG')
+      expect(getCardImagePath('')).toBe('https://statics.vietky.io.vn/images/golem_bg.JPG')
+      expect(getCardImagePath(undefined)).toBe('https://statics.vietky.io.vn/images/golem_bg.JPG')
     })
   })
   
@@ -108,7 +108,7 @@ describe('Card Names Utility Functions', () => {
       const config = getCardRenderConfig('mint_0002', { useSprite: false })
       expect(config.mode).toBe('image')
       expect(config.style).toBeNull()
-      expect(config.imagePath).toBe('/assets/images/mint_0002.JPG')
+      expect(config.imagePath).toBe('https://statics.vietky.io.vn/images/mint_0002.JPG')
     })
     
     test('should return image config for cards without sprite mapping', () => {
@@ -117,14 +117,14 @@ describe('Card Names Utility Functions', () => {
       if (config.mode === 'sprite') {
         expect(config.style).not.toBeNull()
       } else {
-        expect(config.imagePath).toBe('/assets/images/upgrade_2.JPG')
+        expect(config.imagePath).toBe('https://statics.vietky.io.vn/images/upgrade_2.JPG')
       }
     })
     
     test('should return default for invalid input', () => {
       const config = getCardRenderConfig(null)
       expect(config.mode).toBe('image')
-      expect(config.imagePath).toBe('/assets/images/golem_bg.JPG')
+      expect(config.imagePath).toBe('https://statics.vietky.io.vn/images/golem_bg.JPG')
     })
   })
   
@@ -140,7 +140,7 @@ describe('Card Names Utility Functions', () => {
       const config = getTokenRenderConfig('yellow_stone', { useSprite: false })
       expect(config.mode).toBe('image')
       expect(config.style).toBeNull()
-      expect(config.imagePath).toBe('/assets/images/stone_yellow.JPG')
+      expect(config.imagePath).toBe('https://statics.vietky.io.vn/images/stone_yellow.JPG')
     })
     
     test('should return image config for all stone colors', () => {
@@ -154,10 +154,10 @@ describe('Card Names Utility Functions', () => {
     
     test('should return image config for coins', () => {
       const config1 = getTokenRenderConfig('gold_coin', { useSprite: false })
-      expect(config1.imagePath).toBe('/assets/images/coin_3.JPG')
+      expect(config1.imagePath).toBe('https://statics.vietky.io.vn/images/coin_3.JPG')
       
       const config2 = getTokenRenderConfig('silver_coin', { useSprite: false })
-      expect(config2.imagePath).toBe('/assets/images/coin_1.JPG')
+      expect(config2.imagePath).toBe('https://statics.vietky.io.vn/images/coin_1.JPG')
     })
   })
   
