@@ -12,6 +12,7 @@ import (
 	"golem_century/internal/eventstore"
 	"golem_century/internal/game"
 	"golem_century/internal/logger"
+	"golem_century/internal/training"
 
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
@@ -59,6 +60,7 @@ type GameSession struct {
 	CreatedAt     time.Time             // When session was created
 	LastActivity  time.Time             // Last time someone was in the room
 	EventStore    eventstore.EventStore // Event store for recording actions
+	TrainingLogger training.TrainingLogger // Logger for AI training data
 	TurnTimeout   time.Duration         // Maximum time per turn (default 60s)
 	TurnStartTime time.Time             // When the current turn started
 	mu            sync.RWMutex
@@ -86,13 +88,14 @@ type PlayerAction struct {
 }
 
 // NewGameSession creates a new game session
-func NewGameSession(sessionID string, maxPlayers int, turnTimeoutInSecond int, eventstore eventstore.EventStore, logger *logger.Logger) *GameSession {
+func NewGameSession(sessionID string, maxPlayers int, turnTimeoutInSecond int, eventstore eventstore.EventStore, trainingLogger training.TrainingLogger, logger *logger.Logger) *GameSession {
 	now := time.Now()
 	return &GameSession{
 		ID:            sessionID,
 		CreatedAt:     now,
 		LastActivity:  now,
 		EventStore:    eventstore,
+		TrainingLogger: trainingLogger,
 		TurnTimeout:   time.Duration(turnTimeoutInSecond) * time.Second, // Default 60s timeout
 		TurnStartTime: now,
 		ActionChan:    make(chan PlayerAction, 10),
@@ -1221,6 +1224,17 @@ func (gs *GameSession) storeGameEvent(playerID int, action game.Action) {
 		resp := gs.EventStore.StoreEvent(req)
 		if resp.Error != nil {
 			// Don't fail the action if event store fails
+		}
+	}
+
+	if gs.TrainingLogger != nil {
+		currentPlayer := gs.GameState.GetCurrentPlayer()
+		// Only log if the player taking the action is the current player (should be true normally)
+		if currentPlayer != nil && currentPlayer.ID == playerID {
+			err := gs.TrainingLogger.LogMove(gs.ID, playerID, currentPlayer.IsAI, action, gs.GameState)
+			if err != nil {
+				gs.logger.Error("Failed to log training move", zap.Error(err))
+			}
 		}
 	}
 }

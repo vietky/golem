@@ -5,6 +5,7 @@ import DiscardModal from '../DiscardModal'
 import AcquiredCardOverlay from '../AcquiredCardOverlay'
 import GameOverModal from '../GameOverModal'
 import useGameStore from '../../store/gameStore'
+import { useShallow } from 'zustand/react/shallow'
 import { getCardSpriteStyle, getCardImagePath } from '../../utils/cardNames'
 
 // ============================================
@@ -336,7 +337,7 @@ const PlayerDock = ({ player, isCurrentTurn, isMe, position }) => {
 const LastPlayedCard = ({ player, dockPosition, isMe, isMyTurn }) => {
   const [isHovered, setIsHovered] = React.useState(false)
   const [showGraveyard, setShowGraveyard] = React.useState(false)
-  const { rest } = useGameStore()
+  const rest = useGameStore(useShallow(state => state.rest))
   const playedCards = player?.playedCards || []
   const lastCard = playedCards.length > 0 ? playedCards[playedCards.length - 1] : null
   const canRest = isMe && isMyTurn && playedCards.length > 0
@@ -529,7 +530,13 @@ const MyHandCards = ({ dockPosition }) => {
     playCard,
     showUpgradeModal,
     showTradeModal 
-  } = useGameStore()
+  } = useGameStore(useShallow(state => ({
+    myPlayer: state.myPlayer,
+    currentPlayer: state.currentPlayer,
+    playCard: state.playCard,
+    showUpgradeModal: state.showUpgradeModal,
+    showTradeModal: state.showTradeModal
+  })))
   const hand = myPlayer?.hand || []
   const isMyTurn = currentPlayer?.id === myPlayer?.id
   const [hoveredIndex, setHoveredIndex] = useState(null)
@@ -635,7 +642,11 @@ const MyHandCards = ({ dockPosition }) => {
 // Main Layout Component
 // ============================================
 const FantasyGameLayout = ({ onNewGame, onBackToMenu }) => {
-  const { gameState, myPlayer, currentPlayer } = useGameStore()
+  const { gameState, myPlayer, currentPlayer } = useGameStore(useShallow(state => ({
+    gameState: state.gameState,
+    myPlayer: state.myPlayer,
+    currentPlayer: state.currentPlayer
+  })))
   const allPlayers = gameState?.players || []
 
   return (

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"sync"
 	"time"
@@ -10,7 +11,9 @@ import (
 	"golem_century/internal/logger"
 	"golem_century/internal/session"
 	"golem_century/internal/telegram"
+	"golem_century/internal/training"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 )
@@ -25,8 +28,10 @@ var upgrader = websocket.Upgrader{
 type GameServer struct {
 	SessionsV2       map[string]*session.GameSession
 	EventStore       eventstore.EventStore
+	TrainingLogger   training.TrainingLogger
 	Logger           *logger.Logger
 	TelegramNotifier *telegram.Notifier
+	RedisClient      *redis.Client
 	mu               sync.RWMutex
 	config           *config.Config
 }
@@ -49,11 +54,26 @@ func NewGameServer(req NewGameServerRequest) *GameServer {
 		req.Config = &cfg
 	}
 	telegramNotifier := telegram.NewNotifier(req.Config.TelegramBotToken, req.Config.TelegramChatID, log)
+
+	var redisClient *redis.Client
+	if req.Config.RedisAddr != "" {
+		redisClient = redis.NewClient(&redis.Options{
+			Addr: req.Config.RedisAddr,
+		})
+	}
+
+	var trainingLogger training.TrainingLogger
+	if redisClient != nil {
+		trainingLogger = training.NewRedisTrainingLogger(redisClient, "training:moves", log.Logger)
+	}
+
 	return &GameServer{
 		SessionsV2:       make(map[string]*session.GameSession),
 		EventStore:       req.EventStore,
+		TrainingLogger:   trainingLogger,
 		Logger:           log,
 		TelegramNotifier: telegramNotifier,
+		RedisClient:      redisClient,
 		config:           req.Config,
 	}
 }
@@ -62,7 +82,7 @@ func (gs *GameServer) CreateSessionV2(sessionID string, maxPlayers int, turnTime
 	gs.mu.Lock()
 	defer gs.mu.Unlock()
 
-	session := session.NewGameSession(sessionID, maxPlayers, turnTimeoutInSeconds, gs.EventStore, gs.Logger)
+	session := session.NewGameSession(sessionID, maxPlayers, turnTimeoutInSeconds, gs.EventStore, gs.TrainingLogger, gs.Logger)
 	gs.SessionsV2[sessionID] = session
 
 	gs.Logger.Info("Session V2 created",
@@ -70,6 +90,15 @@ func (gs *GameServer) CreateSessionV2(sessionID string, maxPlayers int, turnTime
 		zap.Int("maxPlayers", maxPlayers),
 		zap.Int("turnTimeoutInSeconds", turnTimeoutInSeconds),
 	)
+
+	// Register session in Redis for multi-instance routing
+	if gs.RedisClient != nil {
+		instanceHost := gs.config.ServerHost + ":" + gs.config.ServerPort
+		err := gs.RedisClient.Set(context.Background(), "session:"+sessionID, instanceHost, 72*time.Hour).Err()
+		if err != nil {
+			gs.Logger.Error("Failed to register session in Redis", zap.Error(err))
+		}
+	}
 
 	// Start cleanup timer for empty rooms
 	go gs.startCleanupTimerV2(sessionID)
@@ -92,6 +121,11 @@ func (gs *GameServer) startCleanupTimerV2(sessionID string) {
 			gs.mu.Lock()
 			delete(gs.SessionsV2, sessionID)
 			gs.mu.Unlock()
+
+			// Remove from Redis
+			if gs.RedisClient != nil {
+				gs.RedisClient.Del(context.Background(), "session:"+sessionID)
+			}
 			return
 		}
 	}
