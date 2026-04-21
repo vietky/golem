@@ -19,7 +19,7 @@ import (
 // opens a new connection without waiting for the server to detect disconnection
 func TestRapidReconnection(t *testing.T) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("rapid-test", 2, 60, nil, log)
+	session := NewGameSession("rapid-test", 2, 60, nil, nil, log)
 
 	// Configure shorter timeouts for testing
 	session.pingInterval = 1 * time.Second
@@ -101,7 +101,7 @@ func TestRapidReconnection(t *testing.T) {
 // TestMultipleRapidReconnections tests rapid reconnections in quick succession
 func TestMultipleRapidReconnections(t *testing.T) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("multi-rapid-test", 2, 60, nil, log)
+	session := NewGameSession("multi-rapid-test", 2, 60, nil, nil, log)
 
 	// Configure shorter timeouts
 	session.pingInterval = 1 * time.Second
@@ -179,7 +179,7 @@ func TestMultipleRapidReconnections(t *testing.T) {
 // TestConcurrentRapidReconnections tests multiple players reconnecting simultaneously
 func TestConcurrentRapidReconnections(t *testing.T) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("concurrent-rapid-test", 4, 60, nil, log)
+	session := NewGameSession("concurrent-rapid-test", 4, 60, nil, nil, log)
 
 	// Configure shorter timeouts
 	session.pingInterval = 1 * time.Second
@@ -265,7 +265,7 @@ func TestConcurrentRapidReconnections(t *testing.T) {
 // TestReconnectionWithActiveGameLoop tests reconnection while game is processing actions
 func TestReconnectionWithActiveGameLoop(t *testing.T) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("gameloop-rapid-test", 2, 60, nil, log)
+	session := NewGameSession("gameloop-rapid-test", 2, 60, nil, nil, log)
 
 	// Configure shorter timeouts
 	session.pingInterval = 1 * time.Second

@@ -16,7 +16,7 @@ import (
 // an active game, the backend sends a playerAssigned message to restore the player ID
 func TestReconnectionSendsPlayerAssigned(t *testing.T) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("test_reconnect_assigned", 2, 60, nil, log)
+	session := NewGameSession("test_reconnect_assigned", 2, 60, nil, nil, log)
 
 	// Create test websocket server
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
