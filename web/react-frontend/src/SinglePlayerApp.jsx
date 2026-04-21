@@ -19,6 +19,9 @@ import useGameSounds from './hooks/useGameSounds'
 import { MobileLayoutProvider } from './contexts/MobileLayoutContext'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
 import { getImageUrl } from './utils/cdnPaths'
+import LoginScreen from './components/LoginScreen'
+import { subscribeToAuthChanges, logout } from './firebase'
+import { useEffect } from 'react'
 
 // Game Content with Theme Support
 function GameContentWithTheme({ useWebLayout, isMobile, isPortrait, sessionId, setInGame, setGameMode }) {
@@ -142,6 +145,32 @@ function GameContentWithTheme({ useWebLayout, isMobile, isPortrait, sessionId, s
 function SinglePlayerApp() {
   const [gameMode, setGameMode] = useState(null) // null, 'single', 'multi'
   const [inGame, setInGame] = useState(false)
+  const [user, setUser] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [displayName, setDisplayName] = useState('')
+  const [isEditingName, setIsEditingName] = useState(false)
+
+  useEffect(() => {
+    const unsubscribe = subscribeToAuthChanges((currentUser) => {
+      setUser(currentUser)
+      setAuthLoading(false)
+    })
+    return () => unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    if (user && !displayName) {
+      setDisplayName(user.displayName || user.email || 'Player')
+    }
+  }, [user, displayName])
+
+  const handleNameSave = () => {
+    setIsEditingName(false)
+    if (!displayName.trim()) {
+      setDisplayName(user.displayName || user.email || 'Player')
+    }
+  }
+
   const { 
     connectWebSocket, 
     gameState, 
@@ -158,14 +187,14 @@ function SinglePlayerApp() {
   } = useGameStore()
   const { isPortrait, isLandscape, isMobile, isTablet, isDesktop, width } = useOrientation()
 
-  const handleStartSinglePlayer = (sessionId, playerName, playerAvatar) => {
-    connectWebSocket(sessionId, playerName, playerAvatar)
+  const handleStartSinglePlayer = (sessionId, _, playerAvatar) => {
+    connectWebSocket(sessionId, displayName, playerAvatar)
     setGameMode('single')
     setInGame(true)
   }
 
-  const handleJoinMultiplayer = (sessionId, playerName, playerAvatar, asSpectator) => {
-    connectWebSocket(sessionId, playerName, playerAvatar, asSpectator)
+  const handleJoinMultiplayer = (sessionId, _, playerAvatar, asSpectator) => {
+    connectWebSocket(sessionId, displayName, playerAvatar, asSpectator)
     setGameMode('multi')
     setInGame(true)
   }
@@ -403,9 +432,49 @@ function SinglePlayerApp() {
   // Use WebGameLayout for desktop/tablet (>= 768px), CompactGameBoard for mobile (< 768px)
   const useWebLayout = !isMobile
 
+  if (authLoading) {
+    return <div className="flex items-center justify-center min-h-screen bg-slate-900 text-white">Loading...</div>
+  }
+
+  if (!user) {
+    return <LoginScreen onLogin={setUser} />
+  }
+
   return (
     <ThemeProvider>
       <MobileLayoutProvider>
+        {/* User info & Logout button */}
+        {!inGame && (
+          <div className="absolute top-4 right-4 z-50 flex items-center gap-3 bg-black/40 backdrop-blur-sm border border-white/10 px-3 py-1.5 rounded-full">
+            {isEditingName ? (
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value.substring(0, 50))}
+                onBlur={handleNameSave}
+                onKeyDown={(e) => e.key === 'Enter' && handleNameSave()}
+                className="text-sm font-medium bg-white/10 text-white outline-none px-2 py-0.5 rounded"
+                autoFocus
+                maxLength={50}
+              />
+            ) : (
+              <span
+                className="text-sm font-medium text-white/90 cursor-pointer hover:text-white"
+                onClick={() => setIsEditingName(true)}
+                title="Click to edit display name"
+              >
+                {displayName} ✎
+              </span>
+            )}
+            <div className="w-px h-4 bg-white/20"></div>
+            <button
+              onClick={logout}
+              className="text-red-400 hover:text-red-300 text-xs font-bold transition-colors"
+            >
+              Logout
+            </button>
+          </div>
+        )}
         <GameContentWithTheme
           useWebLayout={useWebLayout}
           isMobile={isMobile}

@@ -17,7 +17,7 @@ import (
 // because /list endpoint showed room as full
 func TestRoomFullFix(t *testing.T) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("test_room_full_fix", 2, 60, nil, log)
+	session := NewGameSession("test_room_full_fix", 2, 60, nil, nil, log)
 
 	// Create test websocket server
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
@@ -118,7 +118,7 @@ func TestRoomFullFix(t *testing.T) {
 // TestActivePlayerCountDuringWaiting verifies that waiting status removes players completely
 func TestActivePlayerCountDuringWaiting(t *testing.T) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("test_waiting_status", 2, 60, nil, log)
+	session := NewGameSession("test_waiting_status", 2, 60, nil, nil, log)
 
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

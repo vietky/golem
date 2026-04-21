@@ -16,7 +16,7 @@ import (
 func TestDisconnectionDetection(t *testing.T) {
 	// Create session with short timeouts for testing
 	log := logger.NewNopLogger()
-	session := NewGameSession("test-disconnect", 2, 60, nil, log)
+	session := NewGameSession("test-disconnect", 2, 60, nil, nil, log)
 
 	// Set very short timeouts for faster testing
 	session.pingInterval = 2 * time.Second
@@ -128,7 +128,7 @@ func TestDisconnectionDetection(t *testing.T) {
 // TestMultipleDisconnectReconnect verifies that multiple disconnections and reconnections work correctly
 func TestMultipleDisconnectReconnect(t *testing.T) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("test-multi-disconnect", 2, 60, nil, log)
+	session := NewGameSession("test-multi-disconnect", 2, 60, nil, nil, log)
 
 	// Set short timeouts for testing
 	session.pingInterval = 2 * time.Second
@@ -219,7 +219,7 @@ func TestMultipleDisconnectReconnect(t *testing.T) {
 // TestPingPongKeepsConnectionAlive verifies that ping/pong keeps the connection alive
 func TestPingPongKeepsConnectionAlive(t *testing.T) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("test-ping-pong", 2, 60, nil, log)
+	session := NewGameSession("test-ping-pong", 2, 60, nil, nil, log)
 
 	// Set timeouts
 	session.pingInterval = 1 * time.Second

@@ -16,7 +16,7 @@ import (
 // TestPlayerReconnectionInWaitingStatus tests that a player can reconnect during the waiting phase
 func TestPlayerReconnectionInWaitingStatus(t *testing.T) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("test_session", 2, 60, nil, log)
+	session := NewGameSession("test_session", 2, 60, nil, nil, log)
 
 	// Create test websocket
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
@@ -95,7 +95,7 @@ func TestPlayerReconnectionInWaitingStatus(t *testing.T) {
 // TestPlayerReconnectionPreservesGameState tests that a player's game state is preserved on reconnect
 func TestPlayerReconnectionPreservesGameState(t *testing.T) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("test_session_2", 2, 60, nil, log)
+	session := NewGameSession("test_session_2", 2, 60, nil, nil, log)
 
 	// Create test websocket
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
@@ -184,7 +184,7 @@ func TestPlayerReconnectionPreservesGameState(t *testing.T) {
 // TestBroadcastStateToReconnectedPlayer tests that reconnected player receives current game state
 func TestBroadcastStateToReconnectedPlayer(t *testing.T) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("test_session_3", 2, 60, nil, log)
+	session := NewGameSession("test_session_3", 2, 60, nil, nil, log)
 
 	// Create test websocket with message capture
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
@@ -274,7 +274,7 @@ reconnect:
 // TestMultipleReconnections tests that a player can reconnect multiple times
 func TestMultipleReconnections(t *testing.T) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("test_session_4", 2, 60, nil, log)
+	session := NewGameSession("test_session_4", 2, 60, nil, nil, log)
 
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -331,7 +331,7 @@ func TestMultipleReconnections(t *testing.T) {
 // TestReconnectionCleansUpOldConnections tests that old connections are properly closed
 func TestReconnectionCleansUpOldConnections(t *testing.T) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("test_session_5", 2, 60, nil, log)
+	session := NewGameSession("test_session_5", 2, 60, nil, nil, log)
 
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -388,7 +388,7 @@ func TestReconnectionCleansUpOldConnections(t *testing.T) {
 // TestReconnectionAfterGameStart tests reconnection during active gameplay
 func TestReconnectionAfterGameStart(t *testing.T) {
 	log := logger.NewNopLogger()
-	session := NewGameSession("test_session_6", 2, 60, nil, log)
+	session := NewGameSession("test_session_6", 2, 60, nil, nil, log)
 
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
