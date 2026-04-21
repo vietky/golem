@@ -1,19 +1,4 @@
 services:
-  mongodb:
-    image: mongo:7
-    container_name: golem-mongodb
-    ports:
-      - "127.0.0.1:27017:27017"
-    environment:
-      - MONGO_INITDB_DATABASE=golem_game
-    volumes:
-      - mongodb_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
     container_name: golem-redis
@@ -28,38 +13,61 @@ services:
       timeout: 5s
       retries: 5
 
-  golem-century:
+  transport:
+    build:
+      context: .
+      dockerfile: Dockerfile.transport
+    container_name: golem-transport
+    ports:
+      - "127.0.0.1:8100:8000"
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - REDIS_ADDR=redis:6379
+      - GAME_INSTANCES=http://golem-century-1:8080,http://golem-century-2:8080
+
+  golem-century-1:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: golem-century-server
-    ports:
-      - "127.0.0.1:8100:8080"
+    container_name: golem-century-1
     restart: unless-stopped
     depends_on:
-      mongodb:
-        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
-      - MONGO_URI=mongodb://mongodb:27017
-      - MONGO_DB=golem_game
+      - FIRESTORE_PROJECT_ID=wsgames-cfa61
       - REDIS_ADDR=redis:6379
       - REDIS_DB=0
       - LOG_LEVEL=info
       - LOG_FORMAT=json
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+
+  golem-century-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: golem-century-2
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      - FIRESTORE_PROJECT_ID=wsgames-cfa61
+      - REDIS_ADDR=redis:6379
+      - REDIS_DB=0
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
 
 volumes:
-  mongodb_data:
   redis_data:
 

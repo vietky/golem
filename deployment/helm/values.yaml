@@ -1,0 +1,34 @@
+# Helm values for Game Instances
+replicaCount: 2
+
+image:
+  repository: golem-century
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+
+# Env vars mapped to kubernetes secrets
+env:
+  FIRESTORE_PROJECT_ID: ""
+  REDIS_ADDR: "redis:6379"
+
+secrets:
+  TELEGRAM_BOT_TOKEN: ""
+  TELEGRAM_CHAT_ID: ""
+  FIRESTORE_CREDENTIALS: ""
+  S3_ENDPOINT: ""
+  S3_REGION: ""
+  S3_ACCESS_KEY: ""
+  S3_SECRET_KEY: ""
+  S3_BUCKET: ""
+
+resources: {}
+nodeSelector: {}
+tolerations: {}
+affinity: {}

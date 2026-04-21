@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import useGameStore from '../../store/gameStore'
+import { useShallow } from 'zustand/react/shallow'
 import CompactCard from '../CompactCard'
 import PlayerCard from '../PlayerCard'
 import GraveyardPanel from '../GraveyardPanel'
@@ -28,7 +29,21 @@ const WebGameLayout = () => {
     playCardWithTrade,
     rest,
     startGame,
-  } = useGameStore()
+  } = useGameStore(useShallow(state => ({
+    gameState: state.gameState,
+    myPlayer: state.myPlayer,
+    currentPlayer: state.currentPlayer,
+    playerName: state.playerName,
+    sessionId: state.sessionId,
+    roundNumber: state.roundNumber,
+    acquireCard: state.acquireCard,
+    claimPointCard: state.claimPointCard,
+    playCard: state.playCard,
+    playCardWithUpgrade: state.playCardWithUpgrade,
+    playCardWithTrade: state.playCardWithTrade,
+    rest: state.rest,
+    startGame: state.startGame
+  })))
 
   const [depositModal, setDepositModal] = useState({ show: false, card: null, index: null })
   const [upgradeModal, setUpgradeModal] = useState({ show: false, card: null, index: null })
