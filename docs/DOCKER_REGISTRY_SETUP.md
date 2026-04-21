@@ -277,7 +277,7 @@ make k3s-deploy
 make k3s-frontend-test
 
 # 4. Verify
-curl https://game.anhtran.dev/golem-test
+curl https://apps.vietky.io.vn/golem-test
 ```
 
 ### Updating Application

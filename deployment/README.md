@@ -34,7 +34,7 @@ deployment/
 
 ### Staging Environment
 - **Namespace**: `golem-staging`
-- **DNS**: `staging.game.anhtran.dev`
+- **DNS**: `staging.apps.vietky.io.vn`
 - **Replicas**: 1
 - **MongoDB Storage**: 5Gi
 - **MongoDB Memory**: 512Mi
@@ -42,7 +42,7 @@ deployment/
 
 ### Production Environment
 - **Namespace**: `golem`
-- **DNS**: `prod.game.anhtran.dev`
+- **DNS**: `prod.apps.vietky.io.vn`
 - **Replicas**: 2
 - **MongoDB Storage**: 10Gi
 - **MongoDB Memory**: 1Gi

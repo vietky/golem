@@ -4,9 +4,9 @@
 
 Successfully migrated from Kubernetes Ingress to Gateway API for both backend and frontend services. The application is now accessible at:
 
-- **Frontend**: https://game.anhtran.dev:30443/apps/golem/
-- **Backend API**: https://game.anhtran.dev:30443/api/golem/api/list
-- **WebSocket**: wss://game.anhtran.dev:30443/api/golem/ws
+- **Frontend**: https://apps.vietky.io.vn:30443/apps/golem/
+- **Backend API**: https://apps.vietky.io.vn:30443/api/golem/api/list
+- **WebSocket**: wss://apps.vietky.io.vn:30443/api/golem/ws
 
 ## Architecture
 
@@ -153,13 +153,13 @@ server {
 
 ```bash
 # Test backend API
-curl -k https://game.anhtran.dev:30443/api/golem/api/list
+curl -k https://apps.vietky.io.vn:30443/api/golem/api/list
 
 # Test frontend HTML
-curl -k https://game.anhtran.dev:30443/apps/golem/
+curl -k https://apps.vietky.io.vn:30443/apps/golem/
 
 # Test frontend assets
-curl -k https://game.anhtran.dev:30443/apps/golem/assets/index-*.js -I
+curl -k https://apps.vietky.io.vn:30443/apps/golem/assets/index-*.js -I
 
 # Check deployment status
 ssh root@157.66.101.66 'kubectl get pods -n default | grep golem'
@@ -183,8 +183,8 @@ ssh root@157.66.101.66 'kubectl logs -n default deployment/golem-nginx'
 
 Old Ingress URLs still work temporarily if Ingress resources are kept, but should be migrated to new paths:
 
-- Old: `https://game.anhtran.dev/golem` → New: `https://game.anhtran.dev:30443/apps/golem/`
-- Old: `https://game.anhtran.dev/api/list` → New: `https://game.anhtran.dev:30443/api/golem/api/list`
+- Old: `https://apps.vietky.io.vn/golem` → New: `https://apps.vietky.io.vn:30443/apps/golem/`
+- Old: `https://apps.vietky.io.vn/api/list` → New: `https://apps.vietky.io.vn:30443/api/golem/api/list`
 
 ## Benefits of Gateway API
 

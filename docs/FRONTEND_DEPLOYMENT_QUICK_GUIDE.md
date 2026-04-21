@@ -175,7 +175,7 @@ curl -s http://10.100.0.2:5000/v2/golem-frontend/tags/list | jq
 
 ```bash
 # Still the same, now passed to build
-VITE_API_HOST=https://game.anhtran.dev/apps/golem
+VITE_API_HOST=https://apps.vietky.io.vn/apps/golem
 VITE_NGINX_HOST=https://statics.vietky.io.vn
 ```
 

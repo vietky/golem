@@ -18,15 +18,15 @@ ansible/
 
 ### Test Environment
 - **Frontend Path**: `/golem-test`
-- **Frontend URL**: `https://game.anhtran.dev/golem-test`
-- **API URL**: `https://game.anhtran.dev/api/golem-test`
+- **Frontend URL**: `https://apps.vietky.io.vn/golem-test`
+- **API URL**: `https://apps.vietky.io.vn/api/golem-test`
 - **Backend Port**: `30080` (k3s NodePort)
 - **Nginx Path**: `/opt/nginx/apps/golem-test`
 
 ### Production Environment
 - **Frontend Path**: `/golem`
-- **Frontend URL**: `https://game.anhtran.dev/golem`
-- **API URL**: `https://game.anhtran.dev/api/golem`
+- **Frontend URL**: `https://apps.vietky.io.vn/golem`
+- **API URL**: `https://apps.vietky.io.vn/api/golem`
 - **Backend Port**: `8100` (docker-compose - will change to k3s after testing)
 - **Nginx Path**: `/opt/nginx/apps/golem`
 
@@ -99,8 +99,8 @@ make k3s-deploy
 make k3s-frontend-test
 
 # Verify
-curl https://game.anhtran.dev/golem-test
-curl https://game.anhtran.dev/api/golem-test/health
+curl https://apps.vietky.io.vn/golem-test
+curl https://apps.vietky.io.vn/api/golem-test/health
 ```
 
 ### 2. Promote Test to Production
@@ -109,7 +109,7 @@ curl https://game.anhtran.dev/api/golem-test/health
 make k3s-frontend-prod
 
 # Verify
-curl https://game.anhtran.dev/golem
+curl https://apps.vietky.io.vn/golem
 ```
 
 ### 3. Full Stack Deployment (Backend + Frontend)
@@ -143,14 +143,14 @@ make k3s-logs-cache
 ### Access URLs
 
 **Test Environment:**
-- Frontend: https://game.anhtran.dev/golem-test
-- API: https://game.anhtran.dev/api/golem-test
-- Health: https://game.anhtran.dev/api/golem-test/health
+- Frontend: https://apps.vietky.io.vn/golem-test
+- API: https://apps.vietky.io.vn/api/golem-test
+- Health: https://apps.vietky.io.vn/api/golem-test/health
 
 **Production Environment:**
-- Frontend: https://game.anhtran.dev/golem
-- API: https://game.anhtran.dev/api/golem
-- Health: https://game.anhtran.dev/api/golem/health
+- Frontend: https://apps.vietky.io.vn/golem
+- API: https://apps.vietky.io.vn/api/golem
+- Health: https://apps.vietky.io.vn/api/golem/health
 
 ## Environment Variables
 
@@ -256,7 +256,7 @@ ssh root@157.66.101.66 "kubectl get pods -n golem-app"
 
 1. **Test deployment**: `make k3s-test`
 2. **Deploy to test**: `make k3s-deploy-full-test`
-3. **Verify test**: Visit https://game.anhtran.dev/golem-test
+3. **Verify test**: Visit https://apps.vietky.io.vn/golem-test
 4. **Deploy to prod**: `make k3s-frontend-prod` (when ready)
 
 ---

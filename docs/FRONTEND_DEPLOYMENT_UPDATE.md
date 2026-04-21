@@ -27,8 +27,8 @@ The `deploy-frontend.yml` playbook has been updated to follow the git-based depl
 1. Pull git repository (/opt/jenkins/repos/golem)
    ↓
 2. Build Docker image with environment-specific args
-   ├─ VITE_API_HOST: https://game.anhtran.dev/api/golem[-test]
-   └─ VITE_NGINX_HOST: https://game.anhtran.dev
+   ├─ VITE_API_HOST: https://apps.vietky.io.vn/api/golem[-test]
+   └─ VITE_NGINX_HOST: https://apps.vietky.io.vn
    ↓
 3. Extract built frontend from Docker container
    ↓
@@ -49,8 +49,8 @@ The `deploy-frontend.yml` playbook has been updated to follow the git-based depl
 
 | Environment | Nginx Path | API Host | Access URL |
 |---|---|---|---|
-| test | `/opt/nginx/apps/golem-test` | `https://game.anhtran.dev/api/golem-test` | `https://game.anhtran.dev/golem-test` |
-| prod | `/opt/nginx/apps/golem` | `https://game.anhtran.dev/api/golem` | `https://game.anhtran.dev/golem` |
+| test | `/opt/nginx/apps/golem-test` | `https://apps.vietky.io.vn/api/golem-test` | `https://apps.vietky.io.vn/golem-test` |
+| prod | `/opt/nginx/apps/golem` | `https://apps.vietky.io.vn/api/golem` | `https://apps.vietky.io.vn/golem` |
 
 ### Usage
 

@@ -51,7 +51,7 @@ make k3s-test
 ### Frontend (Nginx)
 - **Location**: /opt/nginx/apps/golem
 - **Static Assets**: /opt/nginx/apps/assets
-- **Built with**: Vite, configured for https://game.anhtran.dev
+- **Built with**: Vite, configured for https://apps.vietky.io.vn
 
 ## 🔧 Deployment Process
 
@@ -79,8 +79,8 @@ After successful deployment:
 - Health: `http://157.66.101.66:30080/health`
 
 ### Frontend
-- URL: `https://game.anhtran.dev`
-- Assets: `https://game.anhtran.dev/assets`
+- URL: `https://apps.vietky.io.vn`
+- Assets: `https://apps.vietky.io.vn/assets`
 
 ### Kubernetes Resources
 ```bash
@@ -135,7 +135,7 @@ make k3s-status
 curl http://157.66.101.66:30080/health
 
 # Test frontend
-curl https://game.anhtran.dev
+curl https://apps.vietky.io.vn
 ```
 
 ### 4. Monitor

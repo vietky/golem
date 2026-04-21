@@ -15,8 +15,8 @@ The `deploy-frontend.yml` playbook has been successfully updated to fetch code f
 - **Environment variables**: `VITE_API_HOST` and `VITE_NGINX_HOST` passed at build time
 
 ### 3. Environment-Specific Configuration
-- **test**: API host = `https://game.anhtran.dev/api/golem-test`
-- **prod**: API host = `https://game.anhtran.dev/api/golem`
+- **test**: API host = `https://apps.vietky.io.vn/api/golem-test`
+- **prod**: API host = `https://apps.vietky.io.vn/api/golem`
 - Both use same `VITE_NGINX_HOST`
 
 ### 4. Built-in Verification

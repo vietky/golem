@@ -25,15 +25,15 @@ The deployment has been split into modular playbooks with environment-specific c
 
 ### Test Environment (`DEPLOY_ENV=test`)
 - **Frontend**: `/opt/nginx/apps/golem-test`
-- **URL**: `https://game.anhtran.dev/golem-test`
-- **API**: `https://game.anhtran.dev/api/golem-test`
+- **URL**: `https://apps.vietky.io.vn/golem-test`
+- **API**: `https://apps.vietky.io.vn/api/golem-test`
 - **Backend**: Port `30080` (k3s NodePort)
 - **Purpose**: Testing and validation
 
 ### Production Environment (`DEPLOY_ENV=prod`)
 - **Frontend**: `/opt/nginx/apps/golem`
-- **URL**: `https://game.anhtran.dev/golem`
-- **API**: `https://game.anhtran.dev/api/golem`
+- **URL**: `https://apps.vietky.io.vn/golem`
+- **API**: `https://apps.vietky.io.vn/api/golem`
 - **Backend**: Port `8100` (docker-compose for now)
 - **Purpose**: Live production
 
@@ -99,7 +99,7 @@ make k3s-deploy
 make k3s-frontend-test
 
 # Verify
-open https://game.anhtran.dev/golem-test
+open https://apps.vietky.io.vn/golem-test
 ```
 
 ### 2. Promote to Production
@@ -108,7 +108,7 @@ open https://game.anhtran.dev/golem-test
 make k3s-frontend-prod
 
 # Verify
-open https://game.anhtran.dev/golem
+open https://apps.vietky.io.vn/golem
 ```
 
 ## 🎯 Key Benefits
@@ -168,7 +168,7 @@ Old commands still work but are deprecated:
 
 1. ✅ **Test backend deployment**: `make k3s-deploy`
 2. ✅ **Test frontend to test env**: `make k3s-frontend-test`
-3. ⏳ **Verify test environment**: Visit https://game.anhtran.dev/golem-test
+3. ⏳ **Verify test environment**: Visit https://apps.vietky.io.vn/golem-test
 4. ⏳ **Deploy to production**: `make k3s-frontend-prod` (when ready)
 
 ---

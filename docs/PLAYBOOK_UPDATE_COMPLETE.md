@@ -39,8 +39,8 @@ docker build \
 ```
 
 ### 3. **Environment Configuration**
-- **test**: API host = `https://game.anhtran.dev/api/golem-test`
-- **prod**: API host = `https://game.anhtran.dev/api/golem`
+- **test**: API host = `https://apps.vietky.io.vn/api/golem-test`
+- **prod**: API host = `https://apps.vietky.io.vn/api/golem`
 - Separate nginx deployment paths
 
 ### 4. **Verification Steps**

@@ -201,10 +201,10 @@ make k3s-logs-cache          # View Redis logs
 ```
 
 #### Access URLs
-- **Backend API**: https://game.anhtran.dev/api/golem (via Gateway API)
-- **WebSocket**: wss://game.anhtran.dev/ws (via Gateway API)
-- **Frontend (test)**: https://game.anhtran.dev/golem-test
-- **Frontend (prod)**: https://game.anhtran.dev/golem
+- **Backend API**: https://apps.vietky.io.vn/api/golem (via Gateway API)
+- **WebSocket**: wss://apps.vietky.io.vn/ws (via Gateway API)
+- **Frontend (test)**: https://apps.vietky.io.vn/golem-test
+- **Frontend (prod)**: https://apps.vietky.io.vn/golem
 
 Uses Ansible for deployment to remote servers. Docker images: `Dockerfile` (backend), `Dockerfile.fe` (frontend-only). Production uses single image serving both.
 

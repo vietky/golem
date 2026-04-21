@@ -12,7 +12,7 @@ The deployment now supports two separate environments with different configurati
 | Feature | Staging | Production |
 |---------|---------|------------|
 | **Namespace** | golem-staging | golem |
-| **DNS** | staging.game.anhtran.dev | prod.game.anhtran.dev |
+| **DNS** | staging.apps.vietky.io.vn | prod.apps.vietky.io.vn |
 | **Replicas** | 1 | 2 |
 | **MongoDB Storage** | 5Gi | 10Gi |
 | **MongoDB Memory** | 512Mi | 1Gi |
@@ -84,14 +84,14 @@ env_config:
   staging:
     namespace: golem-staging
     replicas: 1
-    dns_name: staging.game.anhtran.dev
+    dns_name: staging.apps.vietky.io.vn
     mongodb_storage: 5Gi
     mongodb_memory: 512Mi
     redis_storage: 2Gi
   production:
     namespace: golem
     replicas: 2
-    dns_name: game.anhtran.dev
+    dns_name: apps.vietky.io.vn
     mongodb_storage: 10Gi
     mongodb_memory: 1Gi
     redis_storage: 5Gi
@@ -100,14 +100,14 @@ env_config:
 ## Access URLs
 
 ### Staging
-- **Frontend**: https://staging.game.anhtran.dev/golem-test
-- **API**: https://staging.game.anhtran.dev/api/golem
-- **WebSocket**: wss://staging.game.anhtran.dev/ws
+- **Frontend**: https://staging.apps.vietky.io.vn/golem-test
+- **API**: https://staging.apps.vietky.io.vn/api/golem
+- **WebSocket**: wss://staging.apps.vietky.io.vn/ws
 
 ### Production
-- **Frontend**: https://prod.game.anhtran.dev/golem
-- **API**: https://prod.game.anhtran.dev/api/golem
-- **WebSocket**: wss://prod.game.anhtran.dev/ws
+- **Frontend**: https://prod.apps.vietky.io.vn/golem
+- **API**: https://prod.apps.vietky.io.vn/api/golem
+- **WebSocket**: wss://prod.apps.vietky.io.vn/ws
 
 ## Deployment Workflow
 
@@ -118,7 +118,7 @@ env_config:
    ```
 3. **Test staging** - Run integration tests, manual testing
    ```bash
-   curl https://staging.game.anhtran.dev/api/golem/list
+   curl https://staging.apps.vietky.io.vn/api/golem/list
    ```
 4. **Deploy to production** - Once staging is verified
    ```bash

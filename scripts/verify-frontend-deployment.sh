@@ -9,13 +9,13 @@ KUBECONFIG=${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}
 if [ "$DEPLOY_ENV" == "production" ]; then
   NAMESPACE="default"
   DEPLOYMENT="golem-nginx"
-  FRONTEND_URL="https://game.anhtran.dev/apps/golem/"
+  FRONTEND_URL="https://apps.vietky.io.vn/apps/golem/"
   CDN_HOST="https://statics.vietky.io.vn"
 elif [ "$DEPLOY_ENV" == "staging" ]; then
   NAMESPACE="staging"
   DEPLOYMENT="golem-nginx-staging"
-  FRONTEND_URL="https://game.anhtran.dev/apps/golem-staging/"
-  CDN_HOST="https://game.anhtran.dev/assets"
+  FRONTEND_URL="https://apps.vietky.io.vn/apps/golem-staging/"
+  CDN_HOST="https://apps.vietky.io.vn/assets"
 else
   echo "Usage: $0 [production|staging]"
   exit 1

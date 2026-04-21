@@ -6,7 +6,7 @@
     app_name: golem-century
     deployment_dir: /tmp/golem-deployment
     build_dir: /tmp/golem-build
-    docker_registry: "10.100.0.2:5000"
+    docker_registry: "asia-southeast1-docker.pkg.dev/folkloric-air-390307/k3s"
     app_version: "{{ lookup('env', 'APP_VERSION') | default('latest', true) }}"
     full_image_name: "{{ docker_registry }}/{{ app_name }}:{{ app_version }}"
     deploy_env: "{{ lookup('env', 'DEPLOY_ENV') | default('production', true) }}"
@@ -118,18 +118,6 @@
           - "Checkout: {{ git_checkout_result.stdout }}"
           - "Reset: {{ git_reset_result.stdout }}"
 
-    - name: Check if local Docker registry is running
-      uri:
-        url: "http://10.100.0.2:5000/v2/"
-        status_code: 200
-      register: registry_check
-      failed_when: false
-
-    - name: Fail if registry is not running
-      fail:
-        msg: "Docker registry is not running. Please run 'make k3s-setup-registry' first."
-      when: registry_check.status != 200
-
     - name: Build Docker image from git repository
       command: >
         docker build
@@ -151,12 +139,6 @@
     - name: Display Docker push result
       debug:
         msg: "Docker image pushed to registry successfully"
-
-    - name: Create namespace for staging environment
-      command: kubectl create namespace staging --dry-run=client -o yaml | kubectl apply -f -
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      when: deploy_env == 'staging'
 
     - name: Apply Kubernetes manifests using kustomize
       command: kubectl apply -k {{ deployment_dir }}/{{ env_config[deploy_env].kustomize_path }}
@@ -222,8 +204,8 @@
           - "Replicas: {{ env_config[deploy_env].replicas }}"
           - ""
           - "Access URLs (HTTPRoute configured on k3s server):"
-          - "  Backend API: https://game.anhtran.dev/apps/golem/api"
-          - "  WebSocket: wss://game.anhtran.dev/apps/golem/ws"
+          - "  Backend API: https://apps.vietky.io.vn/apps/golem/api"
+          - "  WebSocket: wss://apps.vietky.io.vn/apps/golem/ws"
           - ""
           - "NOTE: Gateway API resources (HTTPRoute, Gateway) are managed separately on k3s server"
           - "NOTE: To apply or update secrets, use the separate playbook:"
