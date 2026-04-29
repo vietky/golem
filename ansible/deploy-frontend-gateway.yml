@@ -5,7 +5,7 @@
   vars:
     deploy_env: "{{ lookup('env', 'DEPLOY_ENV') | default('prod', true) }}"
     git_repo_path: "/opt/jenkins/repos/golem"
-    registry_host: "asia-southeast1-docker.pkg.dev/folkloric-air-390307/k3s"
+    registry_host: "registry.gitlab.com/kq.viet/mono-v2"
     
     env_config:
       staging:

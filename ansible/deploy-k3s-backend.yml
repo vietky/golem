@@ -6,7 +6,7 @@
     app_name: golem-century
     deployment_dir: /tmp/golem-deployment
     build_dir: /tmp/golem-build
-    docker_registry: "asia-southeast1-docker.pkg.dev/folkloric-air-390307/k3s"
+    docker_registry: "registry.gitlab.com/kq.viet/mono-v2"
     app_version: "{{ lookup('env', 'APP_VERSION') | default('latest', true) }}"
     full_image_name: "{{ docker_registry }}/{{ app_name }}:{{ app_version }}"
     deploy_env: "{{ lookup('env', 'DEPLOY_ENV') | default('production', true) }}"
