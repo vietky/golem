@@ -68,9 +68,9 @@
     - name: Pull latest code
       shell: |
         cd {{ git_repo_path }}
-        git fetch origin main
-        git checkout main
-        git reset --hard origin/main
+        git fetch origin stable
+        git checkout stable
+        git reset --hard origin/stable
       register: git_pull
 
     - name: Create deployment directories
