@@ -11,8 +11,8 @@ export default ({ mode }) => {
   // Vite env: expected `VITE_API_HOST` like `http://backend-host:8080`
   const localServer = 'http://localhost:3001'
   const apiHost = env.VITE_API_HOST || localServer
-  // Route static images to nginx. Configure via VITE_NGINX_HOST (e.g. http://nginx-host:80).
-  const nginxHost = env.VITE_NGINX_HOST || 'http://localhost:3001'
+  // Static images/sounds are served from CDN by default; override VITE_NGINX_HOST for local assets (e.g. http://localhost:3001).
+  const nginxHost = env.VITE_NGINX_HOST || 'https://statics.vietky.io.vn'
   const toWsTarget = (host) => {
     if (host.startsWith('https://')) return host.replace(/^https:\/\//, 'wss://')
     if (host.startsWith('http://')) return host.replace(/^http:\/\//, 'ws://')
@@ -25,7 +25,8 @@ export default ({ mode }) => {
   // Configure log level: DEBUG, INFO, WARN, ERROR, NONE
   // Default to DEBUG in development, INFO in production
   const logLevel = env.VITE_LOG_LEVEL || (isDev ? 'DEBUG' : 'INFO')
-  const isCdn = nginxHost == 'https://statics.vietky.io.vn'
+  const cdnOrigin = 'https://statics.vietky.io.vn'
+  const isCdn = nginxHost.replace(/\/$/, '') === cdnOrigin
   const images = isCdn ? 'images' : 'assets/images';
   const sounds = isCdn ? 'sounds':'assets/sounds'
 

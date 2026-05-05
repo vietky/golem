@@ -31,7 +31,8 @@ func LoadConfig() Config {
 	return Config{
 		ServerHost:                  getEnv("SERVER_HOST", "0.0.0.0"),
 		ServerPort:                  getEnv("SERVER_PORT", "8080"),
-		MongoURI:                    getEnv("MONGO_URI", "mongodb://localhost:27017"),
+		// Empty MONGO_URI disables MongoDB; set e.g. mongodb://localhost:27017 to enable persistence.
+		MongoURI:                    getEnv("MONGO_URI", ""),
 		MongoDB:                     getEnv("MONGO_DB", "golem_game"),
 		MongoEventsColl:             getEnv("MONGO_EVENTS_COLL", "game_events"),
 		MongoSnapshotsColl:          getEnv("MONGO_SNAPSHOTS_COLL", "game_snapshots"),

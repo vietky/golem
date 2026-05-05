@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -29,27 +30,28 @@ func main() {
 	}
 	defer log.Sync()
 
-	// Initialize event store
-	eventStoreConfig := eventstore.EventStoreConfig{
-		MongoURI:      cfg.MongoURI,
-		Database:      cfg.MongoDB,
-		EventsColl:    cfg.MongoEventsColl,
-		SnapshotsColl: cfg.MongoSnapshotsColl,
-	}
-
-	storeResp := eventstore.NewMongoEventStore(eventstore.NewMongoEventStoreRequest{
-		Config: eventStoreConfig,
-	})
-
 	var store eventstore.EventStore
-	if storeResp.Error != nil {
-		log.Warn("Failed to initialize event store - continuing without event store",
-			zap.Error(storeResp.Error))
-		store = nil
+	if cfg.MongoURI != "" {
+		eventStoreConfig := eventstore.EventStoreConfig{
+			MongoURI:      cfg.MongoURI,
+			Database:      cfg.MongoDB,
+			EventsColl:    cfg.MongoEventsColl,
+			SnapshotsColl: cfg.MongoSnapshotsColl,
+		}
+		storeResp := eventstore.NewMongoEventStore(eventstore.NewMongoEventStoreRequest{
+			Config: eventStoreConfig,
+		})
+		if storeResp.Error != nil {
+			log.Warn("Failed to initialize event store - continuing without event store",
+				zap.Error(storeResp.Error))
+			store = nil
+		} else {
+			store = storeResp.Store
+			log.Info("Event store initialized successfully")
+			defer store.Close()
+		}
 	} else {
-		store = storeResp.Store
-		log.Info("Event store initialized successfully")
-		defer store.Close()
+		log.Info("MongoDB disabled (MONGO_URI unset); running without event store")
 	}
 
 	// Create game server with event store
@@ -97,24 +99,7 @@ func main() {
 	mux.HandleFunc(prefixPath("/api/games"), gameServer.HandleListGames)
 	mux.HandleFunc(prefixPath("/admin/sessions/state"), gameServer.HandleGetSessionState)
 
-	// Serve static files - try React build first, fallback to vanilla JS
-	staticDir := filepath.Join(".", "web", "static")
-	reactDir := filepath.Join(".", "web", "react")
-	reactIndexPath := filepath.Join(reactDir, "index.html")
-
-	// Check if React build exists and has content (index.html exists), otherwise serve vanilla JS
-	if _, err := os.Stat(reactIndexPath); err == nil {
-		// Serve React build
-		mux.Handle("/", http.FileServer(http.Dir("./web/react")))
-		log.Info("Serving React frontend from ./web/react")
-	} else {
-		// Fallback to vanilla JS
-		if _, err := os.Stat(staticDir); os.IsNotExist(err) {
-			os.MkdirAll(staticDir, 0755)
-		}
-		mux.Handle("/", http.FileServer(http.Dir("./web/static")))
-		log.Info("Serving vanilla JS frontend from ./web/static")
-	}
+	mountStaticFrontend(mux, log.Logger)
 
 	addr := fmt.Sprintf(":%s", cfg.ServerPort)
 	log.Info("Century: Golem Edition - Web Server")
@@ -171,4 +156,71 @@ func main() {
 
 		log.Info("Server shutdown complete")
 	}
+}
+
+// detectViteBasePath reads dist/index.html (script src) to infer Vite base path, e.g. /apps/golem or /.
+func detectViteBasePath(distDir string) string {
+	data, err := os.ReadFile(filepath.Join(distDir, "index.html"))
+	if err != nil {
+		return "/apps/golem"
+	}
+	s := string(data)
+	if idx := strings.Index(s, `src="/`); idx != -1 {
+		rest := s[idx+len(`src="/`):]
+		if j := strings.Index(rest, `/assets/`); j > 0 {
+			return "/" + rest[:j]
+		}
+		if strings.HasPrefix(rest, "assets/") {
+			return "/"
+		}
+	}
+	if strings.Contains(s, `src="./assets/`) {
+		return "/"
+	}
+	return "/apps/golem"
+}
+
+// mountStaticFrontend prefers web/react-frontend/dist (Vite), then legacy web/react, then web/static.
+func mountStaticFrontend(mux *http.ServeMux, log *zap.Logger) {
+	distDir := filepath.Join(".", "web", "react-frontend", "dist")
+	if _, err := os.Stat(filepath.Join(distDir, "index.html")); err == nil {
+		base := detectViteBasePath(distDir)
+		fs := http.FileServer(http.Dir(distDir))
+		if base == "/" {
+			mux.Handle("/", fs)
+			log.Info("Serving React SPA from ./web/react-frontend/dist at / (same origin as API)")
+			return
+		}
+		// Strip Vite base so /apps/golem/assets/* maps to dist/assets/* (matches nginx alias behavior).
+		mux.Handle(base+"/", http.StripPrefix(base, fs))
+		mux.HandleFunc(base, func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, base+"/", http.StatusFound)
+		})
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/" {
+				http.NotFound(w, r)
+				return
+			}
+			http.Redirect(w, r, base+"/", http.StatusFound)
+		})
+		log.Info("Serving React SPA from ./web/react-frontend/dist",
+			zap.String("vite_base_path", base),
+			zap.String("tip", "open http://localhost:<port>/ → redirects to app"),
+		)
+		return
+	}
+
+	legacyDir := filepath.Join(".", "web", "react")
+	if _, err := os.Stat(filepath.Join(legacyDir, "index.html")); err == nil {
+		mux.Handle("/", http.FileServer(http.Dir(legacyDir)))
+		log.Info("Serving legacy React bundle from ./web/react")
+		return
+	}
+
+	staticDir := filepath.Join(".", "web", "static")
+	if _, err := os.Stat(staticDir); os.IsNotExist(err) {
+		_ = os.MkdirAll(staticDir, 0755)
+	}
+	mux.Handle("/", http.FileServer(http.Dir(staticDir)))
+	log.Info("Serving vanilla JS frontend from ./web/static (no React dist found)")
 }
